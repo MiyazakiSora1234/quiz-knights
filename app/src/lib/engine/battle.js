@@ -81,7 +81,7 @@ export function createBattle(ui) {
   async function endQuestion(correct) {
     checkEnd();
     if (!G.over && G.cfg.cpuAuto) await cpuTurn();
-    await tickPoison();
+    if (!G.over) await tickPoison();            // 決着がついたあとは、毒で状況を変えない
     for (const u of G.units) { u.restNow = u.restNext; u.restNext = false; }
     G.prevCorrect = correct ? correct.id : null;
     G.wrongOn = [];
@@ -295,6 +295,7 @@ export function createBattle(ui) {
       delete G.pids[pid];
       if (!u) return false;
       G.units = G.units.filter(x => x.id !== id);
+      if (G.stats) delete G.stats[id];
       if (G.sel === id) G.sel = null;
       if (G.prevCorrect === id) G.prevCorrect = null;
       G.wrongOn = (G.wrongOn || []).filter(x => x !== id);
@@ -336,7 +337,10 @@ export function createBattle(ui) {
       if (patch.hp != null && Number.isFinite(+patch.hp)) u.hp = num(patch.hp, 0, 999);
       u.hp = Math.min(u.hp, u.maxHp);
       if (patch.alive === true && u.hp <= 0) u.hp = 1;
-      if (patch.alive === false || u.hp <= 0) { u.alive = false; u.hp = 0; if (G.sel === u.id) G.sel = null; }
+      if (patch.alive === false || u.hp <= 0) {
+        u.alive = false; u.hp = 0; if (G.sel === u.id) G.sel = null;
+        u.poison = 0; u.poisonSkip = false; u.barrier = 0; u.mine = null;     // 倒れたら状態異常は消える
+      }
       else if (patch.alive === true || !u.alive) { u.alive = true; u.ghost = false; u.hp = Math.max(1, u.hp); }
       if (typeof patch.rest === 'boolean') u.restNow = patch.rest;
       G.over = null; checkEnd();

@@ -809,3 +809,68 @@ test('連チャン: 1着が誤答したら、押した順に2着・3着へ回答
   await a.wait('open', 3000, x => x.q === 2 && !x.chain);
   host.send({ t: 'close' });
 });
+
+/* ================= 表形式の入力検査（1ケース = 1テスト） ================= */
+for (const [name, want] of [['', '名無し'], ['あ', 'あ'], ['あいうえおかきくけこさし', 'あいうえおかきくけこさし'], ['x'.repeat(13), 'x'.repeat(12)], ['x'.repeat(200), 'x'.repeat(12)], ['  空白  ', '  空白  '.slice(0, 12)], ['<b>タグ</b>', '<b>タグ</b>'], ['😀絵文字', '😀絵文字'.slice(0, 12)]]) {
+  test(`入力検査: 名前「${name.slice(0, 10)}」(${name.length}文字) は「${want.slice(0, 10)}」になる`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, name);
+    assert.equal(p.joined.name, want);
+    host.send({ t: 'close' });
+  });
+}
+for (const [pw, tryPw, ok] of [['', '', true], ['', 'x', true], ['abc', 'abc', true], ['abc', 'ABC', false], ['abc', '', false], ['abc', 'abcd', false], ['あいう', 'あいう', true], ['a'.repeat(25), 'a'.repeat(20), true], ['a'.repeat(25), 'a'.repeat(25), false]]) {
+  test(`入力検査: パスワード「${pw.slice(0, 6)}」(${pw.length}) に「${tryPw.slice(0, 6)}」(${tryPw.length}) で入る → ${ok ? '入れる' : '拒否'}`, async () => {
+    const { id, host } = await makeRoom({ password: pw });
+    const c = await client(id);
+    c.send({ t: 'join', id, name: 'A', password: tryPw });
+    if (ok) assert.ok((await c.wait('joined')).pid); else assert.equal((await c.wait('error')).code, 'pw');
+    host.send({ t: 'close' });
+  });
+}
+for (const rid of [0, 17, -1, 100, 1.5, 'x', null]) {
+  test(`入力検査: 部屋番号 ${String(rid)} での作成は拒否される`, async () => {
+    const c = await client(1);
+    c.send({ t: 'create', id: rid, name: 'x' });
+    assert.ok((await c.wait('error')).msg);
+  });
+}
+for (const [job, team, wantJob, wantTeam] of [['mage', 'e', 'mage', 'e'], ['', 'p', 'warrior', 'p'], [5, 'z', 'warrior', 'p'], ['x'.repeat(30), 'e', 'warrior', 'e'], [null, null, 'warrior', 'p'], ['bm', undefined, 'bm', 'p']]) {
+  test(`入力検査: プロフィールの職業 ${JSON.stringify(job)?.slice(0, 12)} / チーム ${JSON.stringify(team)} → ${wantJob}/${wantTeam}`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A');
+    p.send({ t: 'profile', job, team });
+    const lob = await host.wait('lobby', 3000, x => x.players[0] && x.players[0].job === wantJob && x.players[0].team === wantTeam);
+    assert.equal(lob.players[0].pid, p.pid);
+    host.send({ t: 'close' });
+  });
+}
+for (const [text, want] of [['こんにちは', 'こんにちは'], ['  前後の空白  ', '前後の空白'], ['a'.repeat(250), 'a'.repeat(200)], ['改行\nあり', '改行\nあり'], ['<script>alert(1)</script>', '<script>alert(1)</script>']]) {
+  test(`入力検査: チャット「${text.slice(0, 8).replace('\n', '↵')}」(${text.length}文字)`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A');
+    p.send({ t: 'chat', text });
+    assert.equal((await host.wait('chat', 3000, x => !x.sys)).text, want);
+    host.send({ t: 'close' });
+  });
+}
+for (const text of ['', '   ', '\n\t']) {
+  test(`入力検査: 空のチャット「${JSON.stringify(text)}」は無視される`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A');
+    p.send({ t: 'chat', text });
+    await sleep(250);
+    assert.equal(host.q.some(m => m.t === 'chat' && !m.sys), false);
+    host.send({ t: 'close' });
+  });
+}
+for (const [name, pw, wantName] of [['新しい名前', 'pw', '新しい名前'], ['', 'pw', '旧'], ['y'.repeat(40), '', 'y'.repeat(30)]]) {
+  test(`入力検査: 部屋設定 名前「${name.slice(0, 6)}」(${name.length}) パスワード「${pw}」`, async () => {
+    const { id, host } = await makeRoom({ name: '旧' });
+    host.send({ t: 'settings', name, password: pw });
+    assert.equal((await host.wait('settings')).name, wantName);
+    await sleep(150);
+    assert.equal((await api())[id - 1].name, wantName);
+    host.send({ t: 'close' });
+  });
+}
