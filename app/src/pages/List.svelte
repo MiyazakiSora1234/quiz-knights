@@ -117,8 +117,6 @@
   .logo{font-family:var(--display);font-size:clamp(1.8rem,5vw,2.5rem);line-height:1.15;letter-spacing:.1em}
   .logo small{display:block;font-family:var(--serif);font-size:.95rem;letter-spacing:.4em;color:var(--mut);margin-top:6px;font-weight:700}
   .who{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:26px;padding:12px 16px}
-  .who label{font-weight:700;color:var(--gold);white-space:nowrap}
-  .who .input{flex:1 1 200px;max-width:320px;font-size:1.05rem}
   .hint{font-size:.82rem;color:var(--mut);flex:1 1 200px}
   .input.need{animation:shake .4s;border-color:var(--red);box-shadow:0 0 0 3px #e5545f44}
   @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}

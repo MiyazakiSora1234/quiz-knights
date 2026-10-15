@@ -38,10 +38,9 @@
   });
 </script>
 
-<svelte:window onkeydown={onkey} />
+<svelte:window onkeydown={onkey} onclick={(e) => { if (!e.target.closest?.('.tools')) menu = false; }} />
 
 {#if p.status === 'reconnecting'}<div class="conn" transition:fade>接続が切れました。再接続しています…</div>{/if}
-<svelte:window onclick={(e) => { if (!e.target.closest?.('.tools')) menu = false; }} />
 <div class="tools">
   {#if p.phase === 'game'}
     <button onclick={() => (menu = !menu)} aria-label="メニュー" aria-expanded={menu}>☰</button>
