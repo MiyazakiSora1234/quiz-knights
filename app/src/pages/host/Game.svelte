@@ -10,7 +10,7 @@
   import { panel, modal } from '../../lib/ui.svelte.js';
   import { sfx, unlockAudio } from '../../lib/sound.svelte.js';
 
-  // バトル画面: 左に舞台（魔王とプレイヤー）、右に進行パネルと年代記。スマホでは進行パネルが下に固定される
+  // バトル画面: 左に舞台（魔王とプレイヤー）、右に進行パネルとバトルログ。スマホでは進行パネルが下に固定される
   let { host } = $props();
   const G = $derived(host.G);
   let header;

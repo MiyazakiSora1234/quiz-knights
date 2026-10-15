@@ -62,10 +62,10 @@
         <Unit {u} compact ribbon={u.id === p.mine ? 'あなた' : ''} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} />
       {/each}
     </div>
-    <details class="logbox parch">
-      <summary>年代記</summary>
-      {#each gs.log ?? [] as l}<p>{l}</p>{/each}
-    </details>
+    <div class="logbox parch">
+      <div class="lh">バトルログ</div>
+      <div class="ll">{#each gs.log ?? [] as l}<p>{l}</p>{/each}</div>
+    </div>
   </div>
 
   {#if p.me}<div class="buzzarea"><BuzzButton {p} /></div>{/if}
@@ -110,7 +110,8 @@
   .strip{display:flex;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
   .strip :global(.unit){flex:0 0 138px;scroll-snap-align:start}
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
-  .logbox summary{cursor:pointer;color:#7a1f26;font-weight:800;letter-spacing:.3em;text-align:center;font-family:var(--serif)}
+  .lh{text-align:center;color:#7a1f26;font-weight:800;letter-spacing:.2em;font-family:var(--serif)}
+  .ll{height:9.5em;overflow:auto}
   .logbox p{margin:6px 0 0;font-size:.82rem;border-bottom:1px dotted #8a6a3577;padding-bottom:3px}
   .buzzarea{position:sticky;bottom:0;padding:14px 0 calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#0000,var(--bg) 30%)}
 
@@ -119,7 +120,7 @@
   .over h2{font-size:3rem;color:var(--gold)}.over h2.lose{color:var(--red)}
   .mine{font-size:1.05rem}.mine .ok{color:#8fe0a6}.mine .ng{color:#ff9aa2}
 
-  /* PC: 左に自分とボタン、右に全員と年代記 */
+  /* PC: 左に自分とボタン、右に全員とバトルログ */
   @media(min-width:900px){
     .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "me mid" "banner mid" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
     .ansbox{grid-area:ans}
@@ -127,6 +128,6 @@
     .buzzarea{grid-area:buzz;position:static;background:none;padding:6px 0}
     .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible;gap:16px;padding:4px 0 14px}
     .strip :global(.unit){flex:none}
-    .logbox[open]{max-height:40vh;overflow:auto}
+    .ll{height:22vh}
   }
 </style>
