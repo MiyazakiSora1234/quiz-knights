@@ -92,7 +92,7 @@
 
 <style>
   .room{display:flex;flex-direction:column;min-height:calc(100dvh - 24px);gap:12px}
-  .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 10px}
+  .bar{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 10px}
   .ttl b{display:block;font-family:var(--serif);font-size:1.25rem;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
   .ttl .sub{display:flex;align-items:center;gap:6px;font-size:.8rem}
   .tools{display:flex;gap:6px;margin-right:48px}
@@ -104,7 +104,7 @@
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
   .mi{min-width:0}.mi b{display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mi small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .bottom{display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
+  .bottom{flex:none;display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
   .chat{display:flex;flex-direction:column;gap:8px;min-width:0}
   .log{height:150px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:6px 10px;font-size:.88rem}
   .log p{margin:4px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.log p.sys{color:var(--mut)}.log p.host b{color:var(--gold)}
