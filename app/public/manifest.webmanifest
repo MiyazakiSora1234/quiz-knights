@@ -1,0 +1,11 @@
+{
+  "name": "QUIZ KNIGHTS",
+  "short_name": "QuizKnights",
+  "description": "早押しクイズと連携する、職業ありのバトルゲーム",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14110e",
+  "theme_color": "#14110e",
+  "lang": "ja",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

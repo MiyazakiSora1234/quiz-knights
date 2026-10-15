@@ -8,7 +8,7 @@
   let { id } = $props();
   // svelte-ignore state_referenced_locally
   const host = new HostStore(id);
-  onMount(() => { host.connect(); return () => host.destroy(); });
+  onMount(() => { document.title = '進行役 - QUIZ KNIGHTS'; host.connect(); return () => host.destroy(); });
 </script>
 
 {#if host.G}

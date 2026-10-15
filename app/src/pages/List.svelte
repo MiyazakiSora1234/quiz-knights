@@ -22,7 +22,7 @@
       status = `サーバー接続OK ・ ${Math.round(performance.now() - t0)}ms ・ 5秒ごとに自動更新`;
     } catch { status = 'サーバーに接続できません。しばらくして再読み込みしてください'; }
   }
-  onMount(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); });
+  onMount(() => { document.title = 'QUIZ KNIGHTS - 部屋一覧'; load(); const t = setInterval(load, 5000); return () => clearInterval(t); });
 
   const used = $derived((rooms ?? []).filter(r => r.used));
   const free = $derived((rooms ?? []).filter(r => !r.used));

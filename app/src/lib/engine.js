@@ -238,7 +238,9 @@ export function createBattle(ui){
     checkEnd();
   }
 
+  const stat=(u,k)=>{G.stats ??= {};(G.stats[u.id] ??= {correct:0,wrong:0})[k]++;};
   async function doCorrect(a){
+    stat(a,'correct');
     log(`⭕ ${nm(a)} 正解！`,'sys');
     G.streak=(G.prevCorrect===a.id)?(G.streak||1)+1:1;
     if(a.job==='tank'){a.guards++;log(`🛡 ${a.name} の守り回数 +1 (${a.guards})`,'sys');}
@@ -260,6 +262,7 @@ export function createBattle(ui){
     endQuestion(a);
   }
   async function doWrong(a){
+    stat(a,'wrong');
     log(`❌ ${nm(a)} 誤答`,'sys');
     if(a.isBoss&&!G.cfg.bossPenalty)log('魔王は誤答ペナルティなし');
     else await applyEvents([{src:null,to:a,amt:2}]);
@@ -296,7 +299,7 @@ export function createBattle(ui){
     get canUndo(){return undoStack.length>0;},
     /** players:[{name,job,team,pid?}] */
     start({players,mode='cpu',boss=1,bossPenalty=true}){
-      G={mode,uid:1,units:[],log:[],q:1,prevCorrect:null,streak:0,genre:null,genreFor:0,sel:null,over:null,pids:{},cfg:{bossPenalty}};
+      G={mode,uid:1,units:[],log:[],q:1,prevCorrect:null,streak:0,genre:null,genreFor:0,sel:null,over:null,pids:{},stats:{},cfg:{bossPenalty}};
       const pvp=mode==='pvp';
       for(const p of players){const u=mkUnit(p.name.trim(),p.job);if(pvp)u.side=p.team||'p';G.units.push(u);if(p.pid)G.pids[p.pid]=u.id;}
       if(pvp){

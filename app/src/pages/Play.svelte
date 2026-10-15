@@ -78,6 +78,9 @@
       pid = m.pid; leaving = false; sessionStorage.setItem(PIDKEY, pid);
       store.set('qr_name', m.name); store.set('qr_flavor', m.flavor || '');
       myJob = m.job; myTeam = m.team; roomName = m.roomName;
+      // 前回選んだ職業・チームを引き継ぐ
+      const sj = store.get('qr_job'), st = store.get('qr_team');
+      if ((sj && SELECTABLE.includes(sj) && sj !== m.job) || (st && st !== m.team)) { if (sj && SELECTABLE.includes(sj)) myJob = sj; if (st === 'p' || st === 'e') myTeam = st; setProfile(); }
       phase = gs ? 'game' : 'lobby'; keepAwake();
     } else if (m.t === 'members') members = m.players;
     else if (m.t === 'state') { const first = !gs; gs = m.state; phase = 'game'; if (first) toast('バトル開始！'); }
@@ -102,8 +105,8 @@
 
   /* ---------- ロビー ---------- */
   const setProfile = () => conn.send({ t: 'profile', job: myJob, team: myTeam });
-  function pickJob(j) { myJob = j; setProfile(); }
-  function pickTeam(t) { myTeam = t; setProfile(); }
+  function pickJob(j) { myJob = j; store.set('qr_job', j); setProfile(); }
+  function pickTeam(t) { myTeam = t; store.set('qr_team', t); setProfile(); }
   function leave() { leaving = true; conn.send({ t: 'leave' }); sessionStorage.removeItem(PIDKEY); location.href = '/'; }
   function rename() { leaving = true; conn.send({ t: 'leave' }); sessionStorage.removeItem(PIDKEY); conn.close(); pid = null; gs = null; phase = 'join'; tick().then(() => { nameEl?.focus(); nameEl?.select(); }); }
 
@@ -119,6 +122,11 @@
       setTimeout(() => (flash = ''), 600);
     }
     prevHp = hp;
+  });
+  // 別のタブを見ていても受付開始に気づけるよう、タブの題名で知らせる
+  $effect(() => {
+    const base = roomName ? `${roomName} - QUIZ KNIGHTS` : 'QUIZ KNIGHTS';
+    document.title = (canBuzz && gs) ? `🔔 押せ！ ${base}` : (myWin ? `🎉 回答権！ ${base}` : base);
   });
   async function keepAwake() { try { if ('wakeLock' in navigator && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => (wake = null)); } } catch { /* noop */ } }
 
@@ -240,7 +248,7 @@
 
     {#if gs.over}
       <div class="over" transition:fade={{ duration: 200 }}>
-        <div in:scale={{ start: .9, duration: 260 }} class="ov-in"><h2 class:lose={overText.includes('全滅') || overText.includes('敗北')}>{overText}</h2><div class="sub">進行役の操作を待っています</div></div>
+        <div in:scale={{ start: .9, duration: 260 }} class="ov-in"><h2 class:lose={overText.includes('全滅') || overText.includes('敗北')}>{overText}</h2>{#if me && gs.stats?.[me.id]}<div class="mine">あなたの成績：正解 <b class="ok">{gs.stats[me.id].correct}</b>　誤答 <b class="ng">{gs.stats[me.id].wrong}</b></div>{/if}<div class="sub">進行役の操作を待っています</div></div>
       </div>
     {/if}
   {/if}
@@ -307,7 +315,7 @@
   .logbox summary{cursor:pointer;color:#7a1f26;font-weight:800;letter-spacing:.3em;text-align:center;font-family:var(--serif)}
   .logbox p{margin:6px 0 0;font-size:.82rem;border-bottom:1px dotted #8a6a3577;padding-bottom:3px}
   .buzzarea{position:sticky;bottom:0;padding:14px 0 calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#0000,var(--bg) 30%)}
-  .buzz{display:block;margin:0 auto;width:min(66vw,250px);aspect-ratio:1;border-radius:50%;font-size:2rem;font-weight:900;letter-spacing:.1em;border:6px double var(--line2);cursor:pointer;
+  .buzz{display:block;margin:0 auto;width:min(66vw,250px,36dvh);aspect-ratio:1;border-radius:50%;font-size:2rem;font-weight:900;letter-spacing:.1em;border:6px double var(--line2);cursor:pointer;
     background:radial-gradient(circle at 35% 30%,#555,#2a2a2a);color:#999;touch-action:manipulation;transition:transform .05s;font-family:var(--sans)}
   .buzz:disabled{cursor:default}
   .buzz.on{background:radial-gradient(circle at 35% 30%,#f0626c,#a92b36 70%,#6a1119);color:#fff;border-color:var(--gold);text-shadow:0 2px 0 #0008;box-shadow:0 0 40px #e5545faa,inset 0 0 20px #0009;cursor:pointer}
@@ -317,6 +325,7 @@
   .over{position:fixed;inset:0;background:#000d;z-index:70;display:flex;align-items:center;justify-content:center;text-align:center}
   .ov-in{display:flex;flex-direction:column;gap:10px;align-items:center}
   .over h2{font-size:3rem;color:var(--gold)}.over h2.lose{color:var(--red)}
+  .mine{font-size:1.05rem}.mine .ok{color:#8fe0a6}.mine .ng{color:#ff9aa2}
 
   @media(min-width:900px){
     .wrap{max-width:1060px;padding:20px 24px}

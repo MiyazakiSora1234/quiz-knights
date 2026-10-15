@@ -162,6 +162,7 @@ export class HostStore {
         genre: (G.genre && G.genreFor === G.q) ? `ジャンル：${G.genre}` : '',
         units: G.units.map(u => ({ id: u.id, name: u.name, job: u.job, jobName: jobName(u), side: u.side, hp: u.hp, maxHp: u.maxHp, alive: u.alive, restNow: u.restNow, guards: u.guards, isBoss: u.isBoss, atk: u.atk })),
         log: G.log.slice(0, 14).map(l => l.m),
+        stats: G.stats || {},
       },
     });
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {

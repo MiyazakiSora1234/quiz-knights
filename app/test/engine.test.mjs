@@ -351,3 +351,16 @@ test('死者・休み中は選択できない／結果が決まったら操作�
   h.b.G.over = 'win';
   assert.equal(await h.b.skip(), false);
 });
+
+test('集計: 正解数と誤答数が記録される（取り消すと元に戻る）', async () => {
+  const h = harness();
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], boss: 3 });
+  await h.correct('A', '何もしない');
+  await h.wrong('A');
+  await h.correct('B', '何もしない');
+  const st = h.b.G.stats;
+  assert.deepEqual(st[h.u('A').id], { correct: 1, wrong: 1 });
+  assert.deepEqual(st[h.u('B').id], { correct: 1, wrong: 0 });
+  h.b.undo();
+  assert.equal(h.b.G.stats[h.u('B').id], undefined);
+});
