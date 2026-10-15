@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>クイズRPGバトル</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/icons.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#17110c;--panel:#2b2018;--panel2:#3a2c20;--line:#8a6a35;--tx:#f1e4c3;--mut:#b9a57f;--acc:#e0b650;--red:#a8262f;--grn:#5e8a45;--blu:#5aa7ff;--pur:#6b3f7a}
@@ -139,6 +141,14 @@ header.top{background:none;border:0;border-bottom:3px double var(--line);border-
 #pls .card .chips{justify-content:center}
 #pls .card .hpt{justify-content:center;gap:10px}
 .card.foe>div:first-child{align-items:center}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+.t{background:#000d;border:1px solid var(--acc);padding:8px 18px;border-radius:20px;font-size:.9rem;animation:tin .25s}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}}
+.float{position:absolute;left:50%;top:34%;transform:translateX(-50%);font-weight:800;font-size:1.6rem;pointer-events:none;animation:fl 1.1s forwards;z-index:3;text-shadow:0 2px 3px #000}
+.float.d{color:#ff7b86}.float.h{color:#8cf0a8}
+@keyframes fl{to{transform:translate(-50%,-38px);opacity:0}}
+kbd{font:inherit;font-size:.7em;opacity:.75;border:1px solid currentColor;border-radius:3px;padding:0 4px;margin-left:4px}
+.opt b{font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -196,6 +206,7 @@ header.top{background:none;border:0;border-bottom:3px double var(--line);border-
   <header class="top">
     <div><span class="crest">⚜</span><span class="qno" id="qno"></span> <span class="genre hide" id="genre"></span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="sub" id="roomInfo"></span><button class="btn" id="copyUrl">URLをコピー</button><button class="btn" id="sndBtn" aria-label="音">🔊</button>
       <button class="btn" id="undoBtn">↩ 1つ戻す</button>
       <button class="btn" id="rulesBtn2">職業・ルール</button>
       <button class="btn" id="closeRoom2">部屋を閉じる</button>
@@ -215,6 +226,7 @@ header.top{background:none;border:0;border-bottom:3px double var(--line);border-
 </div>
 </div>
 
+<div id="toast"></div>
 <div id="modal"></div>
 <div id="over"><h2 id="overT"></h2><div id="overS" class="sub"></div><button class="btn pri" id="overBtn">最初に戻る</button></div>
 
@@ -432,7 +444,7 @@ function ask(title,opts,{sub='',cancel=true}={}){
   return new Promise((res,rej)=>{
     const m=$('#modal');
     m.innerHTML=`<div class="mbox"><h3>${esc(title)}</h3>${sub?`<p class="sub">${esc(sub)}</p>`:''}<div class="opts">${
-      opts.map((o,i)=>`<button class="opt ${o.cls||''}" data-i="${i}" ${o.disabled?'disabled':''}><b>${esc(o.label)}</b>${o.sub?`<small>${esc(o.sub)}</small>`:''}</button>`).join('')
+      opts.map((o,i)=>`<button class="opt ${o.cls||''}" data-i="${i}" ${o.disabled?'disabled':''}><b>${i+1}. ${esc(o.label)}</b>${o.sub?`<small>${esc(o.sub)}</small>`:''}</button>`).join('')
     }</div>${cancel?'<button class="cancel" data-c="1">キャンセル（この問題の処理を取り消す）</button>':''}</div>`;
     m.classList.add('on');
     m.onclick=e=>{
@@ -524,7 +536,7 @@ async function transact(fn){
     save();
   }catch(e){
     if(e===CANCEL){G=JSON.parse(snap);}
-    else{console.error(e);G=JSON.parse(snap);alert('エラーが発生したため処理を取り消しました: '+e.message);}
+    else{console.error(e);G=JSON.parse(snap);toast('エラーが発生したため処理を取り消しました: '+e.message,4000);}
   }finally{busy=false;render();}
 }
 function undo(){
@@ -553,7 +565,7 @@ function card(u){
   const prev=lastHp[u.id]; let anim='';
   if(prev!==undefined){if(u.hp<prev)anim='hit';else if(u.hp>prev)anim='heal';}
   const can=u.alive&&!u.restNow&&!G.over;
-  const em=u.isBoss?BOSS[u.bossId].e:JOB[u.job].e;
+  const em=qkIcon(u.isBoss?'boss':u.job);
   return `<button class="card ${u.side==='e'?'foe':''} ${can?'can':''} ${G.sel===u.id?'sel':''} ${u.alive?'':'dead'} ${u.restNow?'rest':''} ${anim}" data-id="${u.id}">
     <div style="display:flex;gap:8px;align-items:center"><span class="em">${em}</span><div><div class="nm">${esc(u.name)}</div><div class="jb">${esc(jobName(u))}${u.isBoss?'':` ／ ATK ${u.atk}`}</div></div></div>
     <div class="hpbar"><i style="width:${pct}%"></i></div>
@@ -571,15 +583,17 @@ function render(){
   $('#plabel').textContent=G.mode==='pvp'?'チームA':'プレイヤー';
   $('#foes').innerHTML=G.units.filter(u=>u.side==='e').map(card).join('');
   $('#pls').innerHTML=G.units.filter(u=>u.side==='p').map(card).join('');
+  for(const u of G.units){const p=lastHp[u.id];if(p!==undefined&&p!==u.hp){const el=document.querySelector(`.card[data-id="${u.id}"]`);
+    if(el){const f=document.createElement('div');f.className='float '+(u.hp<p?'d':'h');f.textContent=(u.hp>p?'+':'')+(u.hp-p);el.appendChild(f);setTimeout(()=>f.remove(),1100);}}}
   lastHp={};for(const u of G.units)lastHp[u.id]=u.hp;
   const c=$('#ctl');
   if(G.over)c.innerHTML='';
-  else if(G.sel==null)c.innerHTML=`<div>${net.on?'🔔 受付中… 押された人が自動で選ばれます（手動でカードをタップも可）':'早押しで答えた人のカードをタップ'}</div>${net.on&&net.rank?`<div class="sub">${esc(net.rank)}</div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${net.on?'<button class="btn" id="bReopen">受付やり直し</button>':''}<button class="btn" id="bThrow">誰も答えず（スルー）</button></div>`;
+  else if(G.sel==null)c.innerHTML=`<div>${net.on?'🔔 受付中… 押された人が自動で選ばれます（手動でカードをタップも可）':'早押しで答えた人のカードをタップ'}</div>${net.on&&net.rank?`<div class="sub">${esc(net.rank)}</div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${net.on?'<button class="btn" id="bReopen">受付やり直し<kbd>R</kbd></button>':''}<button class="btn" id="bThrow">誰も答えず（スルー）<kbd>S</kbd></button></div>`;
   else{const u=G.units.find(x=>x.id===G.sel);
-    c.innerHTML=`<div><b>${esc(nm(u))}</b> が回答</div>${net.on&&net.rank?`<div class="sub">${esc(net.rank)}</div>`:''}<div style="display:flex;gap:12px"><button class="btn ok" id="bOk">⭕ 正解</button><button class="btn ng" id="bNg">❌ 誤答</button></div><button class="btn" id="bRe">選び直し</button>`;}
+    c.innerHTML=`<div style="font-size:1.3rem"><b style="color:var(--acc)">${esc(nm(u))}</b> が回答</div>${net.on&&net.rank?`<div class="sub">${esc(net.rank)}</div>`:''}<div style="display:flex;gap:12px"><button class="btn ok" id="bOk">⭕ 正解<kbd>O</kbd></button><button class="btn ng" id="bNg">❌ 誤答<kbd>X</kbd></button></div><button class="btn" id="bRe">選び直し<kbd>R</kbd></button>`;}
   $('#log').innerHTML=G.log.map(l=>`<p class="${l.c}">${esc(l.m)}</p>`).join('');
   $('#undoBtn').disabled=!undoStack.length;
-  publish();
+  updateRoomInfo();publish();
   const o=$('#over');o.classList.toggle('on',!!G.over);
   if(G.over){
     const T={win:'🎉 勝利！',lose:'💀 全滅…',teamp:'🏆 チームA の勝利！',teame:'🏆 チームB の勝利！',draw:'引き分け'};
@@ -594,7 +608,7 @@ function renderSetup(){
   $('#bossBox').classList.toggle('hide',pvp);$('#penBox').classList.toggle('hide',pvp);
   $('#plist').innerHTML=setup.players.map((p,i)=>`<div class="prow">${pvp?`<select data-i="${i}" data-k="team"><option value="p" ${p.team==='p'?'selected':''}>チームA</option><option value="e" ${p.team==='e'?'selected':''}>チームB</option></select>`:''}<input data-i="${i}" data-k="name" value="${esc(p.name)}"><select data-i="${i}" data-k="job">${
     SELECTABLE.map(j=>`<option value="${j}" ${p.job===j?'selected':''}>${JOB[j].n}（ATK${JOB[j].atk}/HP${JOB[j].hp}）</option>`).join('')}</select><button class="btn" data-del="${i}">✕</button></div>`).join('');
-  $('#bosslist').innerHTML=Object.keys(BOSS).map(id=>`<button class="bossopt ${setup.boss==id?'sel':''}" data-boss="${id}"><b>${BOSS[id].e} ${BOSS[id].n}</b><small>${esc(BOSS[id].d)}</small></button>`).join('');
+  $('#bosslist').innerHTML=Object.keys(BOSS).map(id=>`<button class="bossopt ${setup.boss==id?'sel':''}" data-boss="${id}"><b>${qkIcon('boss')} ${BOSS[id].n}</b><small>${esc(BOSS[id].d)}</small></button>`).join('');
   $('#contBtn').classList.toggle('hide',!loadSave());
 }
 
@@ -605,8 +619,8 @@ function showRules(){
   const m=$('#modal');
   m.innerHTML=`<div class="mbox"><h3>職業・ルール一覧</h3>
   <p class="sub">共通ルール：①正解時に通常攻撃または能力を発動 ②誤答は役職に関係なく2ダメージ ③休みは連続にならない ④自分や自チームも攻撃可能 ⑤勇者転職時は体力リセット ⑥タンクは死んでも守り回数を継続 ⑦タンクは範囲攻撃で自分が死ぬ場合も庇える</p>
-  <table class="rules">${Object.entries(JOB).map(([k,j])=>`<tr><th>${j.e} ${j.n}</th><td>ATK${j.atk}/HP${j.hp}<br>${esc(j.d)}</td></tr>`).join('')}
-  ${Object.entries(BOSS).map(([k,b])=>`<tr><th>${b.e} ${b.n}</th><td>${esc(b.d)}</td></tr>`).join('')}</table>
+  <table class="rules">${Object.entries(JOB).map(([k,j])=>`<tr><th>${qkIcon(k)} ${j.n}</th><td>ATK${j.atk}/HP${j.hp}<br>${esc(j.d)}</td></tr>`).join('')}
+  ${Object.entries(BOSS).map(([k,b])=>`<tr><th>${qkIcon('boss')} ${b.n}</th><td>${esc(b.d)}</td></tr>`).join('')}</table>
   <button class="cancel" data-c="1">閉じる</button></div>`;
   m.classList.add('on');
   m.onclick=e=>{if(e.target.closest('button')||e.target===m){m.classList.remove('on');m.onclick=null;}};
@@ -617,9 +631,9 @@ function showRules(){
    ===================================================================== */
 function startGame(){
   const ps=setup.players.filter(p=>p.name.trim());
-  if(!ps.length){alert('プレイヤーを追加してください');return;}
+  if(!ps.length){toast('プレイヤーを追加してください');return;}
   const pvp=setup.mode==='pvp';
-  if(pvp&&(!ps.some(p=>p.team==='p')||!ps.some(p=>p.team==='e'))){alert('両チームに1人以上必要です');return;}
+  if(pvp&&(!ps.some(p=>p.team==='p')||!ps.some(p=>p.team==='e'))){toast('両チームに1人以上必要です');return;}
   G={mode:setup.mode,uid:1,units:[],log:[],q:1,prevCorrect:null,streak:0,genre:null,genreFor:0,sel:null,over:null,
      cfg:{bossPenalty:$('#optPen').checked}};
   G.pids={};
@@ -666,6 +680,32 @@ $('#game').addEventListener('click',e=>{
 const net={on:false,ws:null,room:null,lobby:[],openedFor:null,rank:''};
 function netSend(m){if(net.ws&&net.ws.readyState===1)net.ws.send(JSON.stringify(m));}
 const ROOM=new URLSearchParams(location.search).get('id');
+function toast(msg,ms=2500){const d=document.createElement('div');d.className='t';d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),ms);}
+let actx=null,soundOn=true;try{soundOn=localStorage.getItem('qr_sound_host')!=='0';}catch(e){}
+function tone(f,d,type,vol,when){if(!soundOn)return;try{if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();
+  const t=actx.currentTime+(when||0),o=actx.createOscillator(),g=actx.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(vol||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+d);}catch(e){}}
+function beep(){tone(880,.12,'triangle',.18);tone(1175,.18,'triangle',.15,.1);}
+function setSound(on){soundOn=on;try{localStorage.setItem('qr_sound_host',on?'1':'0');}catch(e){}$('#sndBtn').textContent=on?'🔊':'🔇';}
+$('#sndBtn').onclick=()=>setSound(!soundOn);setSound(soundOn);
+$('#copyUrl').onclick=async()=>{const u=`${location.origin}/play.html?id=${ROOM}`;try{await navigator.clipboard.writeText(u);toast('参加用URLをコピーしました');}catch(e){toast(u,6000);}};
+document.addEventListener('keydown',e=>{
+  if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)||e.metaKey||e.altKey)return;
+  const m=$('#modal');
+  if(m.classList.contains('on')){
+    if(e.key==='Escape'){const c=m.querySelector('.cancel');if(c)c.click();return;}
+    const opts=[...m.querySelectorAll('.opt')],n=parseInt(e.key);
+    if(n>=1&&opts[n-1]&&!opts[n-1].disabled){e.preventDefault();opts[n-1].click();}
+    return;
+  }
+  if(!G||G.over||busy)return;
+  const k=e.key.toLowerCase();
+  if(e.ctrlKey&&k==='z'){e.preventDefault();undo();return;}
+  if(e.ctrlKey)return;
+  if(k==='o')$('#bOk')&&$('#bOk').click();
+  else if(k==='x')$('#bNg')&&$('#bNg').click();
+  else if(k==='s')$('#bThrow')&&$('#bThrow').click();
+  else if(k==='r')($('#bReopen')||$('#bRe'))&&($('#bReopen')||$('#bRe')).click();
+});
 function leaveToList(){location.href='/';}
 function netConnect(){
   if(!ROOM){leaveToList();return;}
@@ -679,10 +719,13 @@ function netConnect(){
   ws.onmessage=ev=>{
     const m=JSON.parse(ev.data);
     if(m.t==='created'){net.on=true;net.room=m.room;net.roomName=m.name;net.openedFor=null;renderSetupOnline();if(G)render();}
-    else if(m.t==='error'){localStorage.removeItem('qr_hk_'+ROOM);alert(m.msg);net.on=false;net.closing=true;leaveToList();}
-    else if(m.t==='lobby'){net.lobby=m.players;renderSetupOnline();}
+    else if(m.t==='error'){localStorage.removeItem('qr_hk_'+ROOM);toast(m.msg,3000);net.on=false;net.closing=true;setTimeout(leaveToList,1500);}
+    else if(m.t==='lobby'){
+      for(const p of m.players){const o=net.lobby.find(x=>x.pid===p.pid);
+        if(!o)toast(`${p.name} が入室しました`);else if(!o.online&&p.online)toast(`${p.name} が再接続しました`);else if(o.online&&!p.online)toast(`${p.name} の接続が切れました`);}
+      net.lobby=m.players;renderSetupOnline();if(G)render();}
     else if(m.t==='winner'){
-      net.rank=m.ranking.map((x,i)=>`${i+1}. ${x.name}${i?` (+${Math.round(x.ms)}ms)`:''}`).join('　');
+      beep(m);net.rank=m.ranking.map((x,i)=>`${i+1}. ${x.name}${i?` (+${Math.round(x.ms)}ms)`:''}`).join('　');
       if(G&&!busy&&!G.over&&G.sel==null&&G.pids&&G.pids[m.pid]!=null){
         const u=G.units.find(x=>x.id===G.pids[m.pid]);
         if(u&&u.alive&&!u.restNow)G.sel=u.id;
@@ -695,7 +738,12 @@ function closeRoomNow(){
   if(!confirm('部屋を閉じますか？参加者は全員退室になります。'))return;
   net.closing=true;netSend({t:'close'});localStorage.removeItem('qr_hk_'+ROOM);setTimeout(leaveToList,200);
 }
+function updateRoomInfo(){
+  const el=$('#roomInfo');if(!el)return;
+  el.textContent=net.on?`${net.room}番「${net.roomName}」　👥${net.lobby.filter(p=>p.online).length}`:'接続中…';
+}
 function renderSetupOnline(){
+  updateRoomInfo();
   $('#onOff').classList.toggle('hide',net.on);$('#onOn').classList.toggle('hide',!net.on);
   if(!net.on)return;
   $('#onCode').textContent=`${net.room}番「${net.roomName}」`;

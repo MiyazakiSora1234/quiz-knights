@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QUIZ KNIGHTS - 部屋一覧</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#17110c;--line:#8a6a35;--tx:#f1e4c3;--mut:#b9a57f;--acc:#e0b650;--ink:#3a2a14;--rubric:#7a1f26}
@@ -22,7 +23,7 @@ th{font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric);text-align:l
 td{border-bottom:1px dotted #8a6a3599;padding:9px 8px}
 td.no{width:46px;font-family:"Cinzel",serif;color:#6a5430}
 td.cnt{width:70px;text-align:center}
-td.act{width:150px;text-align:right}
+td.act{width:1%;white-space:nowrap;text-align:right}
 tr.free td.nm{color:#8a7650}
 tr.used td.nm{font-weight:700}
 .btn{background:#f3e6c2;border:1px solid var(--line);padding:5px 14px;cursor:pointer;letter-spacing:.05em}
@@ -40,20 +41,36 @@ tr.used td.nm{font-weight:700}
 .card input{width:100%;margin-top:4px;padding:9px;background:#f6ecce;border:1px solid var(--line)}
 .card .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .err{color:var(--rubric);font-size:.85rem;min-height:1.2em;margin-top:8px}
+.namebar{display:flex;align-items:center;gap:10px;margin:6px 0 4px}
+.namebar label{font-weight:700;white-space:nowrap;color:var(--rubric)}
+.namebar input{flex:1;min-width:0;padding:9px;background:#f6ecce;border:1px solid var(--line);font-size:1rem}
+.namebar input.need{animation:shake .4s;border-color:var(--rubric);box-shadow:0 0 0 2px #7a1f2655}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.skel td{color:transparent}.skel td.nm{background:linear-gradient(90deg,#d6c18d,#ecdfb8,#d6c18d);background-size:200%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+tbody tr.used:hover{background:#0000000d}
+tr.used.live td.cnt::before{content:"●";color:#3b8a3b;margin-right:4px;font-size:.7rem}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50}
+.t{background:#000d;color:#f1e4c3;border:1px solid #e0b650;padding:8px 18px;border-radius:20px;font-size:.9rem}
 </style>
 </head>
 <body>
 <div class="sheet">
   <h1>⚜ QUIZ KNIGHTS ⚜</h1>
   <div class="sub">― クイズ騎士団 ―</div>
-  <div class="links">部屋を作る（進行役）か、使用中の部屋に入る（参加者）を選んでください</div>
+  <div class="namebar">
+    <label for="myName">あなたの名前</label>
+    <input id="myName" maxlength="12" placeholder="入力すると、参加がワンタップになります" autocomplete="nickname">
+  </div>
+  <div class="links">空き枠の「作成」で部屋を作る（進行役）／使用中の部屋の「参加」で入室（参加者）</div>
   <table>
     <thead><tr><th>NO.</th><th>部屋名</th><th style="text-align:center">人数</th><th></th></tr></thead>
-    <tbody id="rooms"></tbody>
+    <tbody id="rooms"><tr class="free skel"><td class="no">1</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr><tr class="free skel"><td class="no">2</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr><tr class="free skel"><td class="no">3</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr><tr class="free skel"><td class="no">4</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr></tbody>
   </table>
   <div class="status" id="status">読み込み中…</div>
 </div>
 
+<div id="toast"></div>
 <div id="dlg"><div class="card" id="card"></div></div>
 
 <script>
@@ -67,23 +84,33 @@ async function load(){
     rooms=await (await fetch('/api/rooms',{cache:'no-store'})).json();
     $('#status').textContent=`サーバー接続OK　${Math.round(performance.now()-t0)} ms`;
     draw();
-  }catch(e){$('#status').textContent='サーバーに接続できません';}
+  }catch(e){$('#status').textContent='サーバーに接続できません。しばらくして再読み込みしてください';}
 }
 function draw(){
   $('#rooms').innerHTML=rooms.map(r=>{
     const mine=!!localStorage.getItem('qr_hk_'+r.id);
     if(!r.used)return `<tr class="free"><td class="no">${r.id}</td><td class="nm">空き</td><td class="cnt">0</td><td class="act"><button class="btn pri" data-create="${r.id}">作成</button></td></tr>`;
-    return `<tr class="used"><td class="no">${r.id}</td><td class="nm">${esc(r.name)}${r.hasPw?' <span class="lock">🔒</span>':''}${r.started?'<span class="tag">対戦中</span>':''}</td><td class="cnt">${r.online}</td>
+    return `<tr class="used ${r.online?'live':''}"><td class="no">${r.id}</td><td class="nm">${esc(r.name)}${r.hasPw?' <span class="lock">🔒</span>':''}${r.started?'<span class="tag">対戦中</span>':''}</td><td class="cnt">${r.online}</td>
       <td class="act">${mine?`<button class="btn mine" data-host="${r.id}">管理へ戻る</button> `:''}<button class="btn" data-join="${r.id}">参加</button></td></tr>`;
   }).join('');
 }
 $('#rooms').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.create)createDlg(+b.dataset.create);
-  else if(b.dataset.join)location.href=`/play.html?id=${b.dataset.join}`;
+  else if(b.dataset.join)joinRoom(b.dataset.join);
   else if(b.dataset.host)location.href=`/host.html?id=${b.dataset.host}`;
 });
 
+const nameEl=document.getElementById('myName');
+try{nameEl.value=localStorage.getItem('qr_name')||'';}catch(e){}
+nameEl.addEventListener('input',()=>{try{localStorage.setItem('qr_name',nameEl.value.trim());}catch(e){}});
+function toast(m,ms=2200){const d=document.createElement('div');d.className='t';d.textContent=m;document.getElementById('toast').appendChild(d);setTimeout(()=>d.remove(),ms);}
+function joinRoom(id){
+  const n=nameEl.value.trim();
+  if(!n){toast('先に名前を入力してください');nameEl.classList.remove('need');void nameEl.offsetWidth;nameEl.classList.add('need');nameEl.focus();return;}
+  try{localStorage.setItem('qr_name',n);}catch(e){}
+  location.href=`/play.html?id=${id}`;
+}
 function createDlg(id){
   $('#card').innerHTML=`<h2>部屋を作成（${id}番）</h2>
     <label>部屋名</label><input id="rn" maxlength="30" placeholder="例：夜の円卓">
