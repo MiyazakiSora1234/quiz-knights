@@ -3,7 +3,7 @@
   import { flip } from 'svelte/animate';
   import { tick } from 'svelte';
   import { icon } from '../../lib/icons.js';
-  import { JOB, SELECTABLE } from '../../lib/engine.js';
+  import { JOB, SELECTABLE, BOSS } from '../../lib/engine.js';
   import { panel, confirmAsk } from '../../lib/ui.svelte.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
@@ -46,6 +46,16 @@
         </div>
       </div>
     {/each}
+  </div>
+
+  <div class="bosspick">
+    <span class="bl">戦う魔王</span>
+    {#each Object.entries(BOSS) as [k, b]}
+      <button class="bb" class:on={p.boss === +k} onclick={() => p.pickBoss(+k)} title={b.intro} aria-pressed={p.boss === +k}>
+        <span class="bic">{@html icon('boss' + k)}</span><span>{b.n}</span>
+      </button>
+    {/each}
+    <div class="bd">{BOSS[p.boss]?.intro}</div>
   </div>
 
   <div class="bottom">
@@ -108,6 +118,12 @@
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
   .mi{min-width:0}.mi b{display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mi small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bosspick{flex:none;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;background:var(--s1);padding:8px 10px}
+  .bl{font-weight:700;color:var(--gold);font-size:.85rem;margin-right:2px}
+  .bb{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 5px;cursor:pointer;font-weight:700;font-size:.85rem}
+  .bb:hover{border-color:var(--line2)}.bb.on{border-color:var(--gold);background:#3a2f1a;box-shadow:0 0 0 1px var(--gold)}
+  .bic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#120f0c;border:1.5px solid var(--red-d);font-size:1rem}
+  .bd{flex-basis:100%;color:var(--mut);font-size:.8rem}
   .bottom{flex:none;display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
   .chat{display:flex;flex-direction:column;gap:8px;min-width:0}
   .log{height:150px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:6px 10px;font-size:.88rem}

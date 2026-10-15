@@ -882,3 +882,20 @@ test('入力検査: 接続先と違う番号の部屋は作れない（別の枠
   await sleep(150);
   assert.equal((await api())[4].used, false);
 });
+
+for (const [who, boss, want] of [['player', 3, 3], ['player', 6, 6], ['player', 1, 1], ['player', 0, 1], ['player', 7, 1], ['player', 'x', 1], ['player', 2.7, 2], ['host', 4, 4], ['host', 9, 1]]) {
+  test(`魔王の選択: ${who} が ${JSON.stringify(boss)} を選ぶ → ${want}（全員に反映）`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A');
+    const q = await joinPlayer(id, 'B');
+    if (who === 'player') p.send({ t: 'set_boss', boss }); else host.send({ t: 'settings', boss });
+    if (want !== 1) {
+      assert.equal((await host.wait('lobby', 3000, x => x.boss === want)).boss, want);
+      assert.equal((await q.wait('members', 3000, x => x.boss === want)).boss, want);
+    } else {
+      await sleep(250);
+      assert.ok(host.q.filter(m => m.t === 'lobby').every(m => m.boss === 1 || m.boss === undefined));
+    }
+    host.send({ t: 'close' });
+  });
+}

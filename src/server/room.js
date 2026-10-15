@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS } from './config.js';
+import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BOSS_COUNT } from './config.js';
 import { BuzzRound, clampRtt } from './buzz.js';
 import { lobbyStub } from './lobby.js';
 
@@ -58,9 +58,10 @@ export class Room extends DurableObject {
       pid: p.pid, name: p.name, flavor: p.flavor, job: p.job, team: p.team,
       online: this.isOnline(p.pid, except), rtt: this.rtts.get(p.pid) ?? null,
     }));
-    const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players });
+    const boss = this.R.boss ?? 1;
+    const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players, boss });
     const hasHost = !!this.R.hostKey;
-    this.toPlayers({ t: 'members', roomName: this.R.name, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team }) => ({ pid, name, flavor, online, job, team })) }, except);
+    this.toPlayers({ t: 'members', roomName: this.R.name, boss, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team }) => ({ pid, name, flavor, online, job, team })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -270,6 +271,7 @@ export class Room extends DurableObject {
         ws.serializeAttachment({});
         return this.lobby(ws);
       case 'settings': if (!this.R.hostKey) return this.updateSettings(m); return;   // 進行役がいない間は誰でも変えられる
+      case 'set_boss': return this.setBoss(m.boss);                                      // 魔王の選択は参加者も変えられる
       case 'answer': this.toHost({ t: 'answer', pid, qid: m.qid, i: m.i }); return;
       case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
@@ -282,11 +284,21 @@ export class Room extends DurableObject {
   }
 
   /** 部屋名・パスワードの変更（入室済みの人には影響しない） */
+  /** 戦う魔王の選択（進行役も参加者も変えられる。最後に選んだものが有効） */
+  async setBoss(v) {
+    const b = Math.trunc(+v);
+    if (!(b >= 1 && b <= BOSS_COUNT) || b === this.R.boss) return;
+    this.R.boss = b;
+    await this.save();
+    this.lobby();
+  }
   async updateSettings(m) {
+    if (m.boss != null) await this.setBoss(m.boss);
+    const room = typeof m.name === 'string' || typeof m.password === 'string';     // 魔王の選択だけのときは、部屋設定の通知を出さない
     if (typeof m.name === 'string' && m.name.trim()) this.R.name = m.name.trim().slice(0, 30);
     if (typeof m.password === 'string') this.R.password = m.password.slice(0, 20);
     await this.save();
-    this.toHost({ t: 'settings', name: this.R.name, password: this.R.password });
+    if (room) this.toHost({ t: 'settings', name: this.R.name, password: this.R.password });
     this.lobby();
   }
 

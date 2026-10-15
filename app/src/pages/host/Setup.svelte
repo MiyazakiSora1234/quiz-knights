@@ -72,9 +72,9 @@
     </aside>
   </div>
   <div class="startbar"><div class="start">
-        <button class="btn primary xl wide" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
-        <div class="sub">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
-      </div></div>
+    <div class="info">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
+    <button class="btn primary go" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
+  </div></div>
 </div>
 
 <style>
@@ -93,8 +93,10 @@
   .desc{margin-top:8px}
   .empty{border:1px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--mut);margin-bottom:10px}
   .empty b{display:block;color:var(--tx)}
-  .startbar{position:sticky;bottom:0;z-index:25;margin:18px -18px -50px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110e00,#14110e 28%)}
-  .start{max-width:1120px;margin:0 auto;display:flex;flex-direction:row;align-items:center;gap:16px;padding:14px;border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,#2d2414,#1e1914)}
-  .start .btn{flex:0 0 auto;min-width:min(320px,50%)}.start .sub{flex:1;text-align:left}
-  @media(max-width:700px){.start{flex-direction:column;gap:6px}.start .btn{width:100%}.start .sub{text-align:center}}
+  .startbar{position:sticky;bottom:0;z-index:25;margin:18px -18px -50px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110e00,#14110e 30%)}
+  .start{max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 12px 10px 20px;border:1px solid var(--gold);border-radius:16px;background:linear-gradient(180deg,#2d2414,#1e1914);box-shadow:0 -8px 30px #000a}
+  .info{flex:1;min-width:0;color:var(--mut);font-size:.95rem;line-height:1.4}
+  .go{flex:none;min-width:260px;padding:14px 28px;font-size:1.2rem;font-weight:800;letter-spacing:.08em;border-radius:12px}
+  .go:disabled{filter:grayscale(.6);opacity:.55}
+  @media(max-width:700px){.start{flex-direction:column-reverse;align-items:stretch;gap:8px;padding:10px 12px}.go{min-width:0;width:100%}.info{text-align:center}}
 </style>

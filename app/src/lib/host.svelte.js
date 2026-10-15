@@ -90,7 +90,7 @@ export class HostStore {
       case 'replaced':
         this.status = 'replaced'; this.conn.close();
         return;
-      case 'lobby': return this.#onLobby(m.players);
+      case 'lobby': if (m.boss) this.boss = m.boss; return this.#onLobby(m.players);
       case 'winner': return this.#onWinner(m);
       case 'nobody': return this.#chainExhausted();
     }
@@ -247,6 +247,8 @@ export class HostStore {
   reopen() { this.#openedFor = null; this.rank = ''; this.#publish(true); }
 
   saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
+  /** 魔王を選ぶ（参加者も選べるので、サーバー経由で全員に反映される） */
+  pickBoss(id) { this.boss = id; this.conn?.send({ t: 'settings', boss: id }); }
   /** 進行役を、いま入室している参加者に譲る */
   async transfer(p) {
     if (!(await confirmAsk(`${p.name} さんに進行役を譲りますか？`, '進行中のバトルは終了し、あなたは参加者になります。', '譲る', false))) return;

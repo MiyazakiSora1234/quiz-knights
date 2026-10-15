@@ -11,7 +11,7 @@
   {#each Object.entries(BOSS) as [id, b]}
     {@const on = host.boss == id}
     <div class="bopt" class:sel={on}>
-      <button class="head" onclick={() => (host.boss = +id)} aria-pressed={on}>
+      <button class="head" onclick={() => host.pickBoss(+id)} aria-pressed={on}>
         <span class="bi">{@html icon('boss' + id)}</span>
         <span class="bt"><b>{b.n}</b><small>{b.intro}</small></span>
       </button>
