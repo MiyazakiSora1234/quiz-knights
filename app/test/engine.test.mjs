@@ -214,14 +214,16 @@ test('タンク: 死んでも守り回数は保持される', async () => {
   assert.equal(h.u('T').guards, 2);
 });
 
-test('ばくだんいわ: 死ぬと両隣に3ダメージ', async () => {
+test('ばくだんいわ: 死ぬと自分以外の全員（敵も味方も）に2ダメージ', async () => {
   const h = harness();
   h.b.start({ players: [P('L', 'warrior'), P('B', 'bomb'), P('R', 'monk')], boss: 1 });
   h.u('B').hp = 1;
+  const boss = h.u('魔王1').hp;
   await h.correct('L', '通常攻撃', 'B');
   assert.equal(h.u('B').alive, false);
-  assert.equal(h.u('L').hp, 4);
-  assert.equal(h.u('R').hp, 3);
+  assert.equal(h.u('L').hp, 7 - 2);
+  assert.equal(h.u('R').hp, 6 - 2);
+  assert.equal(h.u('魔王1').hp, boss - 2);
 });
 
 test('魔王1: 残りHP半分以下で与ダメージ+2', async () => {

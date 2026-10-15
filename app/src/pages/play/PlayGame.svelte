@@ -1,5 +1,5 @@
 <script>
-  import { fade, scale } from 'svelte/transition';
+  import { fade, scale, fly } from 'svelte/transition';
   import { tick } from 'svelte';
   import Unit from '../../components/Unit.svelte';
   import MePanel from './MePanel.svelte';
@@ -12,6 +12,19 @@
   // 敵（自分と別の陣営）を上、味方を下に並べる
   const mySide = $derived(p.me?.side ?? 'p');
   const versus = $derived(gs.mode === 'pvp' && !gs.cpu);   // ユーザー対戦では、チームごとの色（A=青 / B=赤）で見せる
+  // 敵を上、自分のチームを下に並べる。ユーザー対戦は、チームの名前と色（A=青 / B=赤 / C=緑）で見せる
+  const TEAMS = { p: ['チームA', 'ta'], e: ['チームB', 'tb'], c: ['チームC', 'tc'] };
+  const groups = $derived.by(() => {
+    if (versus) {
+      const sides = ['p', 'e', 'c'].filter(t => gs.units.some(u => u.side === t));
+      const order = [...sides.filter(t => t !== mySide), ...sides.filter(t => t === mySide)];
+      return order.map(t => ({ key: t, label: `${TEAMS[t][0]}（${t === mySide ? '味方' : '敵'}）`, cls: TEAMS[t][1], units: gs.units.filter(u => u.side === t) }));
+    }
+    const out = [];
+    if (foes.length) out.push({ key: 'e', label: '敵', cls: 'foe', units: foes });
+    out.push({ key: 'p', label: '味方', cls: 'ally', units: allies });
+    return out;
+  });
   const foes = $derived(gs.units.filter(u => u.side !== mySide));
   const allies = $derived(gs.units.filter(u => u.side === mySide));
   let text = $state(''), msg = $state(''), chatEl = $state();
@@ -54,7 +67,10 @@
 <div class="game">
   <div class="top">
     <div><span class="qn">第{gs.q}問</span>{#if gs.genre}<span class="chip pur" transition:fade>{gs.genre}</span>{/if}</div>
-    <div class="net"><span class="dot {p.netGood ? 'on' : p.status === 'open' ? 'warn' : ''}"></span>{p.rtt != null ? `${p.rtt}ms` : ''}{p.jitter != null ? ` ±${p.jitter}` : ''}</div>
+    <div class="topr">
+      <button class="btn sm chat-t" type="button" onclick={toggleChat} aria-expanded={chatOpen} title="チャット">💬 チャット{#if unread}<span class="badge">{unread}</span>{/if}</button>
+      <div class="net"><span class="dot {p.netGood ? 'on' : p.status === 'open' ? 'warn' : ''}"></span>{p.rtt != null ? `${p.rtt}ms` : ''}{p.jitter != null ? ` ±${p.jitter}` : ''}</div>
+    </div>
   </div>
 
   <div class="a-me"><MePanel me={p.me} /></div>
@@ -62,39 +78,34 @@
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
     <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
-    <button class="btn sm chat-t" type="button" onclick={toggleChat} aria-expanded={chatOpen} title="チャット">💬{#if unread}<span class="badge">{unread}</span>{/if}</button>
   </form>
   </div>
 
   <div class="mid">
-    {#if foes.length}
-      <div class="grp foe" class:ta={versus && mySide === 'e'}>{versus ? (mySide === "p" ? "チームB" : "チームA") + "（敵）" : '敵'}</div>
+    {#each groups as g (g.key)}
+      <div class="grp {g.cls}">{g.label}</div>
       <div class="strip">
-        {#each foes as u (u.id)}
-          <Unit {u} compact jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
+        {#each g.units as u (u.id)}
+          <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} me={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
         {/each}
       </div>
-    {/if}
-    <div class="grp ally" class:tb={versus && mySide === 'e'}>{versus ? (mySide === 'p' ? 'チームA' : 'チームB') + '（味方）' : '味方'}</div>
-    <div class="strip">
-      {#each allies as u (u.id)}
-        <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
-      {/each}
-    </div>
-    {#if chatOpen}
-    <div class="chatbox">
-      <div class="cl" bind:this={chatEl}>
-        {#each p.chat as c}
-          <p class:sys={c.sys} class:ans={c.answer}>{#if !c.sys}<b>{c.name}</b>{/if}{#if c.answer}<i>回答</i>{/if}<span>{c.text}</span></p>
-        {:else}<p class="sys"><span>チャット</span></p>{/each}
-      </div>
-      <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="チャット…" aria-label="チャット"><button class="btn sm" type="submit">送信</button></form>
-    </div>
-    {/if}
+    {/each}
   </div>
 
   {#if p.me}<div class="buzzarea"><BuzzButton {p} /></div>{/if}
 </div>
+
+{#if chatOpen}
+  <div class="chatfloat" transition:fly={{ y: -8, duration: 140 }}>
+    <div class="cf-h"><b>チャット</b><button class="btn ghost sm" onclick={toggleChat} aria-label="閉じる">✕</button></div>
+    <div class="cl" bind:this={chatEl}>
+      {#each p.chat as c}
+        <p class:sys={c.sys} class:ans={c.answer}>{#if !c.sys}<b>{c.name}</b>{/if}{#if c.answer}<i>回答</i>{/if}<span>{c.text}</span></p>
+      {:else}<p class="sys"><span>まだメッセージはありません</span></p>{/each}
+    </div>
+    <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="チャット…" aria-label="チャット"><button class="btn sm" type="submit">送信</button></form>
+  </div>
+{/if}
 
 {#if gs.over}
   <div class="over" transition:fade={{ duration: 200 }}>
@@ -125,14 +136,16 @@
   .mid{flex:1;min-width:0}
   .grp{font-size:.8rem;font-weight:700;margin:2px 4px 0;display:flex;align-items:center;gap:6px}
   .grp::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
-  .grp.foe{color:#ff9aa2}.grp.ally{color:#9cc8ee}.grp.ally.tb{color:#ff9aa2}.grp.foe.ta{color:#9cc8ee}
+  .grp.foe,.grp.tb{color:#ff9aa2}.grp.ally,.grp.ta{color:#9cc8ee}.grp.tc{color:#8fe0a6}
   .strip{display:flex;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
   .strip :global(.unit){flex:0 0 138px;scroll-snap-align:start}
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
   .chat-t{position:relative;flex:none}
   .badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:.7rem;font-weight:800;display:grid;place-items:center;padding:0 4px}
-  .chatbox{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-  .cl{height:7em;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:4px 10px;font-size:.84rem}
+  .topr{display:flex;align-items:center;gap:10px}
+  .chatfloat{position:fixed;top:56px;right:10px;z-index:58;width:min(94vw,380px);display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--s1);border:1px solid var(--gold);border-radius:14px;box-shadow:0 14px 40px #000c}
+  .cf-h{display:flex;justify-content:space-between;align-items:center;color:var(--gold)}
+  .cl{height:min(40dvh,16em);overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:4px 10px;font-size:.84rem}
   .cl{overflow-x:hidden}
   .cl p{margin:3px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;min-width:0}
   .cl span{min-width:0;overflow-wrap:anywhere;word-break:break-word}.cl .sys{color:var(--mut)}.cl b{color:var(--mut);font-weight:600}

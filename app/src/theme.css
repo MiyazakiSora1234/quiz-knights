@@ -66,7 +66,7 @@ select.input{padding-right:8px}
 .unit{--shape:polygon(0 0,100% 0,100% 90%,50% 100%,0 90%);position:relative;text-align:center;border:0;background:var(--team,var(--blu-d));padding:2px;clip-path:var(--shape);cursor:default;color:var(--tx);transition:transform .12s,filter .12s}
 .unit::before{content:"";position:absolute;inset:2px;clip-path:var(--shape);background:linear-gradient(180deg,#2c2419,#1a1510);z-index:0}
 .unit>*{position:relative;z-index:1}
-.unit.foe{--team:var(--red-d)}.unit.ally{--team:var(--blu-d)}
+.unit.foe{--team:var(--red-d)}.unit.ally{--team:var(--blu-d)}.unit.third{--team:var(--grn-d)}
 .unit .u-in{padding:26px 10px 24px}
 .unit.can{cursor:pointer}.unit.can:hover{transform:translateY(-3px);filter:drop-shadow(0 6px 10px #000)}
 .unit.sel{--team:var(--gold);filter:drop-shadow(0 0 12px #e3b84faa)}

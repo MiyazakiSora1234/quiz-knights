@@ -2,7 +2,7 @@
   import { icon } from '../lib/icons.js';
   import { jobName } from '../lib/engine.js';
 
-  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false } = $props();
+  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false } = $props();
   const label = $derived(jobLabel ?? jobName(u));
 
   let floats = $state([]);
@@ -25,8 +25,8 @@
 </script>
 
 <button
-  class="unit {u.side === 'e' ? 'foe' : 'ally'} {anim}"
-  class:can class:sel class:dead={!u.alive} class:compact class:acting class:answering class:dim
+  class="unit {u.side === 'e' ? 'foe' : u.side === 'c' ? 'third' : 'ally'} {anim}"
+  class:can class:sel class:dead={!u.alive} class:compact class:acting class:answering class:dim class:me
   tabindex={can ? 0 : -1}
   disabled={!onpick}
   onclick={() => can && onpick?.(u)}
@@ -52,6 +52,8 @@
 </button>
 
 <style>
+  .me:not(.answering){--team:#7fd6e8;filter:drop-shadow(0 0 10px #7fd6e888)}
+  .me:not(.answering) .ribbon{background:#7fd6e8;color:#06232b}
   .answering{z-index:6;transform:scale(1.07);border-color:var(--gold);animation:ans 1.1s ease-in-out infinite;filter:brightness(1.12)}
   @keyframes ans{0%,100%{box-shadow:0 0 0 2px #f0c964,0 0 18px 2px #e3b84f88}50%{box-shadow:0 0 0 3px #fff3c0,0 0 40px 10px #e3b84fcc}}
   .answering .ribbon{background:linear-gradient(180deg,#fff3c0,#e3b84f)!important;color:#2a1c06!important;font-size:.9rem!important;font-weight:900!important;letter-spacing:.12em}

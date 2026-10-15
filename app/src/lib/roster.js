@@ -31,6 +31,6 @@ export function syncRoster(roster, lobby, nextKey) {
 export function startBlock(roster, mode) {
   const named = roster.filter(p => p.name.trim() && p.online);      // 切断中の人は数えない（戻ってきたら途中参戦できる）
   if (!named.length) return 'オンラインの参加者が入室すると開始できます';
-  if (mode === 'pvp' && (!named.some(p => p.team === 'p') || !named.some(p => p.team === 'e'))) return '両チームに1人以上が必要です';
+  if (mode === 'pvp' && new Set(named.map(p => p.team)).size < 2) return '2つ以上のチームに、1人ずつ必要です';
   return '';
 }

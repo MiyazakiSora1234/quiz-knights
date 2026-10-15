@@ -72,7 +72,7 @@
     </aside>
   </div>
   <div class="startbar"><div class="start">
-    <div class="info">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
+    <div class="info">{block || (pvp ? [['p', 'A'], ['e', 'B'], ['c', 'C']].filter(([t]) => t !== 'c' || teamCount('c') > 0).map(([t, n]) => `チーム${n} ${teamCount(t)}人`).join(' vs ') : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
     <button class="btn primary go" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
   </div></div>
 </div>

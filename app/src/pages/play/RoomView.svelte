@@ -38,10 +38,10 @@
 
   <div class="members">
     {#each p.members as m (m.pid)}
-      <div class="mcard" class:tb={m.team === 'e'} class:me={m.pid === p.pid} class:off={!m.online} animate:flip={{ duration: 200 }} in:fly={{ y: 8, duration: 180 }}>
+      <div class="mcard" class:tb={m.team === 'e'} class:tc={m.team === 'c'} class:me={m.pid === p.pid} class:off={!m.online} animate:flip={{ duration: 200 }} in:fly={{ y: 8, duration: 180 }}>
         <span class="av">{@html icon(jobKey(m))}</span>
         <div class="mi">
-          <b><span class="dot {m.online ? 'on' : ''}"></span>{m.name}<span class="tm {m.team === 'e' ? 'b' : 'a'}">{m.team === 'e' ? 'B' : 'A'}</span></b>
+          <b><span class="dot {m.online ? 'on' : ''}"></span>{m.name}<span class="tm {m.team === 'e' ? 'b' : m.team === 'c' ? 'c' : 'a'}">{m.team === 'e' ? 'B' : m.team === 'c' ? 'C' : 'A'}</span></b>
           <small>{JOB[jobKey(m)].n}{m.flavor ? ` ・ ${m.flavor}` : ''}</small>
         </div>
       </div>
@@ -89,7 +89,7 @@
       </div>
       <div class="jobdesc">{JOB[p.myJob].d}</div>
       <div class="step">チーム（ユーザー対戦のときだけ使われます）</div>
-      <div class="seg wide teams"><button class="ta" class:sel={p.myTeam === 'p'} onclick={() => p.pickTeam('p')}>チームA</button><button class="tb" class:sel={p.myTeam === 'e'} onclick={() => p.pickTeam('e')}>チームB</button></div>
+      <div class="seg wide teams"><button class="ta" class:sel={p.myTeam === 'p'} onclick={() => p.pickTeam('p')}>チームA</button><button class="tb" class:sel={p.myTeam === 'e'} onclick={() => p.pickTeam('e')}>チームB</button><button class="tc" class:sel={p.myTeam === 'c'} onclick={() => p.pickTeam('c')}>チームC</button></div>
       {#if !p.hasHost}
         <div class="step">部屋の設定（進行役がいない間は誰でも変えられます）</div>
         <label class="field"><span>部屋名</span><input class="input" bind:value={rn} maxlength="30"></label>
@@ -110,10 +110,10 @@
   .ib:hover{border-color:var(--gold)}
   .members{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-content:start}
   .mcard{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--s1)}
-  .mcard{border-left:5px solid var(--blu-d)}.mcard.tb{border-left-color:var(--red-d)}
+  .mcard{border-left:5px solid var(--blu-d)}.mcard.tb{border-left-color:var(--red-d)}.mcard.tc{border-left-color:var(--grn-d)}
   .tm{margin-left:auto;font-size:.7rem;font-weight:800;border-radius:6px;padding:0 7px;line-height:1.5}
-  .tm.a{background:var(--blu);color:#06182b}.tm.b{background:var(--red);color:#2b0609}
-  .seg.teams .ta.sel{background:var(--blu);color:#06182b}.seg.teams .tb.sel{background:var(--red);color:#2b0609}
+  .tm.a{background:var(--blu);color:#06182b}.tm.b{background:var(--red);color:#2b0609}.tm.c{background:var(--grn);color:#06220f}
+  .seg.teams .ta.sel{background:var(--blu);color:#06182b}.seg.teams .tb.sel{background:var(--red);color:#2b0609}.seg.teams .tc.sel{background:var(--grn);color:#06220f}
   .mcard.me{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}.mcard.off{opacity:.5}
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
   .mi{min-width:0}.mi b{display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

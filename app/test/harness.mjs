@@ -70,7 +70,7 @@ export function checkInvariants(G, ctx = '') {
     if (!Number.isFinite(u.hp) || !Number.isFinite(u.maxHp) || !Number.isFinite(u.atk)) fail(`${u.name} の数値が不正`);
     if (u.maxHp < 1) fail(`${u.name} の最大HPが1未満`);
     if (u.atk < 0) fail(`${u.name} の攻撃力が負`);
-    if (u.side !== 'p' && u.side !== 'e') fail(`${u.name} の陣営が不正`);
+    if (u.side !== 'p' && u.side !== 'e' && u.side !== 'c') fail(`${u.name} の陣営が不正`);
     if (u.isBoss && u.side !== 'e') fail('魔王が敵陣営でない');
     if (u.alive) {
       if (!(u.hp >= 1 && u.hp <= u.maxHp)) fail(`${u.name} は生存だが HP=${u.hp}/${u.maxHp}`);
@@ -95,15 +95,15 @@ export function checkInvariants(G, ctx = '') {
   const bossesDead = G.units.filter(u => u.isBoss).every(b => !b.alive);
   if (G.over) {
     if (G.mode === 'pvp') {
-      if (G.over === 'teamp' && !(aliveP && !aliveE)) fail('teamp なのに条件を満たさない');
-      if (G.over === 'teame' && !(aliveE && !aliveP)) fail('teame なのに条件を満たさない');
-      if (G.over === 'draw' && (aliveP || aliveE)) fail('draw なのに生存者がいる');
+      const teamsAlive = [...new Set(G.units.filter(u => u.alive).map(u => u.side))];
+      if (G.over === 'draw' && teamsAlive.length) fail('draw なのに生存者がいる');
+      if (G.over.startsWith('team') && !(teamsAlive.length === 1 && teamsAlive[0] === G.over.slice(4))) fail(`${G.over} なのに条件を満たさない`);
     } else {
       if (G.over === 'win' && !bossesDead) fail('win なのに魔王が生存');
       if (G.over === 'lose' && aliveP) fail('lose なのにプレイヤーが生存');
     }
   } else {
-    if (G.mode === 'pvp' && (!aliveP || !aliveE)) fail('対戦の決着条件を満たしているのに over が未設定');
+    if (G.mode === 'pvp' && new Set(G.units.filter(u => u.alive).map(u => u.side)).size <= 1) fail('対戦の決着条件を満たしているのに over が未設定');
     if (G.mode !== 'pvp' && (bossesDead || !aliveP)) fail('CPU戦の決着条件を満たしているのに over が未設定');
   }
   // JSON で往復しても同じ（保存・取り消しの前提）

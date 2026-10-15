@@ -74,8 +74,8 @@ export class PlayStore {
     if (gs.cpu && gs.over === 'teame') return '全滅…';
     if (gs.cpu && gs.over === 'teamp') return '勝利！';
     if (gs.over === 'draw') return '引き分け';
-    const winSide = gs.over === 'teamp' ? 'p' : 'e';
-    return me ? (me.side === winSide ? '勝利！' : '敗北…') : (winSide === 'p' ? 'チームAの勝利' : 'チームBの勝利');
+    const winSide = gs.over.slice(4);                               // teamp / teame / teamc
+    return me ? (me.side === winSide ? '勝利！' : '敗北…') : `チーム${{ p: 'A', e: 'B', c: 'C' }[winSide] ?? '?'}の勝利`;
   }
   get lost() { return /全滅|敗北/.test(this.overText); }
   /** 同期の状態が良好か（往復が短く、ばらつきも小さい） */

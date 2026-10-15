@@ -22,38 +22,34 @@ test('仕様表: 全職業の攻撃力・体力が決めた値のとおり', () 
 });
 
 /* ================= 爆弾岩 ================= */
-test('爆弾岩: 連鎖爆発（隣の爆弾岩も巻き込む）', async () => {
+test('爆弾岩: 連鎖爆発（爆風で倒れた別の爆弾岩も爆発する）', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior'), P('B1', 'bomb'), P('B2', 'bomb'), P('B3', 'bomb'), P('Z', 'monk')], boss: 3 });
-  h.u('B1').hp = 1; h.u('B2').hp = 3; h.u('B3').hp = 3;
+  h.u('B1').hp = 1; h.u('B2').hp = 2; h.u('B3').hp = 2;
   await h.correct('A', '通常攻撃', 'B1');
   assert.deepEqual(['B1', 'B2', 'B3'].map(n => h.u(n).alive), [false, false, false]);
-  assert.equal(h.u('A').hp, 7 - 3);
-  assert.equal(h.u('Z').hp, 6 - 3);
+  assert.ok(h.u('A').hp <= 7 - 2 * 3, '3発の爆風を受ける');
   checkInvariants(h.b.G);
 });
 
-test('爆弾岩: 敵チームのタンクが庇うかを聞かれる／同じチーム内の爆発では聞かれない', async () => {
+test('爆弾岩: 爆風は庇えない（タンクに聞かれない）。同じチームにも当たる', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior', 'p'), P('B', 'bomb', 'e'), P('T', 'tank', 'e')], mode: 'pvp' });
-  await h.correct('A', '通常攻撃', 'B', '庇わない');
-  assert.ok(askedTitles(h).some(t => t.includes('B への')));
   h.u('B').hp = 1; h.u('T').guards = 1;
-  const before = h.asked.length;
-  await h.correct('A', '通常攻撃', 'B', '庇わない');   // B が死亡 → 爆発は同じチームの T へ（庇い確認なし）
+  await h.correct('A', '通常攻撃', 'B', '庇わない');   // B が死亡 → 爆発（A にも T にも2ダメージ）
   assert.equal(h.u('B').alive, false);
-  assert.equal(h.u('T').hp, 8 - 3);
-  assert.equal(h.asked.slice(before).filter(a => a.title.startsWith('🛡')).length, 1);
+  assert.equal(h.u('T').hp, 8 - 2);
+  assert.equal(h.u('A').hp, 7 - 2);
+  assert.equal(h.asked.filter(a => a.title.startsWith('🛡')).length, 1, '庇いを聞かれたのは通常攻撃のときだけ');
 });
 
-test('爆弾岩: 対戦では席が隣でも別チームは巻き込まない', async () => {
+test('爆弾岩: 席が離れていても、別のチームでも全員が巻き込まれる', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior', 'p'), P('C', 'monk', 'e'), P('B', 'bomb', 'p')], mode: 'pvp' });
-  assert.deepEqual(h.b.G.units.map(u => u.side), ['p', 'p', 'e'], 'チームごとに席が連続する');
   h.u('B').hp = 1;
   await h.correct('A', '通常攻撃', 'B');
-  assert.equal(h.u('A').hp, 4);
-  assert.equal(h.u('C').hp, 6);
+  assert.equal(h.u('A').hp, 5);
+  assert.equal(h.u('C').hp, 4);
 });
 
 test('爆弾岩: 爆発で両チームが同時に全滅しても整合する（引き分け）', async () => {

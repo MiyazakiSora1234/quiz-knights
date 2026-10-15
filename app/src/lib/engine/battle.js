@@ -4,6 +4,9 @@ import { CANCEL, JOB, BOSS, GENRES, LEVELS, jobName, nm, bossHp } from './data.j
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
 
+/** チームの並び順（A=p / B=e / C=c） */
+const TEAM_ORDER = { p: 0, e: 1, c: 2 };
+
 export function createBattle(ui) {
   let G = null, undoStack = [], busy = false, pending = false;
 
@@ -31,8 +34,9 @@ export function createBattle(ui) {
   function checkEnd() {
     if (G.over) return;
     if (G.mode === 'pvp') {
-      const p = G.units.some(u => u.alive && u.side === 'p'), e = G.units.some(u => u.alive && u.side === 'e');
-      if (!p || !e) G.over = p ? 'teamp' : e ? 'teame' : 'draw';
+      // 生き残っているチームが1つ以下なら決着（A=p / B=e / C=c）
+      const alive = [...new Set(G.units.filter(u => u.alive).map(u => u.side))];
+      if (alive.length <= 1) G.over = alive.length ? 'team' + alive[0] : 'draw';
       return;
     }
     if (G.units.filter(u => u.isBoss).every(b => !b.alive)) G.over = 'win';
@@ -240,7 +244,7 @@ export function createBattle(ui) {
       const pvp = mode === 'pvp';
       for (const p of players) {
         const u = mkPlayer(p.name.trim(), p.job);
-        if (pvp) u.side = squad ? 'p' : (p.team || 'p');
+        if (pvp) u.side = squad ? 'p' : (TEAM_ORDER[p.team] != null ? p.team : 'p');
         G.units.push(u);
         if (p.pid) G.pids[p.pid] = u.id;
       }
@@ -256,7 +260,7 @@ export function createBattle(ui) {
         }
       }
       if (pvp) {
-        G.units.sort((a, b) => (a.side === 'p' ? 0 : 1) - (b.side === 'p' ? 0 : 1)); // チームごとに席を連続させる
+        G.units.sort((a, b) => TEAM_ORDER[a.side] - TEAM_ORDER[b.side]); // チームごとに席を連続させる（安定ソート）
         log(squad ? `バトル開始！ プレイヤー vs CPU（${G.units.filter(u => u.cpu).map(u => u.name).join('・')}）` : '対戦開始！ チームA vs チームB', 'sys');
       } else {
         const S = G.units.reduce((s, u) => s + u.atk, 0);
@@ -274,9 +278,11 @@ export function createBattle(ui) {
       if (!G || G.over || busy || (pid && G.pids[pid] != null)) return false;
       const u = mkPlayer(String(name).trim() || '名無し', JOB[job] && job !== 'hero' ? job : 'warrior');
       if (G.mode === 'pvp') {
-        u.side = team === 'e' && !G.cpu ? 'e' : 'p';
-        const last = G.units.map(x => x.side).lastIndexOf(u.side);   // 自分のチームの最後尾に入れる
-        G.units.splice(last + 1, 0, u);
+        u.side = !G.cpu && TEAM_ORDER[team] != null ? team : 'p';
+        // 自分のチームの最後尾（そのチームがなければ、順番が前のチームのあと）に入れる
+        let at = 0;
+        G.units.forEach((x, i) => { if (TEAM_ORDER[x.side] <= TEAM_ORDER[u.side]) at = i + 1; });
+        G.units.splice(at, 0, u);
       } else {
         const b = G.units.findIndex(x => x.isBoss);
         G.units.splice(b < 0 ? G.units.length : b, 0, u);

@@ -304,3 +304,27 @@ test('職業の分類: すべての選べる職業がちょうど1つの分類�
   assert.deepEqual(flat, SELECTABLE);
   assert.equal(new Set(flat).size, flat.length);
 });
+
+test('3チーム対戦: A→B→C の順に並び、最後の1チームが残るまで続き、結果の名前も正しい', async () => {
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'C1', job: 'warrior', team: 'c' }, { name: 'A1', job: 'warrior', team: 'p' }, { name: 'B1', job: 'warrior', team: 'e' }, { name: 'A2', job: 'monk', team: 'p' }], mode: 'pvp' });
+  assert.deepEqual(b.G.units.map(u => u.name + u.side), ['A1p', 'A2p', 'B1e', 'C1c']);
+  const kill = n => { const u = b.G.units.find(x => x.name === n); u.alive = false; u.hp = 0; };
+  kill('B1'); await b.skip();
+  assert.equal(b.G.over, null, '2チーム残っていれば続く');
+  kill('C1'); await b.skip();
+  assert.equal(b.G.over, 'teamp');
+});
+test('3チーム対戦: 途中参加は自分のチームの並びに入り、チームCで勝つこともできる', async () => {
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A1', job: 'warrior', team: 'p', pid: 'a' }, { name: 'B1', job: 'warrior', team: 'e', pid: 'b' }], mode: 'pvp' });
+  assert.equal(b.join({ name: 'C1', team: 'c', pid: 'c' }), true);
+  assert.equal(b.join({ name: 'B2', team: 'e', pid: 'b2' }), true);
+  assert.deepEqual(b.G.units.map(u => u.name + u.side), ['A1p', 'B1e', 'B2e', 'C1c']);
+  for (const n of ['A1', 'B1', 'B2']) { const u = b.G.units.find(x => x.name === n); u.alive = false; u.hp = 0; }
+  await b.skip();
+  assert.equal(b.G.over, 'teamc');
+  const { startBlock } = await import('../src/lib/roster.js');
+  assert.ok(startBlock([{ name: 'A', team: 'p', online: true }, { name: 'B', team: 'p', online: true }], 'pvp'));
+  assert.equal(startBlock([{ name: 'A', team: 'p', online: true }, { name: 'B', team: 'c', online: true }], 'pvp'), '');
+});

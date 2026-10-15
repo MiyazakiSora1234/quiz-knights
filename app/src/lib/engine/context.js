@@ -118,7 +118,7 @@ export function createContext({ ui, getG, emit }) {
     const out = [];
     for (const e of events) {
       let ev = e;
-      if (e.src && e.amt > 0 && e.to.alive && e.src.side !== e.to.side) {
+      if (e.src && !e.blast && e.amt > 0 && e.to.alive && e.src.side !== e.to.side) {
         const tanks = G.units.filter(t => t.alive && t.job === 'tank' && t.guards > 0 && t.side === e.to.side && t !== e.to);
         if (tanks.length) {
           const opts = tanks.map(t => ({ label: `${t.name} が代わりに受ける`, sub: `守り残り ${t.guards}`, value: t.id, cls: 'ok' }));
@@ -173,7 +173,8 @@ export function createContext({ ui, getG, emit }) {
       log(`👻 ${k.name} は幽霊になった（あと1回だけ答えられる）`, 'sys');
     }
     if (k.job === 'bomb') {
-      for (const n of neighbors(k)) if (n.alive || startAlive.has(n.id)) next.push({ src: k, to: n, amt: 3 });
+      // 爆発: 自分以外の全員（敵も味方も）に2ダメージ。庇うことはできない
+      for (const n of G.units) if (n !== k && (n.alive || startAlive.has(n.id))) next.push({ src: k, to: n, amt: 2, blast: true });
       log('💥 ばくだんいわが爆発！', 'sys');
     }
     // 魔王2の第3形態に倒されると、体力1で魔王の仲間として復活し、敵全体に1ダメージ

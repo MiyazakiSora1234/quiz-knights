@@ -22,6 +22,6 @@ export function tagsFor(u, G) {
   return t;
 }
 
-export const RESULT_TEXT = { win: '勝利！', lose: '全滅…', teamp: 'チームAの勝利！', teame: 'チームBの勝利！', draw: '引き分け' };
+export const RESULT_TEXT = { win: '勝利！', lose: '全滅…', teamp: 'チームAの勝利！', teame: 'チームBの勝利！', teamc: 'チームCの勝利！', draw: '引き分け' };
 /** CPU の職業チームと戦った場合の結果 */
-export const RESULT_TEXT_CPU = { ...RESULT_TEXT, teamp: '勝利！', teame: '全滅…' };
+export const RESULT_TEXT_CPU = { ...RESULT_TEXT, teamp: '勝利！', teame: '全滅…', teamc: '全滅…' };

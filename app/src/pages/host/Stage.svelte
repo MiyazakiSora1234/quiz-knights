@@ -7,6 +7,12 @@
   const foes = $derived(G.units.filter(u => u.side === 'e'));
   const allies = $derived(G.units.filter(u => u.side === 'p'));
   const pvp = $derived(G.mode === 'pvp');
+  const versus = $derived(pvp && !G.cpu);          // ユーザー対戦: チームA（上）→ B → C の順に並べる
+  const TEAM = { p: ['チームA', 'ally'], e: ['チームB', 'foe'], c: ['チームC', 'third'] };
+  const groups = $derived(versus
+    ? ['p', 'e', 'c'].map(t => ({ key: t, label: TEAM[t][0], cls: TEAM[t][1], units: G.units.filter(u => u.side === t), seats: true })).filter(g => g.units.length)
+    : [{ key: 'e', label: G.cpu ? 'CPUチーム' : '魔王軍', cls: 'foe', units: foes, seats: pvp, boss: !G.cpu },
+       { key: 'p', label: 'プレイヤー', cls: 'ally', units: allies, seats: true }]);
   // 参加者（端末を持つ人）は早押しで決まるので、進行役は選べない。魔王・CPUだけ進行役が選ぶ
   // 接続が切れている参加者のカードには印を付ける（戻ってこられるので、ユニットは残る）
   const offlineIds = $derived(new Set(Object.entries(G.pids ?? {}).filter(([pid]) => !host.lobby.find(l => l.pid === pid)?.online).map(([, id]) => id)));
@@ -29,14 +35,18 @@
 {/snippet}
 
 <main>
-  <div class="team-label foe">{G.cpu ? 'CPUチーム' : pvp ? 'チームB' : '魔王軍'}</div>
-  <div class="foes">
-    {#each foes as u (u.id)}{@render card(u, pvp ? seatOf(u, G) : null)}{/each}
-  </div>
-  <div class="team-label ally" style="margin-top:8px">{G.cpu ? 'プレイヤー' : pvp ? 'チームA' : 'プレイヤー'}</div>
-  <div class="units">
-    {#each allies as u (u.id)}<div animate:flip={{ duration: 240 }}>{@render card(u, seatOf(u, G))}</div>{/each}
-  </div>
+  {#each groups as g, gi (g.key)}
+    <div class="team-label {g.cls}" style={gi ? 'margin-top:8px' : ''}>{g.label}</div>
+    {#if g.boss}
+      <div class="foes">
+        {#each g.units as u (u.id)}{@render card(u, g.seats ? seatOf(u, G) : null)}{/each}
+      </div>
+    {:else}
+      <div class="units">
+        {#each g.units as u (u.id)}<div animate:flip={{ duration: 240 }}>{@render card(u, g.seats ? seatOf(u, G) : null)}</div>{/each}
+      </div>
+    {/if}
+  {/each}
 </main>
 
 <style>
@@ -47,7 +57,7 @@
   .edit:hover:not(:disabled){opacity:1;border-color:var(--gold);color:var(--gold)}
   .team-label{display:flex;align-items:center;gap:8px;font-weight:700;margin:4px 0 12px}
   .team-label::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
-  .team-label.foe{color:#ff9aa2}.team-label.ally{color:#9cc8ee}
+  .team-label.foe{color:#ff9aa2}.team-label.ally{color:#9cc8ee}.team-label.third{color:#8fe0a6}
   .team-label::after{content:"";flex:1;height:1px;background:var(--line)}
   .foes{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-bottom:22px}
   .foes .cw:only-child :global(.ic-wrap){width:64px;height:64px;font-size:2.4rem}

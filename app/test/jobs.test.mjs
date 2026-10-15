@@ -120,7 +120,7 @@ test('毒: 毒で倒れても連鎖処理が走る（爆弾岩が隣にいると
   h.u('B').hp = 1;
   await h.b.skip();
   assert.equal(h.u('B').alive, false);
-  assert.equal(h.u('P').hp, 5 - 3);
+  assert.equal(h.u('P').hp, 5 - 2);
 });
 
 test('預言者: 敵1人の次の問題だけディレイがつく', async () => {

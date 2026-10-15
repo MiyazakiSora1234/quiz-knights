@@ -261,7 +261,7 @@ export class Room extends DurableObject {
         if (typeof m.name === 'string' && m.name.trim()) p.name = m.name.trim().slice(0, 12);
         if (typeof m.flavor === 'string') p.flavor = m.flavor.trim().slice(0, 20);
         if (typeof m.job === 'string' && m.job.length > 0 && m.job.length <= 20) p.job = m.job;
-        if (m.team === 'p' || m.team === 'e') p.team = m.team;
+        if (m.team === 'p' || m.team === 'e' || m.team === 'c') p.team = m.team;
         await this.save();
         return this.lobby();
       case 'leave':

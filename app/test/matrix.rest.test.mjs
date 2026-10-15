@@ -93,7 +93,7 @@ for (let seed = 1000; seed < 5000; seed++) {
     const mode = r.pick(MODES), boss = r.pick(BOSS_IDS), level = r.pick(LEVEL_KEYS);
     const h = harness({ random: () => r(), askFn: async (t, o) => { if (r() < 0.03) throw CANCEL; return r.pick(enabled(o)).value; } });
     const n = 1 + r.int(7);
-    const players = Array.from({ length: n }, (_, i) => ({ name: `P${i}`, job: r.pick(JOBS), team: mode === 'pvp' ? (i % 2 ? 'e' : 'p') : 'p' }));
+    const players = Array.from({ length: n }, (_, i) => ({ name: `P${i}`, job: r.pick(JOBS), team: mode === 'pvp' ? ['p', 'e', 'c'][i % 3] : 'p' }));
     if (mode === 'pvp' && n < 2) players.push({ name: 'Q', job: 'warrior', team: 'e' });
     const foes = mode === 'squad' ? Array.from({ length: 1 + r.int(5) }, () => r.pick(JOBS)) : [];
     h.b.start({ players, mode: mode === 'squad' ? 'cpu' : mode, boss, level, foes, cpuAuto: mode !== 'pvp' && r() < 0.6, bossPenalty: r() < 0.7, genres: ['A', 'B'] });
@@ -103,7 +103,7 @@ for (let seed = 1000; seed < 5000; seed++) {
       else if (x < 0.72) { if (alive.length && h.b.select(r.pick(alive).id)) await h.b.wrong({ retry: r() < 0.4 }); }
       else if (x < 0.84) await h.b.skip();
       else if (x < 0.93) h.b.undo();
-      else if (x < 0.96) h.b.join({ name: 'L' + step, job: r.pick(JOBS), team: r() < 0.5 ? 'p' : 'e', pid: 'late' + step });
+      else if (x < 0.96) h.b.join({ name: 'L' + step, job: r.pick(JOBS), team: r.pick(['p', 'e', 'c']), pid: 'late' + step });
       else { const pids = Object.keys(G.pids); if (pids.length) h.b.leave(r.pick(pids)); }
       checkInvariants(h.b.G, `乱戦${seed} 手${step}`);
     }

@@ -18,6 +18,7 @@
     <div class="seg">
       <button class="tp" class:sel={p.team === 'p'} onclick={() => { p.team = 'p'; p.touchedTeam = true; }}>チームA</button>
       <button class="te" class:sel={p.team === 'e'} onclick={() => { p.team = 'e'; p.touchedTeam = true; }}>チームB</button>
+      <button class="tcc" class:sel={p.team === 'c'} onclick={() => { p.team = 'c'; p.touchedTeam = true; }}>チームC</button>
     </div>
   {/if}
   <div class="btns">
@@ -34,7 +35,7 @@
   .rname .sub{display:flex;align-items:center;gap:6px;margin-top:3px}
   .jsel{min-width:0}
   .seg button{padding:6px 12px}
-  .seg .tp.sel{background:var(--blu);color:#06182b}.seg .te.sel{background:var(--red);color:#2b0609}
+  .seg .tp.sel{background:var(--blu);color:#06182b}.seg .te.sel{background:var(--red);color:#2b0609}.seg .tcc.sel{background:var(--grn);color:#06220f}
   @media(max-width:560px){
     .rrow,.rrow.pvp{grid-template-columns:44px minmax(0,1fr) auto}
     .av{grid-row:1}.rname{grid-row:1}.btns{grid-column:3;grid-row:1}
