@@ -11,13 +11,19 @@
   // 接続が切れている参加者のカードには印を付ける（戻ってこられるので、ユニットは残る）
   const offlineIds = $derived(new Set(Object.entries(G.pids ?? {}).filter(([pid]) => !host.lobby.find(l => l.pid === pid)?.online).map(([, id]) => id)));
   const tagsOf = u => [...tagsFor(u, G), ...(offlineIds.has(u.id) ? [{ t: '📴 切断中', cls: 'warn' }] : [])];
+  // チャット回答（今の問題）を、その人のカードに吹き出しで出す
+  const bubbles = $derived.by(() => {
+    const out = {};
+    for (const c of host.chat) { const uid = c.answer && c.q === G.q ? G.pids?.[c.pid] : null; if (uid != null) out[uid] = c.text; }
+    return out;
+  });
   const isHuman = u => Object.values(G.pids ?? {}).includes(u.id);
   const canPick = u => !isHuman(u) && (u.alive || u.ghost) && !u.restNow && !G.over && !host.busy;
 </script>
 
 {#snippet card(u, seat)}
   <div class="cw">
-  <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} {seat} />
+  <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} {seat} bubble={bubbles[u.id] ?? ''} />
   <button class="edit" onclick={() => (host.editing = u.id)} disabled={host.busy} title="職業・HPなどを調整" aria-label="{u.name}を調整">✎</button>
   </div>
 {/snippet}

@@ -2,7 +2,7 @@
   import { icon } from '../lib/icons.js';
   import { jobName } from '../lib/engine.js';
 
-  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null } = $props();
+  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '' } = $props();
   const label = $derived(jobLabel ?? jobName(u));
 
   let floats = $state([]);
@@ -45,12 +45,15 @@
       <div class="tags">{#each tags as t}<span class="tag {t.cls ?? ''}">{t.t}</span>{/each}</div>
     {/if}
   </div>
+  {#if bubble}<div class="bubble" title={bubble}>{bubble}</div>{/if}
   {#each floats as f (f.id)}
     <div class="float {f.d < 0 ? 'd' : 'h'}">{f.d > 0 ? '+' : ''}{f.d}</div>
   {/each}
 </button>
 
 <style>
+  .bubble{position:absolute;left:6px;right:6px;top:-12px;z-index:6;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.82rem;line-height:1.25;padding:3px 8px;border-radius:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 4px 12px #000a;pointer-events:none}
+  .bubble::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-top-color:var(--gold);border-bottom:0}
   .seat{position:absolute;top:3px;left:8px;z-index:3;font-size:.7rem;color:var(--mut);font-family:var(--display);font-weight:800;line-height:1.3}
   button:disabled{cursor:default;opacity:1}
   .compact .u-in{padding:24px 8px 20px}
