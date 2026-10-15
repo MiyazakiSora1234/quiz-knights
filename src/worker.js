@@ -126,7 +126,7 @@ export class Room extends DurableObject {
     }
     if (m.t === 'host_resume') {
       if (!this.R || this.R.hostKey !== m.hostKey) return send(ws, { t: 'error', msg: '部屋が見つかりません', code: 'gone' });
-      for (const s of this.socks()) if (s !== ws && s.deserializeAttachment()?.role === 'host') { try { s.close(1000, 'replaced'); } catch { /* noop */ } }
+      for (const s of this.socks()) if (s !== ws && s.deserializeAttachment()?.role === 'host') { send(s, { t: 'replaced' }); try { s.close(1000, 'replaced'); } catch { /* noop */ } }
       this.R.hostGone = null; await this.save(); await this.ctx.storage.deleteAlarm();
       ws.serializeAttachment({ role: 'host' });
       send(ws, { t: 'created', room: this.R.id, name: this.R.name, hostKey: this.R.hostKey });
