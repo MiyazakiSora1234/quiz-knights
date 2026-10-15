@@ -8,13 +8,16 @@
   const allies = $derived(G.units.filter(u => u.side === 'p'));
   const pvp = $derived(G.mode === 'pvp');
   // 参加者（端末を持つ人）は早押しで決まるので、進行役は選べない。魔王・CPUだけ進行役が選ぶ
+  // 接続が切れている参加者のカードには印を付ける（戻ってこられるので、ユニットは残る）
+  const offlineIds = $derived(new Set(Object.entries(G.pids ?? {}).filter(([pid]) => !host.lobby.find(l => l.pid === pid)?.online).map(([, id]) => id)));
+  const tagsOf = u => [...tagsFor(u, G), ...(offlineIds.has(u.id) ? [{ t: '📴 切断中', cls: 'warn' }] : [])];
   const isHuman = u => Object.values(G.pids ?? {}).includes(u.id);
   const canPick = u => !isHuman(u) && (u.alive || u.ghost) && !u.restNow && !G.over && !host.busy;
 </script>
 
 {#snippet card(u, seat)}
   <div class="cw">
-  <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsFor(u, G)} {seat} />
+  <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} {seat} />
   <button class="edit" onclick={() => (host.editing = u.id)} disabled={host.busy} title="職業・HPなどを調整" aria-label="{u.name}を調整">✎</button>
   </div>
 {/snippet}

@@ -26,8 +26,8 @@
 </div>
 
 <style>
-  .rrow{display:grid;grid-template-columns:44px minmax(110px,1fr) minmax(130px,176px) auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--s2)}
-  .rrow.pvp{grid-template-columns:44px minmax(110px,1fr) minmax(130px,176px) auto auto}
+  .rrow{display:grid;grid-template-columns:44px minmax(110px,1fr) minmax(150px,210px) auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--s2)}
+  .rrow.pvp{grid-template-columns:44px minmax(110px,1fr) minmax(150px,210px) auto auto}
   .btns{display:flex;gap:4px}
   .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:1.5rem;background:#120f0c;border:2px solid var(--line2)}
   .rname{min-width:0}.rname .input{padding:6px 10px;font-weight:700}

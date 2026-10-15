@@ -65,12 +65,14 @@
   .jw{display:flex;gap:6px;align-items:stretch;min-width:0}
   .dice{flex:none;width:38px;border-radius:10px;border:1px solid var(--line2);background:var(--s2);cursor:pointer;font-size:1.1rem;padding:0}
   .dice:hover{border-color:var(--gold);background:var(--s3)}
+  .jw{container:job / inline-size}
   .sel{display:flex;align-items:center;gap:8px;width:100%;min-width:0;background:var(--s1);border:1px solid var(--line2);border-radius:10px;padding:6px 10px;cursor:pointer;text-align:left;transition:border-color .1s}
   .sel:hover,.sel[aria-expanded="true"]{border-color:var(--gold)}
   .sel:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
   .ic{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1rem;background:#120f0c;border:1.5px solid var(--line2)}
-  .nm{font-weight:700;white-space:nowrap}
-  .st{color:var(--mut);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+  .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+  .st{color:var(--mut);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0;min-width:0}
+  @container job (max-width: 250px){.st{display:none}}
   .car{width:12px;height:8px;flex:none;color:var(--mut);margin-left:auto}
   .back{position:fixed;inset:0;z-index:90}
   .list{position:fixed;z-index:91;overflow:auto;background:var(--s1);border:1px solid var(--gold);border-radius:12px;padding:4px;box-shadow:0 14px 34px #000d}
