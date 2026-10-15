@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>QUIZ KNIGHTS - 部屋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#17110c;--panel:#2b2018;--panel2:#3a2c20;--line:#8a6a35;--tx:#f1e4c3;--mut:#b9a57f;--acc:#e0b650;--red:#a8262f;--grn:#5e8a45}
+*{box-sizing:border-box}
+body{margin:0;color:var(--tx);font-family:"Shippori Mincho","Yu Mincho","Hiragino Mincho ProN",serif;-webkit-user-select:none;user-select:none;min-height:100vh;
+  background:radial-gradient(ellipse at 50% -10%,#3b2a1b 0,#17110c 65%) fixed;background-color:var(--bg)}
+.wrap{max-width:560px;margin:0 auto;padding:14px}
+.box{background:linear-gradient(180deg,#32261c,#261c14);border:1px solid var(--line);border-radius:4px;padding:14px;margin-bottom:12px;box-shadow:inset 0 0 0 4px #1a120c,inset 0 0 0 5px #8a6a3566,0 6px 18px #0008}
+h2{margin:0 0 8px;font-family:"Cinzel","Shippori Mincho",serif;color:var(--acc);letter-spacing:.06em}
+input,select,button{font:inherit;color:inherit}
+input,select{width:100%;background:#1b140e;border:1px solid var(--line);border-radius:3px;padding:10px;margin:4px 0 10px}
+.btn{background:linear-gradient(180deg,#f0d37a,#b8872f);color:#2a1a08;border:1px solid #f0d37a;border-radius:3px;padding:12px;width:100%;font-weight:700;letter-spacing:.1em}
+.hide{display:none!important}
+.sub{color:var(--mut);font-size:.85rem}
+#buzz{display:block;margin:6px auto;width:min(78vw,300px);aspect-ratio:1;height:auto;border-radius:50%;font-size:2.2rem;font-weight:900;letter-spacing:.1em;
+  border:6px double #8a6a35;background:radial-gradient(circle at 35% 30%,#555,#2a2a2a);color:#888;touch-action:manipulation}
+#buzz.on{background:radial-gradient(circle at 35% 30%,#e0505a,#8c1c24 70%,#5a0f15);color:#ffe9b0;border-color:var(--acc);text-shadow:0 2px 0 #000a;box-shadow:0 0 36px #a8262fcc,inset 0 0 20px #0009}
+#buzz.done{background:radial-gradient(circle at 35% 30%,#8fc06f,#3f6a2c);color:#fff;border-color:#c8e8b0}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.c{background:linear-gradient(180deg,#3d2e21,#2a1f16);border:1px solid var(--line);border-radius:3px 3px 14px 14px;padding:8px;font-size:.85rem}
+.c.me{border-color:#fff3c0;box-shadow:0 0 0 1px var(--acc)}.c.foe{background:linear-gradient(180deg,#4a1d22,#2b1013);border-color:#a8505a}.c.dead{opacity:.45;filter:grayscale(1)}
+.bar{height:8px;background:#0009;border:1px solid #000;overflow:hidden;margin:4px 0}.bar i{display:block;height:100%;background:linear-gradient(180deg,#8fc06f,#4a7a34)}.foe .bar i{background:linear-gradient(180deg,#d6525c,#8c1c24)}
+#status{text-align:center;font-weight:700;min-height:1.6em;margin:8px 0;color:var(--acc)}
+#log p{margin:0 0 4px;font-size:.8rem;color:var(--mut)}
+
+/* ===== layout overrides ===== */
+.wrap{padding:10px}
+#join{color:#3a2a14;padding:26px 24px;background:radial-gradient(ellipse at 20% 0,#f3e8c6,#e8d9b0 60%,#d6c18d);box-shadow:0 0 0 5px #2b2018,0 0 0 6px #8a6a35,0 10px 30px #000c}
+#join h2{color:#7a1f26;text-align:center}
+#join .sub{color:#6a5430}
+#join input,#join select{background:#f6ecce;color:#3a2a14;border-color:#8a6a35}
+#join .btn{border-radius:0}
+#game>.box:first-child{background:none;border:0;border-bottom:3px double var(--line);border-radius:0;box-shadow:none;padding:4px 2px 8px}
+.cards{display:flex;gap:6px;overflow-x:auto;padding:6px 0 10px;scroll-snap-type:x proximity}
+.c{--s:polygon(0 0,100% 0,100% 62%,50% 100%,0 62%);flex:0 0 118px;min-height:150px;padding:10px 10px 34px;border:0;border-radius:0;clip-path:var(--s);background:linear-gradient(180deg,#f0d37a,#8a6a35);position:relative;scroll-snap-align:start}
+.c::before{content:"";position:absolute;inset:3px;clip-path:var(--s);background:linear-gradient(180deg,#43331f,#241a12);z-index:0}
+.c>*,.c{z-index:1}.c>*{position:relative}
+.c.foe{background:linear-gradient(180deg,#e7a0a0,#7d2c34)}.c.foe::before{background:linear-gradient(180deg,#5a1f26,#2b1013)}
+.c.me{background:linear-gradient(180deg,#fffbe0,#e0b650);box-shadow:none}
+#log.box{background:linear-gradient(90deg,#cdb988,#e8d9b0 14%,#e8d9b0 86%,#cdb988);color:#3a2a14;border:0;border-radius:2px}
+#log p{color:#4a3a22;border-bottom:1px dotted #8a6a3577;padding-bottom:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="join" class="box">
+    <h2 style="margin-top:0">部屋に参加</h2>
+    <div class="sub" id="roomLabel" style="text-align:center"></div>
+    <label class="sub">あなたの名前</label><input id="name" maxlength="12">
+    <label class="sub">ひとこと（任意）</label><input id="flavor" maxlength="20" placeholder="例：本日の意気込み">
+    <div id="pwBox" class="hide"><label class="sub">パスワード</label><input id="pw" maxlength="20"></div>
+    <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:6px">
+      <a href="/" style="color:#7a1f26">一覧に戻る</a>
+      <button class="btn" id="joinBtn" style="width:auto;padding:10px 28px">参加</button>
+    </div>
+    <p class="sub" id="err" style="color:#7a1f26"></p>
+  </div>
+
+  <div id="lobby" class="box hide">
+    <b id="who"></b>
+    <p class="sub" id="members"></p>
+    <p class="sub">進行役がバトルを開始するまでお待ちください。職業・チームは変更できます。</p>
+    <select id="job2"></select>
+    <select id="team2"><option value="p">チームA</option><option value="e">チームB</option></select>
+    <button class="btn" id="leaveBtn" style="background:#3a2c20;color:#f1e4c3;border-color:#8a6a35">退室する</button>
+  </div>
+
+  <div id="game" class="hide">
+    <div class="box" style="display:flex;justify-content:space-between"><b id="q"></b><span id="genre" class="sub"></span></div>
+    <button id="buzz" disabled>押す！</button>
+    <div id="status"></div>
+    <div class="cards" id="cards"></div>
+    <div class="box" id="log" style="margin-top:12px"></div>
+  </div>
+  <p class="sub" id="net" style="text-align:center"></p>
+</div>
+
+<script>
+const JOBS={sage:['賢者','📿'],monk:['僧侶','🙏'],warrior:['戦士','🗡'],mage:['魔法使い','🔮'],bm:['バトルマスター','⚔'],tank:['タンク','🛡'],
+ berserker:['バーサーカー','🪓'],mw:['魔法戦士','✨'],thief:['盗賊','💰'],playboy:['遊び人','🎲'],hero:['勇者','👑'],bomb:['ばくだんいわ','💣'],necro:['ネクロマンサー','💀'],boss:['魔王','👹']};
+const SEL=['sage','monk','warrior','mage','bm','tank','berserker','mw','thief','playboy','bomb','necro'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ROOM=new URLSearchParams(location.search).get('id');
+const PIDKEY='qr_pid_'+ROOM;
+const toList=()=>{location.href='/';};
+if(!ROOM)toList();
+for(const id of ['#job2'])$(id).innerHTML=SEL.map(j=>`<option value="${j}">${JOBS[j][0]}</option>`).join('');
+$('#name').value=localStorage.getItem('qr_name')||'';
+$('#flavor').value=localStorage.getItem('qr_flavor')||'';
+
+let ws,pid=null,offset=0,bestRtt=1e9,open=false,eligible=[],buzzed=false,state=null,winner=null,leaving=false;
+const now=()=>Date.now()+offset;
+const send=m=>{if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));};
+
+async function init(){
+  let info=null;
+  try{info=(await (await fetch('/api/rooms',{cache:'no-store'})).json()).find(r=>String(r.id)===ROOM);}catch(e){}
+  if(!info||!info.used){alert('その部屋は存在しません');toList();return;}
+  $('#roomLabel').textContent=`ルームID: ${info.id}　「${info.name}」`;
+  $('#pwBox').classList.toggle('hide',!info.hasPw);
+  // 再読み込み時の自動復帰（パスワード不要）
+  if(sessionStorage.getItem(PIDKEY)&&$('#name').value)connect();
+}
+function connect(){
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?id='+ROOM);
+  ws.onopen=()=>{
+    $('#net').textContent='接続OK'; bestRtt=1e9; for(let i=0;i<8;i++)setTimeout(ping,i*120);
+    send({t:'join',id:ROOM,name:$('#name').value.trim(),flavor:$('#flavor').value.trim(),password:$('#pw').value,pid:sessionStorage.getItem(PIDKEY)||undefined});
+  };
+  ws.onclose=()=>{if(leaving)return;$('#net').textContent='切断されました。再接続中…';if(pid)setTimeout(connect,1500);};
+  ws.onmessage=ev=>handle(JSON.parse(ev.data));
+}
+function ping(){send({t:'ping',c:Date.now()});}
+setInterval(()=>{bestRtt=1e9;for(let i=0;i<4;i++)setTimeout(ping,i*150);},30000);
+
+function handle(m){
+  if(m.t==='pong'){const t1=Date.now(),rtt=t1-m.c;if(rtt<bestRtt){bestRtt=rtt;offset=m.s+rtt/2-t1;$('#net').textContent=`通信 ${Math.round(rtt)}ms`;}}
+  else if(m.t==='error'){
+    if(m.code==='gone'){sessionStorage.removeItem(PIDKEY);alert(m.msg);toList();}
+    else{sessionStorage.removeItem(PIDKEY);pid=null;$('#err').textContent=m.msg;$('#join').classList.remove('hide');$('#lobby').classList.add('hide');}
+  }
+  else if(m.t==='joined'){pid=m.pid;sessionStorage.setItem(PIDKEY,pid);localStorage.setItem('qr_name',m.name);localStorage.setItem('qr_flavor',m.flavor||'');
+    $('#join').classList.add('hide');$('#who').textContent=`${m.name} として「${m.roomName}」に参加中`;
+    $('#job2').value=m.job;$('#team2').value=m.team;
+    if(state){$('#game').classList.remove('hide');$('#lobby').classList.add('hide');}else $('#lobby').classList.remove('hide');
+    render();}
+  else if(m.t==='members'){$('#members').textContent='参加者：'+m.players.map(p=>(p.online?'● ':'○ ')+p.name+(p.flavor?`〈${p.flavor}〉`:'')).join('　');}
+  else if(m.t==='state'){state=m.state;$('#lobby').classList.add('hide');$('#game').classList.remove('hide');render();}
+  else if(m.t==='ended'){state=null;open=false;winner=null;$('#game').classList.add('hide');$('#lobby').classList.remove('hide');}
+  else if(m.t==='open'){open=true;eligible=m.eligible;buzzed=false;winner=null;render();}
+  else if(m.t==='locked'){open=false;render();}
+  else if(m.t==='ack'){buzzed=true;render();}
+  else if(m.t==='winner'){open=false;winner=m;render();if(m.pid===pid&&navigator.vibrate)navigator.vibrate(200);}
+  else if(m.t==='closed'){leaving=true;sessionStorage.removeItem(PIDKEY);alert(m.why||'部屋が閉じられました');toList();}
+}
+
+function render(){
+  if(!state)return;
+  const mine=state.pids&&state.pids[pid];
+  const me=state.units.find(u=>u.id===mine);
+  $('#q').textContent=`第${state.q}問`;
+  $('#genre').textContent=state.genre||'';
+  const can=open&&eligible.includes(pid)&&!buzzed&&!state.over;
+  const b=$('#buzz');
+  b.disabled=!can; b.className=can?'on':(buzzed?'done':'');
+  b.textContent=can?'押す！':buzzed?'送信済み':(me&&!me.alive)?'戦闘不能':(me&&me.restNow)?'今回は休み':'待機中';
+  let st='';
+  if(state.over)st='バトル終了';
+  else if(winner&&winner.q===state.q)st=winner.pid===pid?'🎉 回答権を獲得！答えてください':`回答権: ${winner.name}`;
+  else if(open)st='受付中！';
+  $('#status').textContent=st;
+  $('#cards').innerHTML=state.units.map(u=>`<div class="c ${u.side==='e'?'foe':''} ${u.id===mine?'me':''} ${u.alive?'':'dead'}">
+    ${(JOBS[u.job]||['','?'])[1]} <b>${esc(u.name)}</b> <span class="sub">${esc(u.jobName||'')}</span>
+    <div class="bar"><i style="width:${Math.max(0,u.hp/u.maxHp*100)}%"></i></div>HP ${Math.max(0,u.hp)}/${u.maxHp}
+    ${u.restNow?' 💤':''}${u.job==='tank'?' 🛡'+u.guards:''}</div>`).join('');
+  $('#log').innerHTML=(state.log||[]).map(l=>`<p>${esc(l)}</p>`).join('');
+}
+
+function buzz(){ if($('#buzz').disabled)return; send({t:'buzz',ts:now()}); }
+$('#buzz').addEventListener('pointerdown',e=>{e.preventDefault();buzz();});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='SELECT'){e.preventDefault();buzz();}});
+$('#joinBtn').onclick=()=>{
+  if(!$('#name').value.trim()){$('#err').textContent='名前を入力してください';return;}
+  $('#err').textContent='';sessionStorage.removeItem(PIDKEY);connect();
+};
+$('#join').addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinBtn').click();});
+$('#leaveBtn').onclick=()=>{leaving=true;send({t:'leave'});sessionStorage.removeItem(PIDKEY);toList();};
+$('#job2').onchange=$('#team2').onchange=()=>send({t:'profile',job:$('#job2').value,team:$('#team2').value});
+init();
+</script>
+</body>
+</html>

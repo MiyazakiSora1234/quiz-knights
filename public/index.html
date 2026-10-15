@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QUIZ KNIGHTS - 部屋一覧</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#17110c;--line:#8a6a35;--tx:#f1e4c3;--mut:#b9a57f;--acc:#e0b650;--ink:#3a2a14;--rubric:#7a1f26}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font-family:"Shippori Mincho","Yu Mincho","Hiragino Mincho ProN",serif;min-height:100vh;
+  background:radial-gradient(ellipse at 50% -10%,#3b2a1b 0,#17110c 65%) fixed,repeating-linear-gradient(90deg,#0000 0 38px,#ffffff05 38px 40px) fixed;background-color:var(--bg)}
+button,input{font:inherit;color:inherit}
+.sheet{max-width:780px;margin:22px auto;padding:30px 36px 34px;border:1px solid var(--line);
+  background:radial-gradient(ellipse at 20% 0,#f3e8c6,#e8d9b0 60%,#d6c18d);box-shadow:0 0 0 6px #2b2018,0 0 0 7px var(--line),0 14px 40px #000c}
+@media(max-width:600px){.sheet{margin:10px;padding:20px 14px}}
+h1{margin:0;text-align:center;font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric);letter-spacing:.08em;font-size:2.1rem}
+.sub{color:#6a5430;text-align:center;letter-spacing:.2em;margin-bottom:10px}
+.links{text-align:center;font-size:.85rem;color:#6a5430;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;margin:12px 0 18px}
+table{width:100%;border-collapse:collapse}
+th{font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric);text-align:left;border-bottom:2px solid var(--line);padding:6px 8px;letter-spacing:.1em;font-size:.9rem}
+td{border-bottom:1px dotted #8a6a3599;padding:9px 8px}
+td.no{width:46px;font-family:"Cinzel",serif;color:#6a5430}
+td.cnt{width:70px;text-align:center}
+td.act{width:150px;text-align:right}
+tr.free td.nm{color:#8a7650}
+tr.used td.nm{font-weight:700}
+.btn{background:#f3e6c2;border:1px solid var(--line);padding:5px 14px;cursor:pointer;letter-spacing:.05em}
+.btn:hover{border-color:var(--rubric);color:var(--rubric)}
+.btn.pri{background:linear-gradient(180deg,#f0d37a,#b8872f);border-color:#8a6a35;font-weight:700}
+.btn.mine{background:var(--rubric);color:#fff;border-color:var(--rubric)}
+.lock{font-size:.8rem}
+.tag{font-size:.7rem;border:1px solid var(--rubric);color:var(--rubric);padding:0 5px;margin-left:6px}
+.status{margin-top:14px;font-size:.8rem;color:#6a5430;text-align:right}
+#dlg{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:14px;z-index:10}
+#dlg.on{display:flex}
+.card{width:min(400px,100%);padding:26px 26px 22px;border:1px solid var(--line);background:radial-gradient(ellipse at 20% 0,#f3e8c6,#e8d9b0 60%,#d6c18d);box-shadow:0 0 0 5px #2b2018,0 0 0 6px var(--line)}
+.card h2{margin:0 0 14px;text-align:center;font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric)}
+.card label{display:block;font-size:.85rem;font-weight:700;margin-top:10px}
+.card input{width:100%;margin-top:4px;padding:9px;background:#f6ecce;border:1px solid var(--line)}
+.card .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.err{color:var(--rubric);font-size:.85rem;min-height:1.2em;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>⚜ QUIZ KNIGHTS ⚜</h1>
+  <div class="sub">― クイズ騎士団 ―</div>
+  <div class="links">部屋を作る（進行役）か、使用中の部屋に入る（参加者）を選んでください</div>
+  <table>
+    <thead><tr><th>NO.</th><th>部屋名</th><th style="text-align:center">人数</th><th></th></tr></thead>
+    <tbody id="rooms"></tbody>
+  </table>
+  <div class="status" id="status">読み込み中…</div>
+</div>
+
+<div id="dlg"><div class="card" id="card"></div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let rooms=[];
+
+async function load(){
+  try{
+    const t0=performance.now();
+    rooms=await (await fetch('/api/rooms',{cache:'no-store'})).json();
+    $('#status').textContent=`サーバー接続OK　${Math.round(performance.now()-t0)} ms`;
+    draw();
+  }catch(e){$('#status').textContent='サーバーに接続できません';}
+}
+function draw(){
+  $('#rooms').innerHTML=rooms.map(r=>{
+    const mine=!!localStorage.getItem('qr_hk_'+r.id);
+    if(!r.used)return `<tr class="free"><td class="no">${r.id}</td><td class="nm">空き</td><td class="cnt">0</td><td class="act"><button class="btn pri" data-create="${r.id}">作成</button></td></tr>`;
+    return `<tr class="used"><td class="no">${r.id}</td><td class="nm">${esc(r.name)}${r.hasPw?' <span class="lock">🔒</span>':''}${r.started?'<span class="tag">対戦中</span>':''}</td><td class="cnt">${r.online}</td>
+      <td class="act">${mine?`<button class="btn mine" data-host="${r.id}">管理へ戻る</button> `:''}<button class="btn" data-join="${r.id}">参加</button></td></tr>`;
+  }).join('');
+}
+$('#rooms').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.create)createDlg(+b.dataset.create);
+  else if(b.dataset.join)location.href=`/play.html?id=${b.dataset.join}`;
+  else if(b.dataset.host)location.href=`/host.html?id=${b.dataset.host}`;
+});
+
+function createDlg(id){
+  $('#card').innerHTML=`<h2>部屋を作成（${id}番）</h2>
+    <label>部屋名</label><input id="rn" maxlength="30" placeholder="例：夜の円卓">
+    <label>パスワード（任意）</label><input id="rp" maxlength="20">
+    <div class="err" id="err"></div>
+    <div class="row"><button class="btn" id="cancel">キャンセル</button><button class="btn pri" id="ok">作成</button></div>`;
+  $('#dlg').classList.add('on');$('#rn').focus();
+  $('#cancel').onclick=()=>$('#dlg').classList.remove('on');
+  const go=()=>{
+    const name=$('#rn').value.trim();
+    if(!name){$('#err').textContent='部屋名を入力してください';return;}
+    const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?id='+id);
+    ws.onopen=()=>ws.send(JSON.stringify({t:'create',id,name,password:$('#rp').value}));
+    ws.onmessage=ev=>{
+      const m=JSON.parse(ev.data);
+      if(m.t==='created'){localStorage.setItem('qr_hk_'+m.room,m.hostKey);location.href=`/host.html?id=${m.room}`;}
+      else if(m.t==='error'){$('#err').textContent=m.msg;ws.close();load();}
+    };
+  };
+  $('#ok').onclick=go;
+  $('#card').onkeydown=e=>{if(e.key==='Enter')go();};
+}
+load();setInterval(load,5000);
+</script>
+</body>
+</html>
