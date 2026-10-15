@@ -23,7 +23,7 @@ export class HostStore {
   boss = $state(1);
   penalty = $state(true);
   level = $state('normal');          // 難易度: weak / normal / strong
-  buzzRule = $state('next');         // next=誤答したら次の問題 / retry=誤答した人を除いて同じ問題を再受付
+  buzzRule = $state('next');         // next=誤答したら次の問題 / retry=誤答した人を除いて同じ問題を再受付 / chain=誤答したら次の順位の人へ回答権が移る（連チャン）
   chat = $state([]);                 // チャット（参加者のチャット回答を含む）
   editing = $state(null);            // 調整中のユニットid
   G = $state(null);                  // バトルの状態（engine から届く写し）
@@ -93,6 +93,7 @@ export class HostStore {
         return;
       case 'lobby': return this.#onLobby(m.players);
       case 'winner': return this.#onWinner(m);
+      case 'nobody': return this.#chainExhausted();
     }
   }
   #onLobby(players) {
@@ -211,14 +212,33 @@ export class HostStore {
   correct() { return this.battle.correct(); }
   /** 誤答。retry のルールなら同じ問題を再受付し、押せる人がいなければスルーで終える */
   async wrong() {
-    const retry = this.buzzRule === 'retry';
+    const retry = this.buzzRule !== 'next';
     const ok = await this.battle.wrong({ retry });
     const G = this.battle.G;
     if (ok && retry && G && !G.over && G.sel == null) {
-      if (!Object.keys(eligibleDelays(G)).length) { toast('押せる人がいないため、この問題を終えます'); await this.battle.skip(); }
-      else this.reopen();
+      if (this.buzzRule === 'chain') this.#chainNext();
+      else this.#retryOrEnd();
     }
     return ok;
+  }
+  /** 誤答者を除いて受付を出し直す。押せる人がいなければ問題を終える */
+  async #retryOrEnd() {
+    const G = this.battle.G;
+    if (!Object.keys(eligibleDelays(G)).length) { toast('押せる人がいないため、この問題を終えます'); await this.battle.skip(); }
+    else this.reopen();
+  }
+  /** 連チャン: 誤答した人を除いて、次の順位の人に回答権を移す（サーバーの順位表から選ぶ） */
+  #chainNext() {
+    const G = this.battle.G;
+    const tried = (G.wrongOn ?? []).map(id => Object.keys(G.pids).find(p => G.pids[p] === id)).filter(Boolean);
+    this.conn.send({ t: 'next', exclude: tried });
+  }
+  /** 順位表に次の人がいない: 誤答者を除いて、もう一度みんなで早押しする */
+  #chainExhausted() {
+    const G = this.battle.G;
+    if (!G || G.over || G.sel != null) return;
+    toast('次の順位の人がいないため、受付を出し直します');
+    this.#retryOrEnd();
   }
   /** 戦闘中のユニット調整（職業・体力など） */
   editUnit(id, patch) { const ok = this.battle.edit(id, patch); if (ok) this.#openedFor = null; return ok; }
@@ -254,7 +274,7 @@ export class HostStore {
     this.conn.send({ t: 'state', state: publicState(G) });
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {
       this.#openedFor = G.q;
-      this.conn.send({ t: 'open', q: G.q, eligible: eligibleDelays(G) });
+      this.conn.send({ t: 'open', q: G.q, chain: this.buzzRule === 'chain', eligible: eligibleDelays(G) });
     }
   }
 }

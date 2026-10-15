@@ -111,3 +111,30 @@ test('遅延の申告値は 1〜3000ms に収める', () => {
   assert.equal(clampRtt(99999), C.RTT_MAX_MS);
   assert.equal(clampRtt(45.4), 45.4);
 });
+
+test('連チャン: 勝者が決まったあとも押下を記録でき、順位表から誤答者を除いて次の人を選べる', () => {
+  const r = BuzzRound.start(1, { a: 0, b: 0, c: 0 }, true);
+  r.record('a', 1000, 1010);
+  r.decided();
+  assert.equal(r.open, false);
+  assert.equal(r.backup, true);
+  assert.equal(r.canBuzz('b'), true, '控えとして押せる');
+  assert.equal(r.record('c', 1300, 1320), true);
+  assert.equal(r.record('b', 1100, 1130), true);
+  assert.equal(r.canBuzz('b'), false, '二重には押せない');
+  assert.deepEqual(r.ranking().map(x => x.pid), ['a', 'b', 'c']);
+  assert.deepEqual(r.ranking(undefined, ['a']).map(x => x.pid), ['b', 'c']);
+  assert.deepEqual(r.ranking(undefined, ['a', 'b']).map(x => x.pid), ['c']);
+  assert.deepEqual(r.ranking(undefined, ['a', 'b', 'c']), []);
+  r.close();
+  assert.equal(r.canBuzz('x'), false);
+});
+
+test('連チャンでない通常の受付は、勝者が決まったら押せなくなる。保存しても連チャンの設定は残る', () => {
+  const r = BuzzRound.start(1, { a: 0, b: 0 });
+  r.record('a', 1000, 1010);
+  r.decided();
+  assert.equal(r.canBuzz('b'), false);
+  const c = BuzzRound.from(JSON.parse(JSON.stringify(BuzzRound.start(2, { a: 0 }, true).toJSON())));
+  assert.equal(c.chain, true);
+});

@@ -3,17 +3,22 @@ import { TOLERANCE_MIN_MS, TOLERANCE_MAX_MS, TOLERANCE_MARGIN_MS, DEFAULT_RTT_MS
 
 export class BuzzRound {
   /** eligible: { pid: ディレイ(ms) } 押せる人とそのディレイ */
-  constructor(q = 0, eligible = {}, open = false) {
+  constructor(q = 0, eligible = {}, open = false, chain = false, backup = false) {
     this.q = q;
     this.eligible = eligible;
     this.open = open;
+    this.chain = chain;        // 連チャン: 勝者が決まったあとの押下（2着・3着…）も記録する
+    this.backup = backup;      // 勝者が決まったあと、2着以降を受け付けている状態
     this.buzzes = {};          // pid -> 実効時刻 e（押した時刻 + ディレイ）
   }
 
   /** 次の問題の受付を始める */
-  static start(q, eligible) { return new BuzzRound(q, eligible || {}, true); }
+  static start(q, eligible, chain = false) { return new BuzzRound(q, eligible || {}, true, !!chain); }
 
-  canBuzz(pid) { return this.open && pid in this.eligible && !(pid in this.buzzes); }
+  canBuzz(pid) { return (this.open || this.backup) && pid in this.eligible && !(pid in this.buzzes); }
+
+  /** 勝者が決まった。連チャンなら、2着以降の押下を引き続き受け付ける */
+  decided() { this.open = false; if (this.chain) this.backup = true; }
 
   /**
    * 押下を記録する。arrival=サーバーに届いた時刻、ts=本人が申告した押した時刻（サーバー時刻換算）。
@@ -49,16 +54,17 @@ export class BuzzRound {
   close() { this.open = false; }
 
   /** 実効時刻の順に並べた結果。誰も押していなければ空 */
-  ranking(nameOf = () => undefined) {
-    const list = Object.entries(this.buzzes)
+  ranking(nameOf = () => undefined, exclude = []) {
+    const all = Object.entries(this.buzzes)
       .map(([pid, e]) => ({ pid, e, name: nameOf(pid) }))
       .sort((x, y) => x.e - y.e);          // 同時刻なら先に届いた人（登録順）が先
-    return list.map(x => ({ pid: x.pid, name: x.name, ms: x.e - list[0].e }));
+    const first = all.length ? all[0].e : 0;
+    return all.filter(x => !exclude.includes(x.pid)).map(x => ({ pid: x.pid, name: x.name, ms: x.e - first }));
   }
 
   /** 保存用（押下の記録は短時間しか持たないので含めない） */
-  toJSON() { return { open: this.open, q: this.q, eligible: this.eligible }; }
-  static from(saved) { return saved ? new BuzzRound(saved.q, saved.eligible, saved.open) : new BuzzRound(); }
+  toJSON() { return { open: this.open, q: this.q, eligible: this.eligible, chain: this.chain, backup: this.backup }; }
+  static from(saved) { return saved ? new BuzzRound(saved.q, saved.eligible, saved.open, saved.chain, saved.backup) : new BuzzRound(); }
 }
 
 /** 往復遅延の申告値を安全な範囲に収める */

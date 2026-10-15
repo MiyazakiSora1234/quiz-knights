@@ -782,3 +782,30 @@ test('運用: 部屋を閉じると全員に通知され、同じ番号ですぐ
   assert.equal((await api())[id - 1].count, 1);
   h2.send({ t: 'close' });
 });
+
+test('連チャン: 1着が誤答したら、押した順に2着・3着へ回答権が移り、いなくなったら nobody', async () => {
+  const { id, host } = await makeRoom();
+  const [a, b, c] = [await joinPlayer(id, 'A'), await joinPlayer(id, 'B'), await joinPlayer(id, 'C')];
+  host.send({ t: 'open', q: 1, chain: true, eligible: { [a.pid]: 0, [b.pid]: 0, [c.pid]: 0 } });
+  const op = await a.wait('open');
+  assert.equal(op.chain, true);
+  const t = Date.now();
+  a.send({ t: 'buzz', ts: t, rtt: 20 });
+  assert.equal((await host.wait('winner', 4000)).pid, a.pid);
+  host.send({ t: 'lock' });                                   // 回答者が選ばれた
+  await b.wait('locked');
+  b.send({ t: 'buzz', ts: t + 200, rtt: 20 });                // 控えとして押す（回答権が決まったあと）
+  c.send({ t: 'buzz', ts: t + 400, rtt: 20 });
+  await b.wait('ack'); await c.wait('ack');
+  host.send({ t: 'next', exclude: [a.pid] });
+  const w2 = await host.wait('winner', 3000, x => x.pid === b.pid);
+  assert.deepEqual(w2.ranking.map(x => x.pid), [b.pid, c.pid]);
+  assert.equal((await c.wait('winner', 3000, x => x.pid === b.pid)).name, 'B');
+  host.send({ t: 'next', exclude: [a.pid, b.pid] });
+  assert.equal((await host.wait('winner', 3000, x => x.pid === c.pid)).pid, c.pid);
+  host.send({ t: 'next', exclude: [a.pid, b.pid, c.pid] });
+  assert.equal((await host.wait('nobody', 3000)).q, 1);
+  host.send({ t: 'open', q: 2, eligible: { [a.pid]: 0 } });   // 次の問題では、普通の受付に戻る
+  await a.wait('open', 3000, x => x.q === 2 && !x.chain);
+  host.send({ t: 'close' });
+});

@@ -95,7 +95,7 @@ export class Room extends DurableObject {
     this.timer = null;
     const round = this.round;
     const ranking = round.ranking(pid => this.R?.players[pid]?.name);
-    round.close();
+    round.decided();
     await this.persistRound();
     if (!ranking.length) return;
     const msg = { t: 'winner', q: round.q, pid: ranking[0].pid, name: ranking[0].name, ranking };
@@ -198,10 +198,18 @@ export class Room extends DurableObject {
       }
       case 'open':                                      // 次の問題の早押し受付を始める
         clearTimeout(this.timer);
-        this.round = BuzzRound.start(m.q, m.eligible);
+        this.round = BuzzRound.start(m.q, m.eligible, m.chain);
         await this.persistRound();
-        this.toPlayers({ t: 'open', q: m.q, eligible: Object.keys(this.round.eligible) });
+        this.toPlayers({ t: 'open', q: m.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
+      case 'next': {                                    // 連チャン: 誤答のあと、次の順位の人に回答権を移す
+        const list = this.round.ranking(pid => this.R?.players[pid]?.name, Array.isArray(m.exclude) ? m.exclude : []);
+        if (!list.length) return this.toHost({ t: 'nobody', q: this.round.q });
+        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, ranking: list };
+        this.lastWinner = msg;
+        this.toHost(msg); this.toPlayers(msg);
+        return;
+      }
       case 'lock':
         clearTimeout(this.timer);
         this.round.close();
@@ -228,7 +236,7 @@ export class Room extends DurableObject {
       case 'release': return this.releaseHost();
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
       case 'endgame':
-        this.state = null;
+        this.state = null; this.round = new BuzzRound();
         await this.ctx.storage.delete('state');
         this.toPlayers({ t: 'ended' });
         this.syncLobby();
@@ -267,7 +275,7 @@ export class Room extends DurableObject {
         if (m.rtt > 0) this.rtts.set(pid, clampRtt(m.rtt));
         this.round.record(pid, m.ts, Date.now());
         send(ws, { t: 'ack' });
-        this.scheduleResolve();
+        if (this.round.open) this.scheduleResolve();      // 勝者が決まったあとの押下（連チャンの2着以降）は記録だけ
     }
   }
 

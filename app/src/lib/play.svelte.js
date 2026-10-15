@@ -25,6 +25,7 @@ export class PlayStore {
   hasHost = $state(true);         // 進行役がいるか（いなければ誰でもなれる）
   hostOnline = $state(false);
   gs = $state(null);              // 進行役から届く表示用の状態
+  chain = $state(false);          // 連チャン（誤答したら次の順位へ回答権が移る）
   open = $state(false);           // 早押し受付中
   eligible = $state([]);          // 今回押せる人
   sent = $state(false);
@@ -58,7 +59,7 @@ export class PlayStore {
   }
   get buzzLabel() {
     const me = this.me;
-    if (this.canBuzz) return '押す！';
+    if (this.canBuzz) return this.hasWinner ? '控えで押す' : '押す！';
     if (this.sent) return this.myWin ? '回答権獲得' : '送信済み';
     if (me && !me.alive && !me.ghost) return '戦闘不能';
     if (me && me.restNow) return '今回は休み';
@@ -120,13 +121,14 @@ export class PlayStore {
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
       case 'ended': this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
-        this.open = true; this.eligible = m.eligible; this.sent = false; this.winner = null;
+        this.open = true; this.chain = !!m.chain; this.eligible = m.eligible; this.sent = false; this.winner = null;
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
         return;
-      case 'locked': this.open = false; return;
+      case 'locked': if (!this.chain) this.open = false; return;   // 連チャンでは、回答者が決まったあとも2着以降の押下を受け付ける
       case 'ack': this.sent = true; return;
       case 'winner':
-        this.open = false; this.winner = m;
+        if (!this.chain) this.open = false;
+        this.winner = m;
         if (m.pid === this.pid) { sfx.win(); vib([120, 60, 200]); } else sfx.other();
         return;
       case 'closed':
