@@ -494,6 +494,21 @@ test('時計合わせ: 端末の時計が1分ずれていても、押した時�
   host.send({ t: 'close' });
 });
 
+test('部屋の中で名前・ひとことを変えられる。進行役がいる間は部屋設定は進行役だけ', async () => {
+  const { id, host } = await makeRoom({ name: '旧名' });
+  const p = await joinPlayer(id, 'A');
+  p.send({ t: 'profile', name: '新しい名前', flavor: 'ひとこと' });
+  const lob = await host.wait('lobby', 3000, x => x.players[0]?.name === '新しい名前');
+  assert.equal(lob.players[0].flavor, 'ひとこと');
+  p.send({ t: 'settings', name: '乗っ取り' });
+  await sleep(150);
+  assert.equal((await api())[id - 1].name, '旧名');
+  host.send({ t: 'settings', name: '新部屋', password: 'pw' });
+  assert.equal((await host.wait('settings')).name, '新部屋');
+  assert.equal((await p.wait('members', 3000, x => x.roomName === '新部屋')).roomName, '新部屋');
+  host.send({ t: 'close' });
+});
+
 /* ---------- 進行役を後から決める ---------- */
 async function makeHostlessRoom() {
   const id = await newRoomId();

@@ -20,6 +20,7 @@ export function syncRoster(roster, lobby, nextKey) {
       roster.push({ key: nextKey(), name: lp.name, flavor: lp.flavor || '', job: validJob(lp.job), team: lp.team || 'p', pid: lp.pid, online: lp.online, rtt: lp.rtt ?? null });
       continue;
     }
+    if (!row.touchedName) row.name = lp.name;
     row.online = lp.online; row.flavor = lp.flavor || ''; row.rtt = lp.rtt ?? null;
     if (!row.touchedJob) row.job = validJob(lp.job);
     if (!row.touchedTeam) row.team = lp.team || row.team;

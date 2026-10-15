@@ -15,6 +15,7 @@ export class HostStore {
   id; conn; battle;
   status = $state('connecting');     // connecting | ready | reconnecting | replaced
   roomName = $state('');
+  password = $state('');
   lobby = $state([]);                // サーバーから届いた参加者一覧
   roster = $state([]);               // 準備画面の名簿（進行役が職業などを調整できる）
   mode = $state('cpu');
@@ -68,7 +69,7 @@ export class HostStore {
   #onMessage(m) {
     switch (m.t) {
       case 'created':
-        this.status = 'ready'; this.roomName = m.name; this.#openedFor = null;
+        this.status = 'ready'; this.roomName = m.name; this.password = m.password ?? ''; this.#openedFor = null;
         if (this.G) this.#publish();
         return;
       case 'error':
@@ -79,6 +80,7 @@ export class HostStore {
         store.remove(KEY.hostKey(this.id)); store.remove(KEY.save(this.id)); this.conn.close();
         toast('進行役をおりました。参加者として入室します'); setTimeout(() => { location.href = `/play?id=${this.id}`; }, 700);
         return;
+      case 'settings': this.roomName = m.name; this.password = m.password; toast('部屋の設定を変更しました'); return;
       case 'notice': toast(m.msg, 3000); return;
       case 'replaced':
         this.status = 'replaced'; this.conn.close();
@@ -147,6 +149,7 @@ export class HostStore {
   undo() { return this.battle.undo(); }
   reopen() { this.#openedFor = null; this.rank = ''; this.#publish(true); }
 
+  saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
   /** 進行役を、いま入室している参加者に譲る */
   async transfer(p) {
     if (!(await confirmAsk(`${p.name} さんに進行役を譲りますか？`, '進行中のバトルは終了し、あなたは参加者になります。', '譲る', false))) return;

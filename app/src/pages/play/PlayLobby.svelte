@@ -5,10 +5,32 @@
   import { JOB, SELECTABLE } from '../../lib/engine.js';
 
   let { p } = $props();   // PlayStore
+  let edit = $state(false), n = $state(''), f = $state(''), rn = $state(''), rp = $state('');
+  const open = () => { n = p.name; f = p.flavor; rn = p.roomName; rp = ''; edit = true; };
+  const save = () => {
+    if (!n.trim()) return;
+    p.saveProfile(n, f);
+    if (!p.hasHost && rn.trim() && (rn.trim() !== p.roomName || rp !== '')) p.saveRoom(rn, rp);
+    edit = false;
+  };
 </script>
 
 <div class="panel lobby" in:fly={{ y: 12, duration: 220 }}>
   <div class="head"><div class="num" style="--sz:42px">{p.id}</div><div><h2>{p.roomName}</h2><div class="sub">{p.name} として参加中</div></div></div>
+
+  <div class="setbox">
+    {#if edit}
+      <input class="input" bind:value={n} maxlength="12" placeholder="名前" aria-label="名前">
+      <input class="input" bind:value={f} maxlength="20" placeholder="ひとこと（任意）" aria-label="ひとこと">
+      {#if !p.hasHost}
+        <input class="input" bind:value={rn} maxlength="30" placeholder="部屋名" aria-label="部屋名">
+        <input class="input" bind:value={rp} maxlength="20" placeholder="新しいパスワード（空なら変更なし）" aria-label="パスワード">
+      {/if}
+      <div class="two"><button class="btn primary" onclick={save}>保存</button><button class="btn ghost" onclick={() => (edit = false)}>やめる</button></div>
+    {:else}
+      <button class="btn ghost sm" onclick={open}>✎ 名前{p.hasHost ? '' : '・部屋の設定'}を変更</button>
+    {/if}
+  </div>
 
   <div class="hostbar" class:none={!p.hasHost}>
     {#if p.hasHost}<span class="dot {p.hostOnline ? 'on' : ''}"></span>進行役がいます{p.hostOnline ? '' : '（接続待ち）'}
@@ -36,13 +58,14 @@
   <div class="seg wide"><button class:sel={p.myTeam === 'p'} onclick={() => p.pickTeam('p')}>チームA</button><button class:sel={p.myTeam === 'e'} onclick={() => p.pickTeam('e')}>チームB</button></div>
 
   <div class="sub hint">進行役がバトルを開始すると、自動で画面が切り替わります</div>
-  <div class="two"><button class="btn ghost" onclick={() => p.rename()}>名前を変える</button><button class="btn ghost danger" onclick={() => p.leave()}>退室する</button></div>
+  <div class="two"><button class="btn ghost danger" onclick={() => p.leave()}>退室する</button></div>
 </div>
 
 <style>
   .lobby{max-width:640px;margin:0 auto}
   .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   h2{font-size:1.3rem}
+  .setbox{display:flex;flex-direction:column;gap:8px;margin:8px 0}
   .hostbar{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--s2);font-size:.9rem}
   .hostbar.none{border-color:var(--gold);background:#3a2f1a}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.chip.off{opacity:.45}

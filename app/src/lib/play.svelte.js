@@ -106,7 +106,7 @@ export class PlayStore {
     switch (m.t) {
       case 'error': return this.#onError(m);
       case 'joined': return this.#onJoined(m);
-      case 'members': this.members = m.players; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
+      case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
       case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
       case 'ended': this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
@@ -162,6 +162,15 @@ export class PlayStore {
   #sendProfile() { this.conn.send({ t: 'profile', job: this.myJob, team: this.myTeam }); }
   pickJob(j) { this.myJob = j; store.set(KEY.job, j); this.#sendProfile(); }
   pickTeam(t) { this.myTeam = t; store.set(KEY.team, t); this.#sendProfile(); }
+  /** 部屋の中で名前・ひとことを変える */
+  saveProfile(name, flavor) {
+    if (!name.trim()) return;
+    this.name = name.trim(); this.flavor = flavor.trim();
+    store.set(KEY.name, this.name); store.set(KEY.flavor, this.flavor);
+    this.conn.send({ t: 'profile', name: this.name, flavor: this.flavor });
+  }
+  /** 進行役がいないときだけ、参加者が部屋名・パスワードを変えられる */
+  saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
   /** 進行役のいない部屋で、自分が進行役になる */
   claimHost() { this.conn.send({ t: 'claim_host' }); }
   leave() { this.conn.send({ t: 'leave' }); session.remove(this.pidKey); location.href = '/'; }

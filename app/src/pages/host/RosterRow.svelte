@@ -9,7 +9,7 @@
 <div class="rrow" class:pvp>
   <div class="av">{@html icon(p.job)}</div>
   <div class="rname">
-    <input class="input" bind:value={p.name} maxlength="12" aria-label="名前">
+    <input class="input" bind:value={p.name} oninput={() => (p.touchedName = true)} maxlength="12" aria-label="名前">
     <div class="sub"><span class="dot {p.pid ? (p.online ? 'on' : '') : 'warn'}"></span>{p.pid ? (p.online ? 'オンライン' : 'オフライン') : '手動追加'}{p.rtt != null && p.online ? ` ${p.rtt}ms` : ''} ・ ATK{JOB[p.job].atk} / HP{JOB[p.job].hp}{p.flavor ? ` ・ ${p.flavor}` : ''}</div>
   </div>
   <select class="input" bind:value={p.job} onchange={() => (p.touchedJob = true)} aria-label="職業">

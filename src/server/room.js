@@ -51,7 +51,7 @@ export class Room extends DurableObject {
     }));
     const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players });
     const hasHost = !!this.R.hostKey;
-    this.toPlayers({ t: 'members', hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online }) => ({ pid, name, flavor, online })) }, except);
+    this.toPlayers({ t: 'members', roomName: this.R.name, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online }) => ({ pid, name, flavor, online })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -132,7 +132,7 @@ export class Room extends DurableObject {
     await this.save();
     await this.ctx.storage.deleteAlarm();
     ws.serializeAttachment({ role: 'host' });
-    send(ws, { t: 'created', room: this.R.id, name: this.R.name, hostKey: this.R.hostKey });
+    send(ws, { t: 'created', room: this.R.id, name: this.R.name, password: this.R.password, hostKey: this.R.hostKey });
     this.lobby();
   }
 
@@ -185,6 +185,7 @@ export class Room extends DurableObject {
         this.lobby();
         return;
       }
+      case 'settings': return this.updateSettings(m);
       case 'transfer': return this.transferHost(m.pid);
       case 'release': return this.releaseHost();
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
@@ -208,6 +209,8 @@ export class Room extends DurableObject {
         return;
       }
       case 'profile':
+        if (typeof m.name === 'string' && m.name.trim()) p.name = m.name.trim().slice(0, 12);
+        if (typeof m.flavor === 'string') p.flavor = m.flavor.trim().slice(0, 20);
         if (m.job) p.job = m.job;
         if (m.team) p.team = m.team;
         await this.save();
@@ -217,6 +220,7 @@ export class Room extends DurableObject {
         await this.save();
         ws.serializeAttachment({});
         return this.lobby(ws);
+      case 'settings': if (!this.R.hostKey) return this.updateSettings(m); return;   // 進行役がいない間は誰でも変えられる
       case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
         if (!this.round.canBuzz(pid)) return;
@@ -225,6 +229,15 @@ export class Room extends DurableObject {
         send(ws, { t: 'ack' });
         this.scheduleResolve();
     }
+  }
+
+  /** 部屋名・パスワードの変更（入室済みの人には影響しない） */
+  async updateSettings(m) {
+    if (typeof m.name === 'string' && m.name.trim()) this.R.name = m.name.trim().slice(0, 30);
+    if (typeof m.password === 'string') this.R.password = m.password.slice(0, 20);
+    await this.save();
+    this.toHost({ t: 'settings', name: this.R.name, password: this.R.password });
+    this.lobby();
   }
 
   /* ============================ 進行役の決定・交代 ============================ */

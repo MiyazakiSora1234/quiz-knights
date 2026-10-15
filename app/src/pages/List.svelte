@@ -81,6 +81,7 @@
             <div class="meta">
               <span class="chip {r.online ? 'blu' : ''}"><span class="dot {r.online ? 'on' : ''}"></span>{r.online}人</span>
               {#if r.hasPw}<span class="chip">🔒 パスワード</span>{/if}
+              {#if !r.hasHost}<span class="chip gold">👑 進行役募集中</span>{/if}
               {#if r.started}<span class="chip gold">バトル中</span>{:else}<span class="chip">待機中</span>{/if}
             </div>
           </div>
