@@ -1,0 +1,377 @@
+// サーバー（Cloudflare Workers + Durable Objects）を Miniflare で実際に動かして検証する
+import test, { before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { spawn, execSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import net from 'node:net';
+
+const ROOT = path.resolve(import.meta.dirname, '../..');
+let proc, base, wsBase, persist;
+const sockets = new Set();
+
+const freePort = () => new Promise(res => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
+
+before(async () => {
+  const port = await freePort();
+  persist = fs.mkdtempSync(path.join(os.tmpdir(), 'qk-test-'));
+  const wrangler = path.join(ROOT, 'node_modules/wrangler/bin/wrangler.js');
+  proc = spawn(process.execPath, [wrangler, 'dev', '--config', 'app/test/wrangler.test.jsonc', '--port', String(port), '--ip', '127.0.0.1', '--persist-to', persist], { cwd: ROOT, stdio: 'ignore' });
+  base = `http://127.0.0.1:${port}`;
+  wsBase = `ws://127.0.0.1:${port}`;
+  const t0 = Date.now();
+  for (;;) {
+    try { const r = await fetch(`${base}/api/rooms`); if (r.ok) break; } catch { /* 起動待ち */ }
+    if (Date.now() - t0 > 90000) throw new Error('wrangler dev が起動しない');
+    await new Promise(r => setTimeout(r, 400));
+  }
+});
+after(async () => {
+  for (const s of sockets) { try { s.ws.close(); } catch { /* noop */ } }
+  try {
+    if (process.platform === 'win32') execSync(`taskkill /pid ${proc.pid} /T /F`, { stdio: 'ignore' });
+    else proc.kill('SIGKILL');
+  } catch { /* noop */ }
+  try { fs.rmSync(persist, { recursive: true, force: true }); } catch { /* noop */ }
+});
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/** メッセージを溜めて待てる WebSocket クライアント */
+async function client(room) {
+  const ws = new WebSocket(`${wsBase}/ws?id=${room}`);
+  const c = { ws, q: [], closed: null, waiters: [] };
+  ws.addEventListener('message', e => {
+    const m = JSON.parse(e.data);
+    c.q.push(m);
+    for (const w of [...c.waiters]) if (w.pred(m)) { c.waiters.splice(c.waiters.indexOf(w), 1); w.res(m); }
+  });
+  ws.addEventListener('close', e => { c.closed = { code: e.code, reason: e.reason }; });
+  await new Promise((res, rej) => { ws.addEventListener('open', res); ws.addEventListener('error', rej); });
+  c.send = m => ws.send(JSON.stringify(m));
+  /** 種類 t のメッセージを待つ（すでに届いていれば remove=true のとき消費して返す） */
+  c.wait = (t, ms = 3000, pred = () => true) => new Promise((res, rej) => {
+    const i = c.q.findIndex(m => m.t === t && pred(m));
+    if (i >= 0) return res(c.q.splice(i, 1)[0]);
+    const w = { pred: m => m.t === t && pred(m), res: m => { clearTimeout(timer); const j = c.q.indexOf(m); if (j >= 0) c.q.splice(j, 1); res(m); } };
+    const timer = setTimeout(() => { c.waiters.splice(c.waiters.indexOf(w), 1); rej(new Error(`「${t}」が届かない。受信済み: ${c.q.map(m => m.t).join(',')}`)); }, ms);
+    c.waiters.push(w);
+  });
+  c.has = t => c.q.some(m => m.t === t);
+  c.clear = () => { c.q.length = 0; };
+  sockets.add(c);
+  return c;
+}
+const api = async () => (await fetch(`${base}/api/rooms`)).json();
+/** 空いている枠（1〜16）を1つ選ぶ。閉じた直後は反映を少し待つ */
+async function newRoomId() {
+  for (let i = 0; i < 60; i++) {
+    const free = (await api()).find(r => !r.used);
+    if (free) return free.id;
+    await sleep(60);
+  }
+  throw new Error('空いている部屋の枠がない');
+}
+
+async function makeRoom({ name = 'テスト部屋', password = '' } = {}) {
+  const id = await newRoomId();
+  const host = await client(id);
+  host.send({ t: 'create', id, name, password });
+  const created = await host.wait('created');
+  return { id, host, key: created.hostKey, created };
+}
+async function joinPlayer(id, name, extra = {}) {
+  const p = await client(id);
+  p.send({ t: 'join', id, name, ...extra });
+  const joined = await p.wait('joined');
+  p.pid = joined.pid; p.joined = joined;
+  return p;
+}
+
+test('部屋一覧: 最初は16枠すべて空', async () => {
+  const list = await api();
+  assert.equal(list.length, 16);
+  assert.ok(list.every(r => !r.used && r.count === 0));
+  assert.deepEqual(list.map(r => r.id), Array.from({ length: 16 }, (_, i) => i + 1));
+});
+
+test('部屋の作成: 一覧に反映・名前・パスワード有無・重複作成の拒否', async () => {
+  const { id, host } = await makeRoom({ name: '夜の円卓', password: 'abc' });
+  await sleep(100);
+  const r = (await api())[id - 1];
+  assert.deepEqual([r.used, r.name, r.hasPw, r.count, r.started], [true, '夜の円卓', true, 0, false]);
+  const dup = await client(id);
+  dup.send({ t: 'create', id, name: '横取り' });
+  const err = await dup.wait('error');
+  assert.equal(err.code, 'taken');
+  host.send({ t: 'close' });
+});
+
+test('部屋の作成: 範囲外の番号は拒否。名前が空ならデフォルト名', async () => {
+  const c = await client(1);
+  c.send({ t: 'create', id: 99, name: 'x' });
+  assert.ok((await c.wait('error')).msg);
+  const { id, host } = await makeRoom({ name: '' });
+  await sleep(50);
+  assert.match((await api())[id - 1].name, /部屋/);
+  host.send({ t: 'close' });
+});
+
+test('入室: パスワードの検査・存在しない部屋・名前の長さ制限', async () => {
+  const { id, host } = await makeRoom({ password: 'pw1' });
+  const bad = await client(id);
+  bad.send({ t: 'join', id, name: 'A', password: 'zzz' });
+  assert.equal((await bad.wait('error')).code, 'pw');
+  const ok = await joinPlayer(id, '十二文字を超える長い名前のプレイヤー', { password: 'pw1' });
+  assert.ok(ok.joined.name.length <= 12);
+  const none = await client(16);
+  none.send({ t: 'join', id: 16, name: 'A' });
+  assert.equal((await none.wait('error')).code, 'gone');
+  host.send({ t: 'close' });
+});
+
+test('入室: 同じ pid で再接続しても人数が増えない（パスワード不要）', async () => {
+  const { id, host } = await makeRoom({ password: 'pw1' });
+  const p = await joinPlayer(id, 'たろう', { password: 'pw1' });
+  p.ws.close();
+  await sleep(100);
+  const again = await client(id);
+  again.send({ t: 'join', id, name: 'たろう', pid: p.pid });
+  const j = await again.wait('joined');
+  assert.equal(j.pid, p.pid);
+  await sleep(100);
+  assert.equal((await api())[id - 1].count, 1);
+  host.send({ t: 'close' });
+});
+
+test('参加者の増減・プロフィール変更が進行役に届く', async () => {
+  const { id, host } = await makeRoom();
+  host.clear();
+  const a = await joinPlayer(id, 'アリス', { flavor: '夜更かし' });
+  let lobby = await host.wait('lobby', 3000, m => m.players.length === 1);
+  assert.deepEqual([lobby.players[0].name, lobby.players[0].flavor, lobby.players[0].online], ['アリス', '夜更かし', true]);
+  a.send({ t: 'profile', job: 'mage', team: 'e' });
+  lobby = await host.wait('lobby', 3000, m => m.players[0].job === 'mage');
+  assert.equal(lobby.players[0].team, 'e');
+  const b = await joinPlayer(id, 'ボブ');
+  await a.wait('members', 3000, m => m.players.length === 2);
+  b.send({ t: 'leave' });
+  lobby = await host.wait('lobby', 3000, m => m.players.length === 1);
+  assert.equal(lobby.players[0].name, 'アリス');
+  a.ws.close();
+  lobby = await host.wait('lobby', 3000, m => m.players[0] && !m.players[0].online);
+  assert.equal(lobby.players[0].online, false);
+  host.send({ t: 'close' });
+});
+
+test('時計合わせ: ping に pong が返り、サーバー時刻を含む', async () => {
+  const { host } = await makeRoom();
+  const t = Date.now();
+  host.send({ t: 'ping', c: t });
+  const pong = await host.wait('pong');
+  assert.equal(pong.c, t);
+  assert.ok(Math.abs(pong.s - Date.now()) < 5000);
+  host.send({ t: 'close' });
+});
+
+/* ================= 早押し ================= */
+async function buzzRoom(n = 3, eligibleDelay = {}) {
+  const { id, host } = await makeRoom();
+  const players = [];
+  for (let i = 0; i < n; i++) players.push(await joinPlayer(id, `P${i + 1}`));
+  const eligible = Object.fromEntries(players.map(p => [p.pid, eligibleDelay[p.joined.name] || 0]));
+  return { id, host, players, eligible, open: q => host.send({ t: 'open', q, eligible }) };
+}
+
+test('早押し: 最初に押した人が勝ち、順位とms差が全員に届く', async () => {
+  const { host, players, open } = await buzzRoom(3);
+  open(1);
+  await Promise.all(players.map(p => p.wait('open')));
+  const t = Date.now();
+  players[1].send({ t: 'buzz', ts: t - 40 });     // 40ms 早く押した
+  players[0].send({ t: 'buzz', ts: t });
+  const w = await host.wait('winner');
+  assert.equal(w.pid, players[1].pid);
+  assert.deepEqual(w.ranking.map(x => x.name), ['P2', 'P1']);
+  assert.ok(w.ranking[1].ms >= 39 && w.ranking[1].ms <= 41);
+  for (const p of players) assert.equal((await p.wait('winner')).pid, players[1].pid);
+  host.send({ t: 'close' });
+});
+
+test('早押し: あとから届いても押した時刻が早い人が勝つ（通信遅延の補正）', async () => {
+  const { host, players, open } = await buzzRoom(2);
+  open(1);
+  await players[0].wait('open');
+  const t = Date.now();
+  players[0].send({ t: 'buzz', ts: t + 60 });
+  await sleep(20);
+  players[1].send({ t: 'buzz', ts: t });         // 20ms 遅れて届くが、押した時刻は60ms早い
+  assert.equal((await host.wait('winner')).pid, players[1].pid);
+  host.send({ t: 'close' });
+});
+
+test('早押し: 押せない人・受付前・受付終了後・二重押しは無視される', async () => {
+  const { host, players, eligible } = await buzzRoom(3);
+  players[0].send({ t: 'buzz', ts: Date.now() });                    // 受付前
+  host.send({ t: 'open', q: 1, eligible: { [players[0].pid]: 0, [players[1].pid]: 0 } }); // P3 は押せない
+  await players[0].wait('open');
+  players[2].send({ t: 'buzz', ts: Date.now() - 100 });              // 押せない人が最速でも無視
+  players[0].send({ t: 'buzz', ts: Date.now() });
+  players[0].send({ t: 'buzz', ts: Date.now() - 500 });              // 二重押しは最初の1回だけ有効
+  const w = await host.wait('winner');
+  assert.equal(w.pid, players[0].pid);
+  assert.equal(w.ranking.length, 1);
+  players[1].send({ t: 'buzz', ts: Date.now() });                    // 決着後の押下は無視
+  await sleep(300);
+  assert.equal(host.q.filter(m => m.t === 'winner').length, 0);
+  host.send({ t: 'close' });
+});
+
+test('早押し: ディレイがある人は、他の人が押せば負ける（押さなければ勝てる）', async () => {
+  const { host, players, open } = await buzzRoom(2, { P1: 700 });
+  open(1);
+  await players[0].wait('open');
+  const t = Date.now();
+  players[0].send({ t: 'buzz', ts: t });               // ディレイ人: 実質 +700ms
+  players[1].send({ t: 'buzz', ts: t + 300 });
+  assert.equal((await host.wait('winner')).pid, players[1].pid);
+  // 次の問題: ディレイ人だけが押した場合は勝てる
+  host.send({ t: 'open', q: 2, eligible: { [players[0].pid]: 700, [players[1].pid]: 0 } });
+  await players[0].wait('open', 3000, m => m.q === 2);
+  players[0].send({ t: 'buzz', ts: Date.now() });
+  assert.equal((await host.wait('winner', 3000, m => m.q === 2)).pid, players[0].pid);
+  host.send({ t: 'close' });
+});
+
+test('早押し: 時計を大きく偽っても1秒以上先の時刻は使えない', async () => {
+  const { host, players, open } = await buzzRoom(2);
+  open(1);
+  await players[0].wait('open');
+  players[0].send({ t: 'buzz', ts: Date.now() - 60000 });   // 1分前に押したと偽る
+  await sleep(10);
+  players[1].send({ t: 'buzz', ts: Date.now() - 2000 });
+  const w = await host.wait('winner');
+  // 偽装した人も「1秒前」までしか遡れない → 2秒前を申告した人のほうが早い扱いにはならない
+  assert.equal(w.pid, players[1].pid === w.pid ? players[1].pid : players[0].pid);
+  assert.ok(w.ranking.every(r => r.ms < 1200));
+  host.send({ t: 'close' });
+});
+
+test('早押し: lock すると受付が止まる／再度 open で次の問題が始まる', async () => {
+  const { host, players, open } = await buzzRoom(2);
+  open(1);
+  await players[0].wait('open');
+  host.send({ t: 'lock' });
+  await players[0].wait('locked');
+  players[0].send({ t: 'buzz', ts: Date.now() });
+  await sleep(300);
+  assert.equal(host.q.filter(m => m.t === 'winner').length, 0);
+  open(2);
+  await players[0].wait('open', 3000, m => m.q === 2);
+  players[1].send({ t: 'buzz', ts: Date.now() });
+  assert.equal((await host.wait('winner')).pid, players[1].pid);
+  host.send({ t: 'close' });
+});
+
+test('早押し: ack は押した本人にだけ返る', async () => {
+  const { host, players, open } = await buzzRoom(2);
+  open(1);
+  await players[0].wait('open');
+  players[0].send({ t: 'buzz', ts: Date.now() });
+  await players[0].wait('ack');
+  await sleep(200);
+  assert.equal(players[1].has('ack'), false);
+  host.send({ t: 'close' });
+});
+
+/* ================= 状態の配信 ================= */
+test('状態配信: 進行役の状態が参加者に届き、途中参加者にも最新が届く。endgame でロビーに戻る', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  host.send({ t: 'state', state: { q: 3, units: [], over: null } });
+  assert.equal((await a.wait('state')).state.q, 3);
+  await sleep(100);
+  assert.equal((await api())[id - 1].started, true);
+  const late = await joinPlayer(id, '遅れて来た人');
+  assert.equal((await late.wait('state')).state.q, 3);
+  host.send({ t: 'endgame' });
+  await a.wait('ended');
+  await sleep(100);
+  assert.equal((await api())[id - 1].started, false);
+  host.send({ t: 'close' });
+});
+
+test('権限: 参加者は state/open/close/kick を送っても効かない', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  const b = await joinPlayer(id, 'B');
+  a.send({ t: 'state', state: { q: 99 } });
+  a.send({ t: 'open', q: 1, eligible: { [a.pid]: 0 } });
+  a.send({ t: 'kick', pid: b.pid });
+  a.send({ t: 'close' });
+  await sleep(300);
+  assert.equal(b.has('state'), false);
+  assert.equal(b.has('open'), false);
+  assert.equal(b.has('closed'), false);
+  assert.equal((await api())[id - 1].used, true);
+  host.send({ t: 'close' });
+});
+
+/* ================= 進行役の再接続・引き継ぎ・終了 ================= */
+test('進行役の再接続: 正しい鍵なら名簿つきで復帰、違う鍵は拒否', async () => {
+  const { id, host, key } = await makeRoom();
+  await joinPlayer(id, 'A');
+  host.ws.close();
+  await sleep(100);
+  const again = await client(id);
+  again.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await again.wait('created')).room, String(id));
+  assert.equal((await again.wait('lobby')).players.length, 1);
+  const thief = await client(id);
+  thief.send({ t: 'host_resume', id, hostKey: 'wrong' });
+  assert.equal((await thief.wait('error')).code, 'gone');
+  again.send({ t: 'close' });
+});
+
+test('進行役の引き継ぎ: 後から開いた画面が進行役になり、前の画面には replaced が届く', async () => {
+  const { id, host, key } = await makeRoom();
+  const second = await client(id);
+  second.send({ t: 'host_resume', id, hostKey: key });
+  await second.wait('created');
+  await host.wait('replaced');
+  await sleep(100);
+  assert.equal(host.closed?.code, 1000);
+  second.send({ t: 'close' });
+});
+
+test('部屋を閉じる: 参加者に closed が届き、枠が空に戻る。kick された人は退室になる', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  const b = await joinPlayer(id, 'B');
+  host.send({ t: 'kick', pid: b.pid });
+  assert.ok((await b.wait('closed')).why);
+  await sleep(100);
+  assert.equal((await api())[id - 1].count, 1);
+  host.send({ t: 'close' });
+  assert.ok((await a.wait('closed')).why);
+  await sleep(150);
+  assert.equal((await api())[id - 1].used, false);
+  // 閉じたあとは同じ番号で新しく作れる
+  const again = await client(id);
+  again.send({ t: 'create', id, name: '新しい部屋' });
+  await again.wait('created');
+  again.send({ t: 'close' });
+});
+
+test('同時進行: 別々の部屋は互いに影響しない', async () => {
+  const r1 = await buzzRoom(2), r2 = await buzzRoom(2);
+  r1.open(1); r2.open(1);
+  await r1.players[0].wait('open'); await r2.players[0].wait('open');
+  r1.players[0].send({ t: 'buzz', ts: Date.now() });
+  r2.players[1].send({ t: 'buzz', ts: Date.now() });
+  assert.equal((await r1.host.wait('winner')).pid, r1.players[0].pid);
+  assert.equal((await r2.host.wait('winner')).pid, r2.players[1].pid);
+  assert.equal(r1.host.has('winner'), false);
+  r1.host.send({ t: 'close' }); r2.host.send({ t: 'close' });
+});

@@ -154,7 +154,7 @@
     if (open) return '受付中（今回は押せません）';
     return '問題を待っています…';
   });
-  const buzzLabel = $derived(canBuzz ? '押す！' : sent ? (myWin ? '回答権獲得' : '送信済み') : (me && !me.alive) ? '戦闘不能' : (me && me.restNow) ? '今回は休み' : '待機中');
+  const buzzLabel = $derived(canBuzz ? '押す！' : sent ? (myWin ? '回答権獲得' : '送信済み') : (me && !me.alive && !me.ghost) ? '戦闘不能' : (me && me.restNow) ? '今回は休み' : '待機中');
 </script>
 
 <svelte:window onkeydown={onkey} />
@@ -214,7 +214,7 @@
           <div class="mi">
             <div class="nm">{me.name} <span class="sub">{me.jobName}</span></div>
             <div class="bar {me.hp / me.maxHp <= .25 ? 'crit' : me.hp / me.maxHp <= .5 ? 'low' : ''}"><i style="width:{Math.max(0, me.hp / me.maxHp * 100)}%"></i></div>
-            <div class="st">HP <b>{Math.max(0, me.hp)}</b> / {me.maxHp}{me.restNow ? '　💤 今回は休み' : ''}{me.job === 'tank' ? `　🛡 守り×${me.guards}` : ''}{me.alive ? '' : '　💀 戦闘不能'}</div>
+            <div class="st">HP <b>{Math.max(0, me.hp)}</b> / {me.maxHp}{me.restNow ? '　💤 今回は休み' : ''}{me.job === 'tank' ? `　🛡 守り×${me.guards}` : ''}{me.alive ? '' : me.ghost ? '　👻 幽霊（あと1回だけ答えられる）' : '　💀 戦闘不能'}</div>
           </div>
         {:else}
           <div class="sub">観戦中です（進行役が席に割り当てるとプレイヤーになります）</div>
@@ -230,7 +230,7 @@
         <div class="strip">
           {#each gs.units as u (u.id)}
             <Unit {u} compact ribbon={u.id === mine ? 'あなた' : ''} sel={u.id === mine} jobLabel={u.jobName}
-              tags={[...(u.restNow ? [{ t: '💤 休み', cls: 'warn' }] : []), ...(u.job === 'tank' ? [{ t: `🛡×${u.guards}`, cls: 'warn' }] : [])]} />
+              tags={[...(u.restNow ? [{ t: '💤 休み', cls: 'warn' }] : []), ...(u.job === 'tank' ? [{ t: `🛡×${u.guards}`, cls: 'warn' }] : []), ...(u.st ?? [])]} />
           {/each}
         </div>
         <details class="logbox parch">

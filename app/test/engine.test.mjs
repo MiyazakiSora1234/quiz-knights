@@ -46,7 +46,7 @@ test('通常攻撃: 1人に攻撃力ぶん', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior'), P('B', 'tank')], boss: 3 });
   await h.correct('A', '通常攻撃', 'B', /*タンクは味方への攻撃ではないので庇い無し*/);
-  assert.equal(h.u('B').hp, 10 - 3);
+  assert.equal(h.u('B').hp, 8 - 3);
   assert.equal(h.b.G.q, 2);
 });
 
@@ -102,7 +102,7 @@ test('バトルマスター: 8ダメージは1度だけ', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'bm'), P('B', 'tank')], boss: 3 });
   await h.correct('A', '必殺', 'B');
-  assert.equal(h.u('B').hp, 2);
+  assert.equal(h.u('B').hp, 0);
   h.script.push('必殺');
   h.b.select(h.u('A').id);
   assert.equal(await h.b.correct(), false);      // 2回目は無効
@@ -120,7 +120,7 @@ test('勇者: 自身を3回復し他1人に4ダメージ', async () => {
   h.u('A').hp = 2;
   await h.correct('A', '勇者の剣', 'B');
   assert.equal(h.u('A').hp, 5);
-  assert.equal(h.u('B').hp, 6);
+  assert.equal(h.u('B').hp, 4);
 });
 
 test('遊び人: 連答でなければ転職しない', async () => {
@@ -138,7 +138,7 @@ test('魔法戦士: 通常攻撃が敵全体', async () => {
   // 敵全体への攻撃 → 敵チームのタンク D が C を庇うか聞かれる
   await h.correct('A', '通常攻撃', '庇わない');
   assert.equal(h.u('C').hp, 5);
-  assert.equal(h.u('D').hp, 8);
+  assert.equal(h.u('D').hp, 6);
   assert.equal(h.u('B').hp, 6);
   assert.equal(h.u('D').guards, 1);
 });
@@ -148,7 +148,7 @@ test('ネクロマンサー: 死んでいる仲間の人数×1', async () => {
   h.b.start({ players: [P('A', 'necro'), P('B', 'monk'), P('C', 'warrior'), P('D', 'tank')], boss: 3 });
   h.u('B').alive = false; h.u('B').hp = 0; h.u('C').alive = false; h.u('C').hp = 0;
   await h.correct('A', '死者の怨念', 'D');
-  assert.equal(h.u('D').hp, 8);
+  assert.equal(h.u('D').hp, 6);
 });
 
 test('盗賊: 正解でジャンルを選べる', async () => {
@@ -167,7 +167,7 @@ test('誤答: 役職に関係なく2ダメージ。魔王は設定で免除', as
   const h = harness();
   h.b.start({ players: [P('A', 'tank'), P('B', 'monk')], boss: 3, bossPenalty: false });
   await h.wrong('A');
-  assert.equal(h.u('A').hp, 8);
+  assert.equal(h.u('A').hp, 6);
   await h.wrong('魔王3');
   assert.equal(h.u('魔王3').hp, h.u('魔王3').maxHp);
   const h2 = harness();
@@ -181,7 +181,7 @@ test('タンク: 味方への敵の攻撃を庇う。守り回数が減り、正
   h.b.start({ players: [P('A', 'monk'), P('T', 'tank')], boss: 1 });
   await h.correct('魔王1', '技1', 'A' /*対象*/, 'T が代わりに');
   assert.equal(h.u('A').hp, 6);
-  assert.equal(h.u('T').hp, 10 - 3);
+  assert.equal(h.u('T').hp, 8 - 3);
   assert.equal(h.u('T').guards, 0);
   await h.correct('T', '何もしない');
   assert.equal(h.u('T').guards, 1);

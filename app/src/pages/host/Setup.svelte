@@ -78,6 +78,13 @@
         <div class="sub" style="margin-top:8px">{pvp ? '参加者を2チームに分けて戦います。片方が全滅したら決着です。' : '全員で協力して、魔王（CPU）を倒します。'}</div>
       </div>
 
+      <details class="panel genres">
+        <summary>盗賊が選べるジャンル（{host.genreList.length}個）</summary>
+        <div class="gchips">{#each host.genreList as g}<span class="chip">{g}</span>{/each}</div>
+        <input class="input" bind:value={host.genresText} placeholder="理系、文系、青問、緑問、赤問" aria-label="ジャンル一覧">
+        <div class="sub" style="margin-top:6px">「、」や「,」、スペースで区切って自由に増減できます（最大12個）。<button class="btn sm ghost" onclick={() => host.resetGenres()}>初期値に戻す</button></div>
+      </details>
+
       {#if !pvp}
         <div class="panel" transition:slide={{ duration: 160 }}>
           <h3>魔王を選ぶ</h3>
@@ -137,6 +144,9 @@
   .bopt b{display:block}.bopt small{display:block;color:var(--mut);font-size:.78rem;line-height:1.4}
   .switch{display:flex;align-items:center;gap:10px;margin-top:6px;cursor:pointer;font-size:.9rem}
   .switch input{width:18px;height:18px;accent-color:var(--gold)}
+  .genres summary{cursor:pointer;color:var(--gold);font-family:var(--serif);font-weight:800}
+  .gchips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .genres .input{margin-top:4px}
   .startbar{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,#2d2414,#1e1914)}
   .startbar .sub{text-align:center}
 </style>

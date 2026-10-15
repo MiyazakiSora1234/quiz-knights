@@ -1,5 +1,5 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付/配信
-import { createBattle, SELECTABLE, BOSS, BERSERKER_DELAY_MS, jobName } from './engine.js';
+import { createBattle, SELECTABLE, BOSS, BERSERKER_DELAY_MS, GENRES, jobName, statusTags } from './engine.js';
 import { Conn } from './net.js';
 import { ask, toast, store, sfx } from './ui.svelte.js';
 
@@ -15,6 +15,7 @@ export class HostStore {
   mode = $state('cpu');
   boss = $state(1);
   penalty = $state(true);
+  genresText = $state(store.get('qr_genres') || GENRES.join('、'));
   G = $state(null);
   busy = $state(false);
   canUndo = $state(false);
@@ -36,6 +37,12 @@ export class HostStore {
     if (this.saved && this.saved.over) this.saved = null;
   }
 
+  /** 盗賊が選べるジャンル（区切りは、 , スペース / のどれでも可） */
+  get genreList() {
+    const l = [...new Set(this.genresText.split(/[、,，\s/]+/).map(x => x.trim()).filter(Boolean))].slice(0, 12);
+    return l.length ? l : [...GENRES];
+  }
+  resetGenres() { this.genresText = GENRES.join('、'); }
   get playersNamed() { return this.roster.filter(p => p.name.trim()); }
   get online() { return this.lobby.filter(p => p.online).length; }
   get joinUrl() { return `${location.origin}/play?id=${this.id}`; }
@@ -122,7 +129,8 @@ export class HostStore {
   /* ---------- バトル ---------- */
   start() {
     if (this.startBlock) { toast(this.startBlock); return; }
-    this.battle.start({ players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })), mode: this.mode, boss: this.boss, bossPenalty: this.penalty });
+    store.set('qr_genres', this.genresText);
+    this.battle.start({ players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })), mode: this.mode, boss: this.boss, bossPenalty: this.penalty, genres: this.genreList });
     this.saved = null; this.rank = ''; this.#openedFor = null;
   }
   resume() { if (this.saved) { this.battle.load(this.saved); this.saved = null; this.#openedFor = null; } }
@@ -160,7 +168,7 @@ export class HostStore {
       t: 'state', state: {
         mode: G.mode, q: G.q, over: G.over, pids: G.pids, sel: G.sel,
         genre: (G.genre && G.genreFor === G.q) ? `ジャンル：${G.genre}` : '',
-        units: G.units.map(u => ({ id: u.id, name: u.name, job: u.job, jobName: jobName(u), side: u.side, hp: u.hp, maxHp: u.maxHp, alive: u.alive, restNow: u.restNow, guards: u.guards, isBoss: u.isBoss, atk: u.atk })),
+        units: G.units.map(u => ({ id: u.id, name: u.name, job: u.job, jobName: jobName(u), side: u.side, hp: u.hp, maxHp: u.maxHp, alive: u.alive, ghost: !!u.ghost, restNow: u.restNow, guards: u.guards, isBoss: u.isBoss, atk: u.atk, st: statusTags(u, false, G.q) })),
         log: G.log.slice(0, 14).map(l => l.m),
         stats: G.stats || {},
       },
@@ -170,7 +178,7 @@ export class HostStore {
       const eligible = {};
       for (const [pid, uid] of Object.entries(G.pids || {})) {
         const u = G.units.find(x => x.id === uid);
-        if (u && u.alive && !u.restNow) eligible[pid] = u.job === 'berserker' ? BERSERKER_DELAY_MS : 0;
+        if (u && (u.alive || u.ghost) && !u.restNow) eligible[pid] = (u.job === 'berserker' || u.delayQ === G.q) ? BERSERKER_DELAY_MS : 0;
       }
       this.conn.send({ t: 'open', q: G.q, eligible });
     }

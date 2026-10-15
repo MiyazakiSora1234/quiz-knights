@@ -149,7 +149,11 @@ export class Room extends DurableObject {
     if (!this.R) return;
 
     if (att.role === 'host') {
-      if (m.t === 'state') { this.state = m.state; this.ctx.waitUntil(this.ctx.storage.put('state', m.state)); this.toPlayers({ t: 'state', state: m.state }); }
+      if (m.t === 'state') {
+        const first = !this.state;
+        this.state = m.state; this.ctx.waitUntil(this.ctx.storage.put('state', m.state)); this.toPlayers({ t: 'state', state: m.state });
+        if (first) this.syncLobby(); // 一覧の「バトル中」表示を更新
+      }
       else if (m.t === 'open') {
         if (this.buzz.timer) clearTimeout(this.buzz.timer);
         this.buzz = { open: true, q: m.q, eligible: m.eligible || {}, buzzes: {}, timer: null };

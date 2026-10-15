@@ -3,7 +3,7 @@
   import { flip } from 'svelte/animate';
   import Unit from '../../components/Unit.svelte';
   import { icon } from '../../lib/icons.js';
-  import { JOB, bonusOf, nm } from '../../lib/engine.js';
+  import { JOB, bonusOf, nm, statusTags } from '../../lib/engine.js';
   import { panel, sound, toggleSound, confirmAsk, modal, sfx, unlockAudio } from '../../lib/ui.svelte.js';
 
   let { host } = $props();
@@ -30,9 +30,10 @@
     if (u.converted) t.push({ t: '魔王軍に寝返り', cls: 'warn' });
     if (u.isBoss && u.bossId === 1 && bonusOf(u)) t.push({ t: '与ダメ+2', cls: 'warn' });
     if (u.isBoss && u.bossId === 4) t.push({ t: '通常/ディレイ' });
+    t.push(...statusTags(u, true, G.q));
     return t;
   }
-  const canPick = u => u.alive && !u.restNow && !G.over && !host.busy;
+  const canPick = u => (u.alive || u.ghost) && !u.restNow && !G.over && !host.busy;
 
   async function quit() {
     if (await confirmAsk('最初からやり直しますか？', '進行中のバトルは破棄されて、準備画面に戻ります。', 'やり直す')) host.quit();

@@ -4,7 +4,8 @@
 
 ## 構成
 - `app/` … フロント（Svelte 5 + Vite）
-  - `src/lib/engine.js` ゲームの全ルール（画面に依存しない。`npm test` で全職業・全魔王を自動テスト）
+  - `src/lib/engine.js` ゲームの全ルール（画面に依存しない）。`app/test/` に自動テスト一式
+    - `engine/jobs/interactions` 個別ルール、`explore` 全職業×全行動×全対象の分岐を総当たり、`fuzz` 数万手のランダム戦闘で毎手の整合性を検査、`server` 早押し・部屋・引き継ぎ
   - `src/lib/net.js` WebSocket 接続（自動再接続・サーバーとの時計ずれ補正）
   - `src/lib/host.svelte.js` 進行役の状態（部屋・名簿・早押し受付）
   - `src/pages/` 部屋一覧 `List` / 進行役 `Host`（準備・バトル）/ 参加者 `Play`
@@ -16,7 +17,7 @@
 ## 開発
 ```
 npm install
-npm test              # ゲームルールの自動テスト
+npm test              # 自動テスト（ルール・全分岐・ランダム戦闘・サーバー。約180件）
 npm run build         # app/ → dist/
 npm run worker        # http://localhost:8787 （ビルド済みの dist を配信）
 npm run dev           # Vite 開発サーバー（:5173、/api と /ws は :8787 にプロキシ）
