@@ -40,7 +40,6 @@
     ...(u.job === 'tank' ? [{ t: `🛡×${u.guards}`, cls: 'warn' }] : []),
     ...(u.st ?? []),
   ];
-  const rankText = w => w.ranking.slice(0, 4).map((x, i) => `${i + 1}. ${x.name}${i ? ` (+${Math.round(x.ms)}ms)` : ''}`).join('　');
 </script>
 
 <div class="flash {flash}"></div>
@@ -59,13 +58,6 @@
   </form>
   </div>
 
-  {#if p.bannerText}
-  <div class="banner {p.bannerKind}">
-    <b>{p.bannerText}</b>
-    {#if p.hasWinner}<div class="rank">{rankText(p.winner)}</div>{/if}
-  </div>
-  {/if}
-
   <div class="mid">
     {#if foes.length}
       <div class="grp foe">敵</div>
@@ -78,7 +70,7 @@
     <div class="grp ally">味方</div>
     <div class="strip">
       {#each allies as u (u.id)}
-        <Unit {u} compact ribbon={u.id === p.mine ? 'あなた' : ''} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} />
+        <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} />
       {/each}
     </div>
     <div class="chatbox">
@@ -118,15 +110,8 @@
   .chip.pur{margin-left:8px}
   .net{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.8rem;margin-right:48px}
 
-  .banner{text-align:center;padding:12px;border:1px solid var(--line);background:var(--s1);border-radius:12px;transition:.2s}
-  .banner b{font-size:1.15rem;display:block}
-  .banner.open{background:#4a1519;border-color:var(--red);animation:pulse 1s infinite}
-  .banner.win{background:linear-gradient(180deg,#f0c964,var(--gold-d));color:#2a1c06;border-color:#fff3c0}
-  .banner.other{background:#1f3350;border-color:var(--blu)}
-  @keyframes pulse{50%{box-shadow:0 0 20px #e5545f88}}
   .ansbox{display:flex;flex-direction:column;gap:4px}
   .ans{display:flex;gap:8px}.ans .input{flex:1;min-width:0}
-  .rank{font-size:.8rem;margin-top:4px;opacity:.9}
 
   .mid{flex:1;min-width:0}
   .grp{font-size:.8rem;font-weight:700;margin:2px 4px 0;display:flex;align-items:center;gap:6px}
@@ -152,9 +137,9 @@
 
   /* PC: 左に自分とボタン、右に全員とバトルログ */
   @media(min-width:900px){
-    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "me mid" "banner mid" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
+    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "me mid" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
     .ansbox{grid-area:ans}
-    .top{grid-area:top}.a-me{grid-area:me}.banner{grid-area:banner}.mid{grid-area:mid}
+    .top{grid-area:top}.a-me{grid-area:me}.mid{grid-area:mid}
     .buzzarea{grid-area:buzz;position:static;background:none;padding:6px 0}
     .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible;gap:16px;padding:4px 0 14px}
     .strip :global(.unit){flex:none}
