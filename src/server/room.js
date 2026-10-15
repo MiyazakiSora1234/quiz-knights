@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { SLOTS, HOST_GRACE_MS } from './config.js';
+import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS } from './config.js';
 import { BuzzRound, clampRtt } from './buzz.js';
 import { lobbyStub } from './lobby.js';
 
@@ -290,7 +290,13 @@ export class Room extends DurableObject {
   }
   /** 進行役がいない部屋で、参加者が自分から進行役になる（先着） */
   async claimHost(ws, pid) {
-    if (this.R.hostKey) return fail(ws, 'すでに進行役がいます');
+    if (this.R.hostKey) {
+      // 進行役が落ちたままなら、少し待ってから参加者が引き継げる（元の進行役の鍵は無効になる）
+      if (this.hostWs()) return fail(ws, 'すでに進行役がいます', 'claim');
+      const gone = this.R.hostGone ? Date.now() - this.R.hostGone : Infinity;
+      if (gone < HOST_TAKEOVER_MS) return fail(ws, `進行役が戻るかもしれません。あと${Math.ceil((HOST_TAKEOVER_MS - gone) / 1000)}秒ほど待ってください`, 'claim');
+      this.endBattleState();
+    }
     await this.grantHost(pid);
     this.lobby();
   }
@@ -328,6 +334,7 @@ export class Room extends DurableObject {
       this.R.hostGone = Date.now();
       await this.save();
       await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);
+      this.lobby(ws);                                  // 参加者に「進行役が不在」と知らせる
     } else if (att.role === 'player') {
       // 進行役のいない部屋で、全員がいなくなったら猶予のあとに閉じる
       if (!this.R.hostKey && !this.R.hostGone && !Object.keys(this.R.players).some(pid => this.isOnline(pid, ws))) {

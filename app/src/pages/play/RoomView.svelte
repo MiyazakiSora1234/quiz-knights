@@ -57,8 +57,8 @@
       </div>
       <form class="send" onsubmit={send}><input class="input" bind:value={msg} maxlength="200" placeholder="メッセージ…" aria-label="メッセージ"><button class="btn" type="submit">送信</button></form>
     </div>
-    {#if !p.hasHost}
-      <button class="big claim" onclick={() => p.claimHost()}><span>👑 進行役になる</span><small>進行役がまだいません</small></button>
+    {#if !p.hostOnline}
+      <button class="big claim" onclick={() => p.claimHost()}><span>👑 進行役になる</span><small>{p.hasHost ? '進行役の接続が切れています。引き継げます' : '進行役がまだいません'}</small></button>
     {:else}
       <div class="big wait"><span>待機中</span><small>進行役がバトルを開始すると、自動で画面が切り替わります</small></div>
     {/if}

@@ -531,7 +531,7 @@ test('進行役なしで部屋を作り、入室後に先着で進行役にな�
   const g = await a.wait('host_granted');
   assert.ok(g.hostKey);
   b.send({ t: 'claim_host' });                       // 2人目は断られる
-  assert.match((await b.wait('error')).msg, /すでに/);
+  assert.match((await b.wait('error')).msg, /すでに|待って/);
   const host = await client(id);
   host.send({ t: 'host_resume', id, hostKey: g.hostKey });
   await host.wait('created');
@@ -618,4 +618,27 @@ test('チャット回答: 進行役にも他の参加者にも届く。問題番
   const seen = await b.wait('chat', 3000, x => x.answer);
   assert.deepEqual([seen.name, seen.text, seen.q], ['A', '東京', 4]);
   host.send({ t: 'close' });
+});
+
+test('進行役が落ちたら、少し待ってから参加者が引き継げる。元の鍵は無効になる', async () => {
+  const { id, host, key } = await makeRoom();
+  const p = await joinPlayer(id, 'P');
+  await p.wait('members', 3000, x => x.hostOnline);
+  p.send({ t: 'claim_host' });
+  assert.equal((await p.wait('error')).code, 'claim');       // 進行役がいる間は不可
+  host.ws.close();                                           // 進行役が落ちる
+  await p.wait('members', 3000, x => x.hasHost && !x.hostOnline);
+  p.send({ t: 'claim_host' });
+  assert.match((await p.wait('error', 3000, x => x.code === 'claim')).msg, /待って/);   // 直後は待つ
+  await sleep(15500);
+  p.send({ t: 'claim_host' });
+  const g = await p.wait('host_granted');
+  assert.notEqual(g.hostKey, key);
+  const old = await client(id);
+  old.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await old.wait('error')).code, 'gone');
+  const nh = await client(id);
+  nh.send({ t: 'host_resume', id, hostKey: g.hostKey });
+  await nh.wait('created');
+  nh.send({ t: 'close' });
 });

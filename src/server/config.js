@@ -10,3 +10,5 @@ export const TOLERANCE_MARGIN_MS = 25;    // 測定誤差の余裕
 export const DEFAULT_RTT_MS = 120;        // 遅延が未報告の参加者の仮定値
 export const TS_MAX_PAST_MS = 2000;       // 押下時刻の申告は、到着の2秒前までしか遡れない（偽装対策）
 export const RTT_MAX_MS = 3000;
+/** 進行役の接続が切れてから、参加者が進行役を引き継げるようになるまでの時間（再読み込みで戻る人を待つ） */
+export const HOST_TAKEOVER_MS = 15 * 1000;

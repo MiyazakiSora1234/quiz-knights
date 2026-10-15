@@ -50,6 +50,7 @@
         <button class="mi" onclick={() => { panel.log = true; menu = false; }}>📜 バトルログ</button>
         <button class="mi" onclick={() => { panel.rules = true; menu = false; }}>📖 職業・ルール一覧</button>
         <button class="mi" onclick={() => { copyUrl(); menu = false; }}>🔗 参加用URLをコピー</button>
+        {#if !p.hostOnline}<button class="mi" onclick={() => { p.claimHost(); menu = false; }}>👑 進行役になる（進行役が不在）</button>{/if}
         <button class="mi" onclick={toggleSound}>{sound.on ? '🔊 効果音：オン' : '🔇 効果音：オフ'}</button>
         <div class="hr"></div>
         <button class="mi danger" onclick={leave}>⎋ 退室する</button>

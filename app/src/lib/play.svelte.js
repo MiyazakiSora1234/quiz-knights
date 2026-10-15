@@ -135,6 +135,7 @@ export class PlayStore {
     }
   }
   #onError(m) {
+    if (m.code === 'claim') { toast(m.msg, 3500); return; }   // 進行役の引き継ぎができなかっただけ（入室は続ける）
     session.remove(this.pidKey);
     if (m.code === 'gone') { toast(m.msg); goList(); return; }
     this.pid = null; this.conn.close();
