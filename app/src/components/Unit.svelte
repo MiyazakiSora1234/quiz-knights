@@ -52,6 +52,7 @@
 </button>
 
 <style>
+  .unit{height:auto}
   .me:not(.answering){--team:#7fd6e8;filter:drop-shadow(0 0 10px #7fd6e888)}
   .me:not(.answering) .ribbon{background:#7fd6e8;color:#06232b}
   .answering{z-index:6;transform:scale(1.07);border-color:var(--gold);animation:ans 1.1s ease-in-out infinite;filter:brightness(1.12)}
@@ -60,7 +61,7 @@
   .dim{opacity:.55;filter:saturate(.7)}
   .acting{animation:act 0.9s ease-in-out infinite;z-index:5}
   @keyframes act{0%,100%{box-shadow:0 0 0 0 #ff4d5e00;transform:scale(1)}50%{box-shadow:0 0 34px 8px #ff4d5eaa;transform:scale(1.06)}}
-  .bubble{margin-top:8px;max-width:100%;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.85rem;line-height:1.3;padding:4px 9px;border-radius:10px;text-align:center;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;box-shadow:0 3px 10px #0008}
+  .bubble{margin-top:8px;max-width:100%;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.85rem;line-height:1.35;padding:4px 9px;border-radius:10px;text-align:center;overflow-wrap:anywhere;word-break:break-word;box-shadow:0 3px 10px #0008}
   .seat{position:absolute;top:3px;left:8px;z-index:3;font-size:.7rem;color:var(--mut);font-family:var(--display);font-weight:800;line-height:1.3}
   button:disabled{cursor:default;opacity:1}
   .compact .u-in{padding:24px 8px 20px}

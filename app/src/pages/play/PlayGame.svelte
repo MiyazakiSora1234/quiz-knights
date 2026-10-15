@@ -141,7 +141,7 @@
   .grp{font-size:.8rem;font-weight:700;margin:2px 4px 0;display:flex;align-items:center;gap:6px}
   .grp::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
   .grp.foe,.grp.tb{color:#ff9aa2}.grp.ally,.grp.ta{color:#9cc8ee}.grp.tc{color:#8fe0a6}
-  .strip{display:flex;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
+  .strip{display:flex;align-items:stretch;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
   .strip :global(.unit){flex:0 0 138px;scroll-snap-align:start}
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
   .chat-t{position:relative;flex:none}
