@@ -25,9 +25,10 @@ test('syncRoster: 追加・更新・退室、手動変更は上書きしない',
 
 test('startBlock', () => {
   assert.ok(startBlock([], 'cpu'));
-  assert.equal(startBlock([{ name: 'A', team: 'p' }], 'cpu'), '');
-  assert.ok(startBlock([{ name: 'A', team: 'p' }], 'pvp'));
-  assert.equal(startBlock([{ name: 'A', team: 'p' }, { name: 'B', team: 'e' }], 'pvp'), '');
+  assert.equal(startBlock([{ name: 'A', team: 'p', online: true }], 'cpu'), '');
+  assert.ok(startBlock([{ name: 'A', team: 'p', online: false }], 'cpu'), '切断中だけでは開始できない');
+  assert.ok(startBlock([{ name: 'A', team: 'p', online: true }], 'pvp'));
+  assert.equal(startBlock([{ name: 'A', team: 'p', online: true }, { name: 'B', team: 'e', online: true }], 'pvp'), '');
 });
 
 function battle(players) {

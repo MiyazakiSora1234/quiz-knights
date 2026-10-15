@@ -29,8 +29,8 @@ export function syncRoster(roster, lobby, nextKey) {
 
 /** 開始できない理由（開始できるなら空文字） */
 export function startBlock(roster, mode) {
-  const named = roster.filter(p => p.name.trim());
-  if (!named.length) return '参加者が入室すると開始できます';
+  const named = roster.filter(p => p.name.trim() && p.online);      // 切断中の人は数えない（戻ってきたら途中参戦できる）
+  if (!named.length) return 'オンラインの参加者が入室すると開始できます';
   if (mode === 'pvp' && (!named.some(p => p.team === 'p') || !named.some(p => p.team === 'e'))) return '両チームに1人以上が必要です';
   return '';
 }

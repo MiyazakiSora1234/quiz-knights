@@ -41,11 +41,11 @@
     <div class="jb">{label}{u.isBoss || u.atk == null ? '' : ` ／ ATK ${u.atk}`}</div>
     <div class="bar {level}" style="margin-top:8px"><i style="width:{pct}%"></i></div>
     <div class="hp">HP <b>{Math.max(0, u.hp)}</b> / {u.maxHp}{u.alive ? '' : ' 💀'}</div>
+    {#if bubble}<div class="bubble" title={bubble}>{bubble}</div>{/if}
     {#if tags.length}
       <div class="tags">{#each tags as t}<span class="tag {t.cls ?? ''}">{t.t}</span>{/each}</div>
     {/if}
   </div>
-  {#if bubble}<div class="bubble" title={bubble}>{bubble}</div>{/if}
   {#each floats as f (f.id)}
     <div class="float {f.d < 0 ? 'd' : 'h'}">{f.d > 0 ? '+' : ''}{f.d}</div>
   {/each}
@@ -58,8 +58,7 @@
   .dim{opacity:.55;filter:saturate(.7)}
   .acting{animation:act 0.9s ease-in-out infinite;z-index:5}
   @keyframes act{0%,100%{box-shadow:0 0 0 0 #ff4d5e00;transform:scale(1)}50%{box-shadow:0 0 34px 8px #ff4d5eaa;transform:scale(1.06)}}
-  .bubble{position:absolute;left:6px;right:6px;top:-12px;z-index:6;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.82rem;line-height:1.25;padding:3px 8px;border-radius:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 4px 12px #000a;pointer-events:none}
-  .bubble::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-top-color:var(--gold);border-bottom:0}
+  .bubble{margin-top:8px;max-width:100%;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.85rem;line-height:1.3;padding:4px 9px;border-radius:10px;text-align:center;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;box-shadow:0 3px 10px #0008}
   .seat{position:absolute;top:3px;left:8px;z-index:3;font-size:.7rem;color:var(--mut);font-family:var(--display);font-weight:800;line-height:1.3}
   button:disabled{cursor:default;opacity:1}
   .compact .u-in{padding:24px 8px 20px}

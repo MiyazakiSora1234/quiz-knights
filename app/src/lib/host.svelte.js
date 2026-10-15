@@ -48,7 +48,8 @@ export class HostStore {
   }
 
   /* ---------- 画面が使う導出値 ---------- */
-  get playersNamed() { return this.roster.filter(p => p.name.trim()); }
+  /** バトルに参加する人: 名前があり、いまオンラインの人（切断中の人は、戻ってきたら途中参戦する） */
+  get playersNamed() { return this.roster.filter(p => p.name.trim() && p.online); }
   get online() { return this.lobby.filter(p => p.online).length; }
   get joinUrl() { return `${location.origin}/play?id=${this.id}`; }
   get startBlock() { return startBlock(this.roster, this.mode); }

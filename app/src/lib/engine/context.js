@@ -82,12 +82,18 @@ export function createContext({ ui, getG, emit }) {
 
   /* ---------- 対象・ジャンルの選択 ---------- */
   /** 選択ダイアログ用の選択肢（ユニットのアイコン付き） */
+  // 敵かどうかは、選ぶ本人から見て決める（本人がいなければ、魔王・CPU・チームB側を敵とする）
+  const isFoe = u => {
+    const G = getG();
+    const me = auto || (actor != null ? G.units.find(x => x.id === actor) : null);
+    return me ? u.side !== me.side : u.side === 'e';
+  };
   const unitOption = (u, extra = {}) => ({
     label: u.name,
-    sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}${u.alive ? '' : '（死亡）'}${u.side === 'e' ? '　【魔王側】' : ''}`,
+    sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}${u.alive ? '' : '（死亡）'}${isFoe(u) ? '　【敵】' : ''}`,
     value: u.id,
-    cls: u.side === 'e' ? 'foe' : '',
-    unit: { job: iconKey(u), side: u.side, alive: u.alive },
+    cls: isFoe(u) ? 'foe' : '',
+    unit: { job: iconKey(u), side: isFoe(u) ? 'e' : 'p', alive: u.alive },
     ...extra,
   });
   /** 条件 f に合うユニットから1人選ばせる。候補がいなければ null */
