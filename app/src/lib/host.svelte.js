@@ -22,6 +22,9 @@ export class HostStore {
   foes = $state(['warrior', 'monk', 'mage']);   // CPUチーム戦の相手の職業
   boss = $state(1);
   penalty = $state(true);
+  buzzRule = $state('next');         // next=誤答したら次の問題 / retry=誤答した人を除いて同じ問題を再受付
+  chat = $state([]);                 // チャット（参加者のチャット回答を含む）
+  editing = $state(null);            // 調整中のユニットid
   G = $state(null);                  // バトルの状態（engine から届く写し）
   busy = $state(false);
   canUndo = $state(false);
@@ -79,6 +82,7 @@ export class HostStore {
         toast('進行役をおりました。参加者として入室します'); setTimeout(() => { location.href = `/play?id=${this.id}`; }, 700);
         return;
       case 'answer': return this.#onAnswer(m);
+      case 'chat': this.chat = [...this.chat, m].slice(-200); if (m.answer) sfx.open(); return;
       case 'settings': this.roomName = m.name; this.password = m.password; toast('部屋の設定を変更しました'); return;
       case 'notice': toast(m.msg, 3000); return;
       case 'replaced':
@@ -164,7 +168,7 @@ export class HostStore {
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
       mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: this.penalty,
     });
-    this.saved = null; this.rank = ''; this.#openedFor = null;
+    this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];
   }
   resume() { if (this.saved) { this.battle.load(this.saved); this.saved = null; this.#openedFor = null; } }
   discardSaved() { this.saved = null; store.remove(KEY.save(this.id)); }
@@ -180,7 +184,20 @@ export class HostStore {
   }
   deselect() { this.battle.select(null); this.reopen(); }
   correct() { return this.battle.correct(); }
-  wrong() { return this.battle.wrong(); }
+  /** 誤答。retry のルールなら同じ問題を再受付し、押せる人がいなければスルーで終える */
+  async wrong() {
+    const retry = this.buzzRule === 'retry';
+    const ok = await this.battle.wrong({ retry });
+    const G = this.battle.G;
+    if (ok && retry && G && !G.over && G.sel == null) {
+      if (!Object.keys(eligibleDelays(G)).length) { toast('押せる人がいないため、この問題を終えます'); await this.battle.skip(); }
+      else this.reopen();
+    }
+    return ok;
+  }
+  /** 戦闘中のユニット調整（職業・体力など） */
+  editUnit(id, patch) { const ok = this.battle.edit(id, patch); if (ok) this.#openedFor = null; return ok; }
+  sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   skip() { return this.battle.skip(); }
   undo() { return this.battle.undo(); }
   reopen() { this.#openedFor = null; this.rank = ''; this.#publish(true); }

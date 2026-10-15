@@ -4,6 +4,9 @@
   import ControlPanel from './ControlPanel.svelte';
   import Chronicle from './Chronicle.svelte';
   import GameOver from './GameOver.svelte';
+  import UnitEditor from './UnitEditor.svelte';
+  import ChatPanel from './ChatPanel.svelte';
+  import { fade, fly } from 'svelte/transition';
   import { panel, modal } from '../../lib/ui.svelte.js';
   import { sfx, unlockAudio } from '../../lib/sound.svelte.js';
 
@@ -11,10 +14,12 @@
   let { host } = $props();
   const G = $derived(host.G);
   let header;
+  let chatOpen = $state(false);
+  const answerCount = $derived(host.chat.filter(c => c.answer && c.q === G.q).length);
 
   /** キーボード操作: O=正解 X=誤答 S=スルー R=選び直し/受付やり直し Ctrl+Z=戻す */
   function onkey(e) {
-    if (modal.req || panel.rules) return;
+    if (modal.req || panel.rules || host.editing != null) return;
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || e.metaKey || e.altKey) return;
     if (G.over) return;
     const k = e.key.toLowerCase();
@@ -38,7 +43,7 @@
 
 <svelte:window onkeydown={onkey} onpointerdown={unlockAudio} />
 
-<GameHeader bind:this={header} {host} {G} />
+<GameHeader bind:this={header} {host} {G} bind:chatOpen {answerCount} />
 
 <div class="layout">
   <Stage {host} {G} />
@@ -49,8 +54,20 @@
 </div>
 
 {#if G.over}<GameOver {host} {G} />{/if}
+<UnitEditor {host} {G} />
+{#if chatOpen}
+  <div class="sheet" role="presentation" onclick={(e) => e.target === e.currentTarget && (chatOpen = false)} transition:fade={{ duration: 120 }}>
+    <div class="sheet-in" in:fly={{ y: 16, duration: 180 }}>
+      <button class="btn ghost sm close" onclick={() => (chatOpen = false)}>閉じる ✕</button>
+      <ChatPanel {host} {G} />
+    </div>
+  </div>
+{/if}
 
 <style>
+  .sheet{position:fixed;inset:0;background:#0009;z-index:60;display:flex;justify-content:flex-end;align-items:flex-start;padding:64px 14px 14px}
+  .sheet-in{width:min(100%,420px);max-height:calc(100dvh - 80px);overflow:auto;display:flex;flex-direction:column;gap:6px}
+  .sheet-in .close{align-self:flex-end}
   .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;max-width:1320px;margin:0 auto;padding:18px}
   .side{position:sticky;top:76px;align-self:start;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 92px)}
   @media(max-width:900px){

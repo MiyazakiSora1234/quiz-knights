@@ -3,7 +3,7 @@
   import { panel, confirmAsk } from '../../lib/ui.svelte.js';
   import { sound, toggleSound } from '../../lib/sound.svelte.js';
 
-  let { host, G } = $props();
+  let { host, G, chatOpen = $bindable(false), answerCount = 0 } = $props();
   let menu = $state(false);
   const showGenre = $derived(G.genre && G.genreFor === G.q);
 
@@ -27,6 +27,7 @@
   </div>
   <div class="gc"><span class="qno">第{G.q}問</span>{#if showGenre}<span class="chip pur" transition:fade>ジャンル：{G.genre}</span>{/if}</div>
   <div class="gr">
+    <button class="btn sm" onclick={() => (chatOpen = !chatOpen)}>💬 チャット{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
     <button class="btn sm" disabled={!host.canUndo || host.busy} onclick={() => host.undo()}>↩ 1つ戻す<kbd>Ctrl+Z</kbd></button>
     <div class="menuwrap">
       <button class="btn sm" onclick={() => (menu = !menu)} aria-haspopup="true" aria-expanded={menu}>メニュー ▾</button>
@@ -34,6 +35,7 @@
         <div class="menu" transition:fly={{ y: -6, duration: 120 }}>
           <button class="mi" onclick={() => { panel.rules = true; menu = false; }}>📖 職業・ルール一覧</button>
           <button class="mi" onclick={() => { host.copyUrl(); menu = false; }}>🔗 参加用URLをコピー</button>
+          <button class="mi" onclick={() => { host.buzzRule = host.buzzRule === 'retry' ? 'next' : 'retry'; }}>{host.buzzRule === 'retry' ? '🔁 誤答：誤答者を除いて再受付' : '⏭ 誤答：次の問題へ'}</button>
           <button class="mi" onclick={toggleSound}>{sound.on ? '🔊 効果音：オン' : '🔇 効果音：オフ'}</button>
           <button class="mi" onclick={() => { menu = false; host.release(); }}>👑 進行役をやめる</button>
           <div class="hr"></div>

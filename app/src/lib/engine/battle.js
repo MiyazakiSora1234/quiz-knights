@@ -56,6 +56,7 @@ export function createBattle(ui) {
     await tickPoison();
     for (const u of G.units) { u.restNow = u.restNext; u.restNext = false; }
     G.prevCorrect = correct ? correct.id : null;
+    G.wrongOn = [];
     if (!correct) G.streak = 0;
     G.q++; G.sel = null;
     log(`── 第${G.q}問 ──`, 'sys');
@@ -151,11 +152,19 @@ export function createBattle(ui) {
     await applyEvents([{ src: null, to: a, amt: 2 }]);
   }
 
-  const doWrong = a => asActor(a, () => doWrongBody(a));
-  async function doWrongBody(a) {
+  /** retry=true: 問題は終わらせず、誤答した人を除いて同じ問題をもう一度受け付ける */
+  const doWrong = (a, retry = false) => asActor(a, () => doWrongBody(a, retry));
+  async function doWrongBody(a, retry) {
     stat(a, 'wrong');
     log(`❌ ${nm(a)} 誤答`, 'sys');
     await wrongPenalty(a);
+    if (retry) {
+      (G.wrongOn ??= []).push(a.id);
+      G.sel = null;
+      checkEnd();
+      if (!G.over) log(`同じ問題を再受付（${G.wrongOn.length}人が誤答済み）`, 'sys');
+      return;
+    }
     await endQuestion(null);
   }
 
@@ -261,7 +270,34 @@ export function createBattle(ui) {
       return true;
     },
     correct() { const a = G && G.units.find(x => x.id === G.sel); return a ? transact(() => doCorrect(a)) : false; },
-    wrong() { const a = G && G.units.find(x => x.id === G.sel); return a ? transact(() => doWrong(a)) : false; },
+    /** retry: 誤答のあとも同じ問題を続ける（誤答した人は、この問題ではもう答えられない） */
+    wrong({ retry = false } = {}) { const a = G && G.units.find(x => x.id === G.sel); return a ? transact(() => doWrong(a, retry)) : false; },
+    /** 進行中のユニットの調整（職業・体力・攻撃・生死・休み）。戻す操作で元に戻せる */
+    edit(id, patch) {
+      if (!G || busy) return false;
+      const u = G.units.find(x => x.id === id); if (!u) return false;
+      undoStack.push(JSON.stringify(G)); if (undoStack.length > 40) undoStack.shift();
+      if (typeof patch.name === 'string' && patch.name.trim()) u.name = patch.name.trim().slice(0, 12);
+      if (!u.isBoss && patch.job && patch.job !== u.job && JOB[patch.job]) {          // 職業を変えると、その職業の基本の数値になる
+        const j = JOB[patch.job];
+        Object.assign(u, { job: patch.job, atk: j.atk, maxHp: j.hp, hp: Math.min(u.hp, j.hp) || j.hp, guards: patch.job === 'tank' ? Math.max(1, u.guards) : 0 });
+        u.ghost = false; u.converted = false;
+      }
+      const num = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+v)));
+      if (patch.maxHp != null && Number.isFinite(+patch.maxHp)) u.maxHp = num(patch.maxHp, 1, 99);
+      if (patch.atk != null && Number.isFinite(+patch.atk) && !u.isBoss) u.atk = num(patch.atk, 0, 99);
+      if (patch.hp != null && Number.isFinite(+patch.hp)) u.hp = num(patch.hp, 0, 999);
+      u.hp = Math.min(u.hp, u.maxHp);
+      if (patch.alive === true && u.hp <= 0) u.hp = 1;
+      if (patch.alive === false || u.hp <= 0) { u.alive = false; u.hp = 0; if (G.sel === u.id) G.sel = null; }
+      else if (patch.alive === true || !u.alive) { u.alive = true; u.ghost = false; u.hp = Math.max(1, u.hp); }
+      if (typeof patch.rest === 'boolean') u.restNow = patch.rest;
+      G.over = null; checkEnd();
+      log(`✎ ${u.name} を調整（${JOB[u.job]?.n ?? '魔王'} ATK${u.atk} HP ${u.hp}/${u.maxHp}${u.alive ? '' : '・戦闘不能'}）`, 'sys');
+      ui.persist && ui.persist(G);
+      emit();
+      return true;
+    },
     skip() { return transact(doThrow); },
     undo() {
       if (busy || !undoStack.length) return false;

@@ -11,7 +11,10 @@
 </script>
 
 {#snippet card(u, seat)}
+  <div class="cw">
   <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsFor(u, G)} {seat} />
+  <button class="edit" onclick={() => (host.editing = u.id)} disabled={host.busy} title="職業・HPなどを調整" aria-label="{u.name}を調整">✎</button>
+  </div>
 {/snippet}
 
 <main>
@@ -26,6 +29,9 @@
 </main>
 
 <style>
+  .cw{position:relative;display:flex;width:100%}.cw :global(.unit){width:100%}
+  .edit{position:absolute;top:6px;right:6px;z-index:3;width:28px;height:28px;border-radius:50%;border:1px solid var(--line2);background:#000a;color:var(--tx);cursor:pointer;font-size:.85rem;padding:0;opacity:.7}
+  .edit:hover:not(:disabled){opacity:1;border-color:var(--gold);color:var(--gold)}
   .team-label{display:flex;align-items:center;gap:8px;font-weight:700;margin:4px 0 12px}
   .team-label::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
   .team-label.foe{color:#ff9aa2}.team-label.ally{color:#9cc8ee}

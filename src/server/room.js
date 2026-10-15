@@ -135,7 +135,14 @@ export class Room extends DurableObject {
     if (!this.R || !text) return;
     const att = this.roleOf(ws);
     if (att.role === 'host') return this.say({ name: '進行役', text, host: true });
-    if (att.role === 'player' && this.R.players[att.pid]) this.say({ name: this.R.players[att.pid].name, text, pid: att.pid });
+    if (att.role !== 'player' || !this.R.players[att.pid]) return;
+    const name = this.R.players[att.pid].name;
+    if (m.answer) {                                         // チャット回答: 進行役にだけ届く（ほかの参加者に答えが漏れない）
+      const e = { t: 'chat', ts: Date.now(), name, text, pid: att.pid, answer: true, q: this.round.q };
+      this.toHost(e); send(ws, { t: 'answer_ack', q: e.q, text });
+      return;
+    }
+    this.say({ name, text, pid: att.pid });
   }
 
   async onHostResume(ws, m) {

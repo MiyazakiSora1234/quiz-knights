@@ -24,7 +24,7 @@ export function eligibleDelays(G) {
   const out = {};
   for (const [pid, uid] of Object.entries(G.pids || {})) {
     const u = G.units.find(x => x.id === uid);
-    if (u && (u.alive || u.ghost) && !u.restNow) out[pid] = (u.job === 'berserker' || u.delayQ === G.q) ? BERSERKER_DELAY_MS : 0;
+    if (u && (u.alive || u.ghost) && !u.restNow && !(G.wrongOn || []).includes(uid)) out[pid] = (u.job === 'berserker' || u.delayQ === G.q) ? BERSERKER_DELAY_MS : 0;
   }
   return out;
 }

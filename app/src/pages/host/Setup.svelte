@@ -54,6 +54,11 @@
         <div class="seg"><button class:sel={host.mode === 'cpu'} onclick={() => (host.mode = 'cpu')}>魔王戦</button><button class:sel={host.mode === 'squad'} onclick={() => (host.mode = 'squad')}>CPUチーム戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
         <div class="sub desc">{pvp ? '参加者を2チームに分けて戦います。片方が全滅したら決着です。' : host.mode === 'squad' ? '全員で協力して、CPUの職業チーム（戦士・僧侶など）と戦います。CPUの行動は進行役が操作します。' : '全員で協力して、魔王（CPU）を倒します。'}</div>
       </div>
+      <div class="panel">
+        <h3>早押しのルール</h3>
+        <div class="seg"><button class:sel={host.buzzRule === 'next'} onclick={() => (host.buzzRule = 'next')}>誤答で次の問題へ</button><button class:sel={host.buzzRule === 'retry'} onclick={() => (host.buzzRule = 'retry')}>誤答者を除いて再受付</button></div>
+        <div class="sub desc">{host.buzzRule === 'retry' ? '誰かが誤答しても問題は終わらず、その人を除いてもう一度早押しを受け付けます（全員が誤答すると終了）。' : '誰かが誤答したら、その問題は終わりです。'}</div>
+      </div>
       {#if host.mode === 'cpu'}<BossPicker {host} />{:else if host.mode === 'squad'}<FoePicker {host} />{/if}
 
       <div class="start">

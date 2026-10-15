@@ -7,6 +7,7 @@
 
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
+  let text = $state('');
 
   /** 自分のHPが変わったら、画面を一瞬赤（ダメージ）か緑（回復）に光らせる */
   let flash = $state('');
@@ -41,10 +42,19 @@
 
   <div class="a-me"><MePanel me={p.me} /></div>
 
+  <div class="ansbox">
+  <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
+    <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答（進行役にだけ届きます）" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
+  </form>
+  {#if p.answered && p.answered.q === gs.q}<div class="sent">送信した回答：<b>{p.answered.text}</b></div>{/if}
+  </div>
+
+  {#if p.bannerText}
   <div class="banner {p.bannerKind}">
     <b>{p.bannerText}</b>
     {#if p.hasWinner}<div class="rank">{rankText(p.winner)}</div>{/if}
   </div>
+  {/if}
 
   <div class="mid">
     <div class="strip">
@@ -91,6 +101,9 @@
   .banner.win{background:linear-gradient(180deg,#f0c964,var(--gold-d));color:#2a1c06;border-color:#fff3c0}
   .banner.other{background:#1f3350;border-color:var(--blu)}
   @keyframes pulse{50%{box-shadow:0 0 20px #e5545f88}}
+  .ansbox{display:flex;flex-direction:column;gap:4px}
+  .ans{display:flex;gap:8px}.ans .input{flex:1;min-width:0}
+  .sent{font-size:.8rem;color:var(--mut)}.sent b{color:var(--gold)}
   .rank{font-size:.8rem;margin-top:4px;opacity:.9}
 
   .mid{flex:1;min-width:0}
@@ -108,7 +121,8 @@
 
   /* PC: 左に自分とボタン、右に全員と年代記 */
   @media(min-width:900px){
-    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "me mid" "banner mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
+    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "me mid" "banner mid" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
+    .ansbox{grid-area:ans}
     .top{grid-area:top}.a-me{grid-area:me}.banner{grid-area:banner}.mid{grid-area:mid}
     .buzzarea{grid-area:buzz;position:static;background:none;padding:6px 0}
     .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible;gap:16px;padding:4px 0 14px}

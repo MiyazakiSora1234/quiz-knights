@@ -116,3 +116,45 @@ test('選択ダイアログには「誰が選ぶか」が付く（行動・対�
   const tank = b.G.units.find(u => u.name === 'T');
   for (const s of seen.filter(s => s.title.startsWith('🛡'))) assert.equal(s.actor, tank.id);
 });
+
+test('誤答の再受付: 誤答者は除かれ、問題は進まない。全員が誤答すると押せる人がいなくなる', async () => {
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'warrior', pid: 'b' }], mode: 'cpu', boss: 1, bossPenalty: true });
+  const a = b.G.units.find(u => u.name === 'A');
+  b.select(a.id);
+  await b.wrong({ retry: true });
+  assert.equal(b.G.q, 1);
+  assert.equal(b.G.sel, null);
+  assert.deepEqual(eligibleDelays(b.G), { b: 0 });
+  const bb = b.G.units.find(u => u.name === 'B');
+  b.select(bb.id);
+  await b.wrong({ retry: true });
+  assert.deepEqual(eligibleDelays(b.G), {});
+  await b.skip();
+  assert.equal(b.G.q, 2);
+  assert.deepEqual(eligibleDelays(b.G), { a: 0, b: 0 });   // 次の問題では全員また押せる
+});
+
+test('ユニット調整: 職業変更で基本の数値に、HP0で戦闘不能、復活、戻す操作で元に戻る', async () => {
+  const b = createBattle({ ask: async () => 0, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }], mode: 'cpu', boss: 1 });
+  const a = b.G.units.find(u => u.name === 'A');
+  assert.equal(b.edit(a.id, { job: 'tank' }), true);
+  assert.deepEqual([a.job, b.G.units[0].maxHp, b.G.units[0].atk], ['tank', 8, 1]);
+  b.edit(a.id, { hp: 3, maxHp: 10 });
+  assert.deepEqual([b.G.units[0].hp, b.G.units[0].maxHp], [3, 10]);
+  b.edit(a.id, { hp: 0 });
+  assert.equal(b.G.units[0].alive, false);
+  assert.equal(b.G.over, 'lose');
+  b.edit(a.id, { alive: true });
+  assert.equal(b.G.over, null);
+  assert.ok(b.G.units[0].hp >= 1);
+  b.edit(a.id, { hp: 999, maxHp: 4 });
+  assert.equal(b.G.units[0].hp, 4);
+  assert.equal(b.undo(), true);
+  assert.equal(b.G.units[0].maxHp, 10);
+  const boss = b.G.units.find(u => u.isBoss);
+  b.edit(boss.id, { job: 'warrior', hp: 2 });                       // 魔王の職業は変えられない
+  assert.equal(b.G.units.find(u => u.isBoss).job, 'boss');
+  assert.equal(b.G.units.find(u => u.isBoss).hp, 2);
+});
