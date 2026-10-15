@@ -6,6 +6,7 @@
   import UnitEditor from './UnitEditor.svelte';
   import ChatPanel from './ChatPanel.svelte';
   import LogSheet from '../../components/LogSheet.svelte';
+  import Notice from '../../components/Notice.svelte';
   import { fade, fly } from 'svelte/transition';
   import { panel, modal } from '../../lib/ui.svelte.js';
   import { sfx, unlockAudio } from '../../lib/sound.svelte.js';
@@ -55,6 +56,7 @@
 
 {#if G.over}<GameOver {host} {G} />{/if}
 <UnitEditor {host} {G} />
+<Notice notice={G.notice} />
 <LogSheet lines={G.log} />
 {#if host.waiting}
   <div class="wait" transition:fly={{ y: -10, duration: 150 }}><span class="spin"></span><span>{host.waiting.name} が選択中…</span><button class="btn ghost sm" onclick={() => host.abortWaiting()}>取り消す</button></div>

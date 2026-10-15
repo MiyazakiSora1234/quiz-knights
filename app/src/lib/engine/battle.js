@@ -58,11 +58,21 @@ export function createBattle(ui) {
       if (G.over) return;
       const cur = G.units.find(x => x.id === u.id);
       if (!cur || !cur.alive) continue;                       // 先に動いたCPUの行動で倒された
+      // ワンテンポ置いて「いま誰が動くか」を見せ、動いたあとは何をしたかを知らせる
       log(`🤖 ${nm(cur)} の行動`, 'sys');
+      G.acting = cur.id; G.notice = null; emit();
+      if (ui.pause) await ui.pause(1100);
+      let did = null;
       ctx.setAuto(cur);
       try {
-        if (!(await stepOnMine(cur))) { await chooseAndRunAction(cur); await afterAction(cur); }
+        if (!(await stepOnMine(cur))) { did = await chooseAndRunAction(cur); await afterAction(cur); }
+        else did = { label: '地雷を踏んで行動できない', names: [] };
       } finally { ctx.setAuto(null); }
+      const text = did ? `${cur.name} の${did.label.startsWith('地雷') ? '' : ' '}${did.label}${did.names.length ? ' → ' + did.names.join('・') : ''}${did.fizzled ? '（不発）' : ''}` : '';
+      G.acting = null;
+      if (text) { G.noticeSeq = (G.noticeSeq || 0) + 1; G.notice = { id: G.noticeSeq, text, side: cur.side }; }
+      emit();
+      if (ui.pause) await ui.pause(1400);
       checkEnd();
     }
   }
@@ -115,14 +125,15 @@ export function createBattle(ui) {
       { label: '何もしない', value: -1, cls: 'ghost' },
     ];
     const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : '行動を選んでください' });
-    if (c < 0) return;
+    if (c < 0) return { label: '何もしない', names: [] };
     const act = acts[c], picked = [];
     for (const p of act.prompts) {
       const t = await ctx.pickUnit(p.label, p.f, picked);
-      if (!t) { log('対象がいないため不発'); return; }
+      if (!t) { log('対象がいないため不発'); return { label: act.label, names: [], fizzled: true }; }
       picked.push(t);
     }
     await act.run(picked);
+    return { label: act.label, names: picked.map(t => t.name) };
   }
 
   /** 行動のあとの後始末（盗賊のジャンル選択・見習いの成長・幽霊の成仏） */

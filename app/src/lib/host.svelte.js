@@ -39,6 +39,7 @@ export class HostStore {
     this.id = id;
     this.battle = createBattle({
       ask: (title, options, o) => this.#ask(title, options, o), toast,
+      pause: ms => new Promise(r => setTimeout(r, ms)),
       changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
       persist: G => store.set(KEY.save(id), JSON.stringify(G)),
     });
