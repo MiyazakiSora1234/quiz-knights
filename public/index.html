@@ -3,136 +3,149 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14110e">
 <title>QUIZ KNIGHTS - 部屋一覧</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
 <style>
-:root{--bg:#17110c;--line:#8a6a35;--tx:#f1e4c3;--mut:#b9a57f;--acc:#e0b650;--ink:#3a2a14;--rubric:#7a1f26}
-*{box-sizing:border-box}
-body{margin:0;color:var(--ink);font-family:"Shippori Mincho","Yu Mincho","Hiragino Mincho ProN",serif;min-height:100vh;
-  background:radial-gradient(ellipse at 50% -10%,#3b2a1b 0,#17110c 65%) fixed,repeating-linear-gradient(90deg,#0000 0 38px,#ffffff05 38px 40px) fixed;background-color:var(--bg)}
-button,input{font:inherit;color:inherit}
-.sheet{max-width:780px;margin:22px auto;padding:30px 36px 34px;border:1px solid var(--line);
-  background:radial-gradient(ellipse at 20% 0,#f3e8c6,#e8d9b0 60%,#d6c18d);box-shadow:0 0 0 6px #2b2018,0 0 0 7px var(--line),0 14px 40px #000c}
-@media(max-width:600px){.sheet{margin:10px;padding:20px 14px}}
-h1{margin:0;text-align:center;font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric);letter-spacing:.08em;font-size:2.1rem}
-.sub{color:#6a5430;text-align:center;letter-spacing:.2em;margin-bottom:10px}
-.links{text-align:center;font-size:.85rem;color:#6a5430;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;margin:12px 0 18px}
-table{width:100%;border-collapse:collapse}
-th{font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric);text-align:left;border-bottom:2px solid var(--line);padding:6px 8px;letter-spacing:.1em;font-size:.9rem}
-td{border-bottom:1px dotted #8a6a3599;padding:9px 8px}
-td.no{width:46px;font-family:"Cinzel",serif;color:#6a5430}
-td.cnt{width:70px;text-align:center}
-td.act{width:1%;white-space:nowrap;text-align:right}
-tr.free td.nm{color:#8a7650}
-tr.used td.nm{font-weight:700}
-.btn{background:#f3e6c2;border:1px solid var(--line);padding:5px 14px;cursor:pointer;letter-spacing:.05em}
-.btn:hover{border-color:var(--rubric);color:var(--rubric)}
-.btn.pri{background:linear-gradient(180deg,#f0d37a,#b8872f);border-color:#8a6a35;font-weight:700}
-.btn.mine{background:var(--rubric);color:#fff;border-color:var(--rubric)}
-.lock{font-size:.8rem}
-.tag{font-size:.7rem;border:1px solid var(--rubric);color:var(--rubric);padding:0 5px;margin-left:6px}
-.status{margin-top:14px;font-size:.8rem;color:#6a5430;text-align:right}
-#dlg{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:14px;z-index:10}
-#dlg.on{display:flex}
-.card{width:min(400px,100%);padding:26px 26px 22px;border:1px solid var(--line);background:radial-gradient(ellipse at 20% 0,#f3e8c6,#e8d9b0 60%,#d6c18d);box-shadow:0 0 0 5px #2b2018,0 0 0 6px var(--line)}
-.card h2{margin:0 0 14px;text-align:center;font-family:"Cinzel","Shippori Mincho",serif;color:var(--rubric)}
-.card label{display:block;font-size:.85rem;font-weight:700;margin-top:10px}
-.card input{width:100%;margin-top:4px;padding:9px;background:#f6ecce;border:1px solid var(--line)}
-.card .row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
-.err{color:var(--rubric);font-size:.85rem;min-height:1.2em;margin-top:8px}
-.namebar{display:flex;align-items:center;gap:10px;margin:6px 0 4px}
-.namebar label{font-weight:700;white-space:nowrap;color:var(--rubric)}
-.namebar input{flex:1;min-width:0;padding:9px;background:#f6ecce;border:1px solid var(--line);font-size:1rem}
-.namebar input.need{animation:shake .4s;border-color:var(--rubric);box-shadow:0 0 0 2px #7a1f2655}
+.page{max-width:980px;margin:0 auto;padding:22px 18px 60px}
+.hero{text-align:center;padding:18px 0 22px}
+.hero .logo{font-size:2.3rem;line-height:1.15}
+.hero .logo small{display:block;font-family:var(--serif);font-size:.95rem;letter-spacing:.4em;color:var(--mut);margin-top:4px}
+.crest{display:block;width:54px;height:54px;margin:0 auto 6px}
+.who{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.who label{font-weight:700;color:var(--gold);white-space:nowrap}
+.who .input{flex:1;min-width:180px;max-width:320px;font-size:1.05rem}
+.who .hint{font-size:.82rem;color:var(--mut)}
+.who .input.need{animation:shake .4s;border-color:var(--red);box-shadow:0 0 0 3px #e5545f44}
 @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-.skel td{color:transparent}.skel td.nm{background:linear-gradient(90deg,#d6c18d,#ecdfb8,#d6c18d);background-size:200%;animation:sk 1.2s infinite}
+h2.sec{font-size:1.05rem;color:var(--gold);margin:6px 0 12px;display:flex;align-items:center;gap:10px}
+h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:28px}
+.room{display:flex;align-items:center;gap:14px;background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:14px 16px;transition:.12s}
+.room:hover{border-color:var(--line2);background:#241e17}
+.room .num{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:1.2rem;background:#120f0c;border:2px solid var(--gold);color:var(--gold);flex:none}
+.room .info{flex:1;min-width:0}
+.room .info b{display:block;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.room .acts{display:flex;gap:8px;flex:none}
+.empty{border:1px dashed var(--line2);border-radius:14px;padding:26px;text-align:center;color:var(--mut);margin-bottom:28px}
+.empty b{display:block;color:var(--tx);margin-bottom:4px}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-bottom:12px}
+.slot{padding:12px 6px;border-radius:10px;background:transparent;border:1px dashed var(--line2);cursor:pointer;color:var(--mut);transition:.12s}
+.slot:hover{border-style:solid;border-color:var(--gold);color:var(--gold);background:#e3b84f12}
+.slot b{display:block;font-family:var(--display);font-size:1.2rem;color:var(--tx)}
+.slot:hover b{color:var(--gold)}
+.skel{height:72px;border-radius:14px;background:linear-gradient(90deg,var(--s1),var(--s2),var(--s1));background-size:200%;animation:sk 1.2s infinite}
 @keyframes sk{to{background-position:-200% 0}}
-tbody tr.used:hover{background:#0000000d}
-tr.used.live td.cnt::before{content:"●";color:#3b8a3b;margin-right:4px;font-size:.7rem}
-#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50}
-.t{background:#000d;color:#f1e4c3;border:1px solid #e0b650;padding:8px 18px;border-radius:20px;font-size:.9rem}
+.status{margin-top:20px;font-size:.8rem;color:var(--dim);text-align:center}
+#dlg{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:16px;z-index:70}
+#dlg.on{display:flex}
+.dlg{width:min(420px,100%);background:var(--s1);border:1px solid var(--line2);border-radius:16px;padding:24px;box-shadow:0 20px 60px #000}
+.dlg h2{font-size:1.25rem;color:var(--gold);margin-bottom:6px}
+.dlg .row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.err{color:#ff9aa2;font-size:.85rem;min-height:1.3em;margin-top:8px}
+@media(max-width:560px){.page{padding:14px 12px 50px}.room{flex-wrap:wrap}.room .acts{width:100%}.room .acts .btn{flex:1}}
 </style>
 </head>
 <body>
-<div class="sheet">
-  <h1>⚜ QUIZ KNIGHTS ⚜</h1>
-  <div class="sub">― クイズ騎士団 ―</div>
-  <div class="namebar">
-    <label for="myName">あなたの名前</label>
-    <input id="myName" maxlength="12" placeholder="入力すると、参加がワンタップになります" autocomplete="nickname">
+<div class="page">
+  <div class="hero">
+    <svg class="crest" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 2l26 9v22c0 16-11 25-26 29C17 58 6 49 6 33V11z" fill="#e3b84f"/><path d="M32 7l21 7.4V33c0 13-9 20.5-21 24.5C20 53.5 11 46 11 33V14.4z" fill="#1e1914"/><path d="M32 14c3 5 3 9 0 13-3-4-3-8 0-13zM21 24c5-1 8 1 9 5-5 1-8-1-9-5zM43 24c-5-1-8 1-9 5 5 1 8-1 9-5z" fill="#e3b84f"/><rect x="27" y="29" width="10" height="4" rx="1" fill="#e3b84f"/><path d="M32 33v14M26 42l6 5 6-5" stroke="#e3b84f" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="logo">QUIZ KNIGHTS<small>クイズ騎士団</small></div>
   </div>
-  <div class="links">空き枠の「作成」で部屋を作る（進行役）／使用中の部屋の「参加」で入室（参加者）</div>
-  <table>
-    <thead><tr><th>NO.</th><th>部屋名</th><th style="text-align:center">人数</th><th></th></tr></thead>
-    <tbody id="rooms"><tr class="free skel"><td class="no">1</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr><tr class="free skel"><td class="no">2</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr><tr class="free skel"><td class="no">3</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr><tr class="free skel"><td class="no">4</td><td class="nm">　　　　　</td><td class="cnt">0</td><td class="act"></td></tr></tbody>
-  </table>
+
+  <div class="who">
+    <label for="myName">あなたの名前</label>
+    <input class="input" id="myName" maxlength="12" placeholder="ここに入力" autocomplete="nickname">
+    <span class="hint" id="nameHint">入力しておくと、部屋への参加がワンタップになります</span>
+  </div>
+
+  <h2 class="sec">開いている部屋</h2>
+  <div id="open"><div class="rooms"><div class="skel"></div><div class="skel"></div></div></div>
+
+  <h2 class="sec">部屋を作る（進行役）</h2>
+  <div class="sub" style="margin-bottom:10px">空いている番号を選んで、部屋名を付けて作成します。</div>
+  <div class="slots" id="slots"></div>
+
   <div class="status" id="status">読み込み中…</div>
 </div>
 
 <div id="toast"></div>
-<div id="dlg"><div class="card" id="card"></div></div>
+<div id="dlg"><div class="dlg" id="card"></div></div>
 
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let rooms=[];
+const store={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
+
+function toast(m,ms=2200){const d=document.createElement('div');d.className='t';d.textContent=m;$('#toast').appendChild(d);setTimeout(()=>d.remove(),ms);}
 
 async function load(){
   try{
     const t0=performance.now();
     rooms=await (await fetch('/api/rooms',{cache:'no-store'})).json();
-    $('#status').textContent=`サーバー接続OK　${Math.round(performance.now()-t0)} ms`;
+    $('#status').textContent=`サーバー接続OK ・ ${Math.round(performance.now()-t0)}ms ・ 5秒ごとに自動更新`;
     draw();
   }catch(e){$('#status').textContent='サーバーに接続できません。しばらくして再読み込みしてください';}
 }
 function draw(){
-  $('#rooms').innerHTML=rooms.map(r=>{
-    const mine=!!localStorage.getItem('qr_hk_'+r.id);
-    if(!r.used)return `<tr class="free"><td class="no">${r.id}</td><td class="nm">空き</td><td class="cnt">0</td><td class="act"><button class="btn pri" data-create="${r.id}">作成</button></td></tr>`;
-    return `<tr class="used ${r.online?'live':''}"><td class="no">${r.id}</td><td class="nm">${esc(r.name)}${r.hasPw?' <span class="lock">🔒</span>':''}${r.started?'<span class="tag">対戦中</span>':''}</td><td class="cnt">${r.online}</td>
-      <td class="act">${mine?`<button class="btn mine" data-host="${r.id}">管理へ戻る</button> `:''}<button class="btn" data-join="${r.id}">参加</button></td></tr>`;
-  }).join('');
+  const used=rooms.filter(r=>r.used),free=rooms.filter(r=>!r.used);
+  $('#open').innerHTML=used.length?`<div class="rooms">${used.map(r=>{
+    const mine=!!store.get('qr_hk_'+r.id);
+    return `<div class="room"><div class="num">${r.id}</div>
+      <div class="info"><b>${esc(r.name)}</b><div class="meta"><span class="chip ${r.online?'blu':''}"><span class="dot ${r.online?'on':''}"></span>${r.online}人</span>${r.hasPw?'<span class="chip">🔒 パスワード</span>':''}${r.started?'<span class="chip gold">バトル中</span>':'<span class="chip">待機中</span>'}</div></div>
+      <div class="acts">${mine?`<button class="btn" data-host="${r.id}">管理へ戻る</button>`:''}<button class="btn primary" data-join="${r.id}">参加</button></div></div>`;}).join('')}</div>`
+    :`<div class="empty"><b>いま開いている部屋はありません</b>下の「部屋を作る」から、空き番号を選んで作成してください。</div>`;
+  $('#slots').innerHTML=free.map(r=>`<button class="slot" data-create="${r.id}"><b>${r.id}</b>作成</button>`).join('')||'<div class="sub">空き番号がありません</div>';
 }
-$('#rooms').addEventListener('click',e=>{
+document.body.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.create)createDlg(+b.dataset.create);
   else if(b.dataset.join)joinRoom(b.dataset.join);
-  else if(b.dataset.host)location.href=`/host.html?id=${b.dataset.host}`;
+  else if(b.dataset.host)location.href=`/host?id=${b.dataset.host}`;
 });
 
-const nameEl=document.getElementById('myName');
-try{nameEl.value=localStorage.getItem('qr_name')||'';}catch(e){}
-nameEl.addEventListener('input',()=>{try{localStorage.setItem('qr_name',nameEl.value.trim());}catch(e){}});
-function toast(m,ms=2200){const d=document.createElement('div');d.className='t';d.textContent=m;document.getElementById('toast').appendChild(d);setTimeout(()=>d.remove(),ms);}
+const nameEl=$('#myName');
+nameEl.value=store.get('qr_name')||'';
+nameEl.addEventListener('input',()=>store.set('qr_name',nameEl.value.trim()));
 function joinRoom(id){
   const n=nameEl.value.trim();
-  if(!n){toast('先に名前を入力してください');nameEl.classList.remove('need');void nameEl.offsetWidth;nameEl.classList.add('need');nameEl.focus();return;}
-  try{localStorage.setItem('qr_name',n);}catch(e){}
-  location.href=`/play.html?id=${id}`;
+  if(!n){toast('先に名前を入力してください');nameEl.classList.remove('need');void nameEl.offsetWidth;nameEl.classList.add('need');nameEl.focus();window.scrollTo({top:0,behavior:'smooth'});return;}
+  store.set('qr_name',n);
+  location.href=`/play?id=${id}`;
 }
+
 function createDlg(id){
-  $('#card').innerHTML=`<h2>部屋を作成（${id}番）</h2>
-    <label>部屋名</label><input id="rn" maxlength="30" placeholder="例：夜の円卓">
-    <label>パスワード（任意）</label><input id="rp" maxlength="20">
+  $('#card').innerHTML=`<h2>${id}番の部屋を作る</h2><div class="sub">あなたが進行役になります。</div>
+    <label class="field"><span>部屋名</span><input class="input" id="rn" maxlength="30" placeholder="例：夜の円卓"></label>
+    <label class="field"><span>パスワード（任意）</span><input class="input" id="rp" maxlength="20" autocomplete="off"></label>
     <div class="err" id="err"></div>
-    <div class="row"><button class="btn" id="cancel">キャンセル</button><button class="btn pri" id="ok">作成</button></div>`;
+    <div class="row"><button class="btn ghost" id="cancel">キャンセル</button><button class="btn primary" id="ok">作成する</button></div>`;
   $('#dlg').classList.add('on');$('#rn').focus();
   $('#cancel').onclick=()=>$('#dlg').classList.remove('on');
+  let busy=false;
   const go=()=>{
+    if(busy)return;
     const name=$('#rn').value.trim();
-    if(!name){$('#err').textContent='部屋名を入力してください';return;}
+    if(!name){$('#err').textContent='部屋名を入力してください';$('#rn').focus();return;}
+    busy=true;$('#ok').disabled=true;$('#ok').textContent='作成中…';
     const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?id='+id);
     ws.onopen=()=>ws.send(JSON.stringify({t:'create',id,name,password:$('#rp').value}));
     ws.onmessage=ev=>{
       const m=JSON.parse(ev.data);
-      if(m.t==='created'){localStorage.setItem('qr_hk_'+m.room,m.hostKey);location.href=`/host.html?id=${m.room}`;}
-      else if(m.t==='error'){$('#err').textContent=m.msg;ws.close();load();}
+      if(m.t==='created'){store.set('qr_hk_'+m.room,m.hostKey);location.href=`/host?id=${m.room}`;}
+      else if(m.t==='error'){busy=false;$('#ok').disabled=false;$('#ok').textContent='作成する';$('#err').textContent=m.msg;ws.close();load();}
     };
+    ws.onerror=()=>{busy=false;$('#ok').disabled=false;$('#ok').textContent='作成する';$('#err').textContent='接続に失敗しました';};
   };
   $('#ok').onclick=go;
-  $('#card').onkeydown=e=>{if(e.key==='Enter')go();};
+  $('#card').onkeydown=e=>{if(e.key==='Enter')go();else if(e.key==='Escape')$('#dlg').classList.remove('on');};
 }
+$('#dlg').addEventListener('mousedown',e=>{if(e.target.id==='dlg')$('#dlg').classList.remove('on');});
 load();setInterval(load,5000);
 </script>
 </body>
