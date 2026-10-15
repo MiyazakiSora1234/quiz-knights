@@ -605,7 +605,7 @@ test('選択ダイアログ: 進行役 → 指定した参加者だけに届き�
   host.send({ t: 'close' });
 });
 
-test('チャット回答: 進行役にだけ届き、ほかの参加者には見えない。問題番号が付く', async () => {
+test('チャット回答: 進行役にも他の参加者にも届く。問題番号が付く', async () => {
   const { id, host } = await makeRoom();
   const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
   host.send({ t: 'open', q: 4, eligible: { [a.pid]: 0, [b.pid]: 0 } });
@@ -615,7 +615,7 @@ test('チャット回答: 進行役にだけ届き、ほかの参加者には見
   const got = await host.wait('chat', 3000, x => x.answer);
   assert.deepEqual([got.name, got.text, got.q, got.pid], ['A', '東京', 4, a.pid]);
   assert.equal((await a.wait('answer_ack')).text, '東京');
-  await sleep(150);
-  assert.equal(b.has('chat'), false);
+  const seen = await b.wait('chat', 3000, x => x.answer);
+  assert.deepEqual([seen.name, seen.text, seen.q], ['A', '東京', 4]);
   host.send({ t: 'close' });
 });

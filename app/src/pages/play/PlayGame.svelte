@@ -8,6 +8,7 @@
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
   let text = $state('');
+  const answers = $derived(p.chat.filter(c => c.answer && c.q === gs.q).slice(-8));
 
   /** 自分のHPが変わったら、画面を一瞬赤（ダメージ）か緑（回復）に光らせる */
   let flash = $state('');
@@ -44,9 +45,9 @@
 
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
-    <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答（進行役にだけ届きます）" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
+    <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答（全員に表示されます）" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
   </form>
-  {#if p.answered && p.answered.q === gs.q}<div class="sent">送信した回答：<b>{p.answered.text}</b></div>{/if}
+  {#if answers.length}<div class="answers">{#each answers as a}<div><b>{a.name}</b>{a.text}</div>{/each}</div>{/if}
   </div>
 
   {#if p.bannerText}
@@ -103,7 +104,9 @@
   @keyframes pulse{50%{box-shadow:0 0 20px #e5545f88}}
   .ansbox{display:flex;flex-direction:column;gap:4px}
   .ans{display:flex;gap:8px}.ans .input{flex:1;min-width:0}
-  .sent{font-size:.8rem;color:var(--mut)}.sent b{color:var(--gold)}
+  .answers{display:flex;flex-direction:column;gap:3px;font-size:.85rem;max-height:7em;overflow:auto}
+  .answers div{background:var(--s2);border:1px solid var(--line);border-radius:8px;padding:3px 10px;color:var(--gold);font-weight:700}
+  .answers b{color:var(--mut);font-weight:500;margin-right:8px}
   .rank{font-size:.8rem;margin-top:4px;opacity:.9}
 
   .mid{flex:1;min-width:0}
