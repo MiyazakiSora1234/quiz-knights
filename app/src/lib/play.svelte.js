@@ -83,8 +83,8 @@ export class PlayStore {
     if (!this.name.trim()) { this.name = `旅人${100 + Math.floor(Math.random() * 900)}`; store.set(KEY.name, this.name); }
     const pw = session.get(KEY.pw(this.id)); if (pw != null) { this.pw = pw; session.remove(KEY.pw(this.id)); }
     const known = session.get(this.pidKey);
-    // 再接続、または名前が保存済みでパスワード不要なら、入力なしで自動入室
-    if ((known && this.name) || ((!this.info.hasPw || this.pw) && this.name && !location.hash.includes('edit'))) this.join(true);
+    // 再接続、または部屋を作った直後だけ自動で入室する。初めての入室は taQu と同じく、参加ダイアログ（名前・ひとこと・パスワード）を出す
+    if ((known || this.pw) && this.name) this.join(true);
   }
 
   join(auto = false) {
