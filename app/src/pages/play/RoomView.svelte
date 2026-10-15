@@ -71,7 +71,7 @@
       <h3>設定</h3>
       <label class="field"><span>名前</span><input class="input" bind:value={n} maxlength="12"></label>
       <label class="field"><span>ひとこと（任意）</span><input class="input" bind:value={f} maxlength="20"></label>
-      <div class="step">職業</div>
+      <div class="step">職業 <button class="btn ghost sm" onclick={() => { const o = SELECTABLE.filter(j => j !== p.myJob); p.pickJob(o[Math.floor(Math.random() * o.length)]); }}>🎲 ランダム</button></div>
       <div class="jobs">
         {#each SELECTABLE as j}
           <button class="job" class:sel={p.myJob === j} onclick={() => p.pickJob(j)}><span class="e">{@html icon(j)}</span><span><b>{JOB[j].n}</b><small>ATK{JOB[j].atk} / HP{JOB[j].hp}</small></span></button>

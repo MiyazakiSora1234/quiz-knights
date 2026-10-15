@@ -1,6 +1,7 @@
 <script>
   import { fade, fly } from 'svelte/transition';
-  import { JOB, SELECTABLE } from '../../lib/engine.js';
+  import { JOB } from '../../lib/engine.js';
+  import JobSelect from '../../components/JobSelect.svelte';
 
   // 戦闘中のユニット調整: 職業・体力・攻撃・生死・休みを直す（「1つ戻す」で元に戻せる）
   let { host, G } = $props();
@@ -29,9 +30,9 @@
       <h3>✎ {u.name} を調整</h3>
       <label class="field"><span>名前</span><input class="input" bind:value={f.name} maxlength="12"></label>
       {#if !u.isBoss}
-        <label class="field"><span>職業（変えると、その職業の基本の数値になります）</span>
-          <select class="input" bind:value={f.job} onchange={changeJob}>{#each SELECTABLE as j}<option value={j}>{JOB[j].n}</option>{/each}</select>
-        </label>
+        <div class="field"><span>職業（変えると、その職業の基本の数値になります）</span>
+          <JobSelect bind:value={f.job} onchange={changeJob} />
+        </div>
       {/if}
       <div class="nums">
         <label class="field"><span>HP</span><input class="input" type="number" min="0" max="999" bind:value={f.hp}></label>

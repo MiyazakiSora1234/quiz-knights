@@ -1,5 +1,5 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付と配信
-import { createBattle, CANCEL } from './engine.js';
+import { createBattle, CANCEL, SELECTABLE } from './engine.js';
 import { Conn } from './net.js';
 import { ask, toast, confirmAsk } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
@@ -167,6 +167,10 @@ export class HostStore {
   }
 
   /* ---------- 名簿 ---------- */
+  /** 全員の職業をランダムに決める（進行役が決めた扱いになり、参加者の選び直しで上書きされない） */
+  randomizeJobs() {
+    for (const p of this.roster) { p.job = SELECTABLE[Math.floor(Math.random() * SELECTABLE.length)]; p.touchedJob = true; }
+  }
   remove(p) {
     if (p.pid) this.conn.send({ t: 'kick', pid: p.pid });
     this.roster = this.roster.filter(x => x !== p);

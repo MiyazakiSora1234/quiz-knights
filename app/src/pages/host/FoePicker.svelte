@@ -2,6 +2,7 @@
   import { slide } from 'svelte/transition';
   import { icon } from '../../lib/icons.js';
   import { JOB, SELECTABLE } from '../../lib/engine.js';
+  import JobSelect from '../../components/JobSelect.svelte';
 
   // CPUチーム戦: 相手の職業を並べる（1〜6体）
   let { host } = $props();
@@ -23,12 +24,11 @@
   {#each host.foes as _, i}
     <div class="frow">
       <span class="fi">{@html icon(host.foes[i])}</span>
-      <select class="input" bind:value={host.foes[i]} aria-label="CPUの職業">
-        {#each SELECTABLE as j}<option value={j}>{JOB[j].n}（ATK{JOB[j].atk} / HP{JOB[j].hp}）</option>{/each}
-      </select>
+      <div class="fsel"><JobSelect bind:value={host.foes[i]} label="CPUの職業" /></div>
       <button class="btn ghost sm" onclick={() => del(i)} disabled={host.foes.length <= 1} aria-label="外す">✕</button>
     </div>
   {/each}
+  <button class="btn ghost sm" onclick={() => (host.foes = host.foes.map(() => SELECTABLE[Math.floor(Math.random() * SELECTABLE.length)]))}>🎲 全員ランダム</button>
   <button class="btn ghost sm" onclick={add} disabled={host.foes.length >= MAX}>＋ CPUを追加</button>
   <div class="sub">{JOB[host.foes[0]]?.d}</div>
 </div>
@@ -37,6 +37,6 @@
   .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
   .frow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .fi{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.3rem;background:#120f0c;border:2px solid var(--red-d)}
-  .frow select{flex:1;min-width:0}
+  .fsel{flex:1;min-width:0}
   .sub{margin-top:8px}
 </style>
