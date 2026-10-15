@@ -27,7 +27,7 @@
 </script>
 
 <div class="room" in:fade={{ duration: 160 }}>
-  <header class="bar">
+  <header class="rbar">
     <div class="ttl"><b>{p.roomName}</b><span class="sub"><span class="dot {p.hasHost && p.hostOnline ? 'on' : ''}"></span>{p.hasHost ? (p.hostOnline ? '進行役あり' : '進行役：接続待ち') : '進行役なし'} ・ {p.id}番</span></div>
     <div class="tools">
       <button class="ib" onclick={() => (panel.rules = true)} title="職業・ルール" aria-label="職業・ルール">📖</button>
@@ -92,7 +92,7 @@
 
 <style>
   .room{display:flex;flex-direction:column;min-height:calc(100dvh - 24px);gap:12px}
-  .bar{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 10px}
+  .rbar{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 10px}
   .ttl b{display:block;font-family:var(--serif);font-size:1.25rem;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
   .ttl .sub{display:flex;align-items:center;gap:6px;font-size:.8rem}
   .tools{display:flex;gap:6px;margin-right:48px}
