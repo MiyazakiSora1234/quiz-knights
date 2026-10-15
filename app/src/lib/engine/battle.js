@@ -170,7 +170,7 @@ export function createBattle(ui) {
 
   /* ---------- スルー ---------- */
   async function doThrow() {
-    log('誰も答えず（スルー）', 'sys');
+    log('問題スルー', 'sys');
     for (const b of G.units) if (b.isBoss && b.alive && b.bossId === 2 && b.form === 2) heal(b, 1);
     await endQuestion(null);
   }

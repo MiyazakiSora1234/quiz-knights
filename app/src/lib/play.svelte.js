@@ -54,7 +54,7 @@ export class PlayStore {
     if (this.hasWinner) return this.myWin ? '回答権を獲得！答えてください' : `回答権：${this.winner.name}`;
     if (this.canPress) return '';
     if (this.open) return '受付中（今回は押せません）';
-    return '問題を待っています…';
+    return '';
   }
   get buzzLabel() {
     const me = this.me;

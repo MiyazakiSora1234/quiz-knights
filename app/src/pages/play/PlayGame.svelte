@@ -1,5 +1,6 @@
 <script>
   import { fade, scale } from 'svelte/transition';
+  import { tick } from 'svelte';
   import Unit from '../../components/Unit.svelte';
   import MePanel from './MePanel.svelte';
   import BuzzButton from './BuzzButton.svelte';
@@ -7,7 +8,8 @@
 
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
-  let text = $state('');
+  let text = $state(''), msg = $state(''), chatEl = $state();
+  $effect(() => { p.chat.length; tick().then(() => { if (chatEl) chatEl.scrollTop = chatEl.scrollHeight; }); });
   const answers = $derived(p.chat.filter(c => c.answer && c.q === gs.q).slice(-8));
 
   /** 自分のHPが変わったら、画面を一瞬赤（ダメージ）か緑（回復）に光らせる */
@@ -45,7 +47,7 @@
 
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
-    <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答（全員に表示されます）" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
+    <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
   </form>
   {#if answers.length}<div class="answers">{#each answers as a}<div><b>{a.name}</b>{a.text}</div>{/each}</div>{/if}
   </div>
@@ -62,6 +64,14 @@
       {#each gs.units as u (u.id)}
         <Unit {u} compact ribbon={u.id === p.mine ? 'あなた' : ''} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} />
       {/each}
+    </div>
+    <div class="chatbox">
+      <div class="cl" bind:this={chatEl}>
+        {#each p.chat as c}
+          <p class:sys={c.sys} class:ans={c.answer}>{#if !c.sys}<b>{c.name}</b>{/if}{#if c.answer}<i>回答</i>{/if}<span>{c.text}</span></p>
+        {:else}<p class="sys"><span>チャット</span></p>{/each}
+      </div>
+      <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="チャット…" aria-label="チャット"><button class="btn sm" type="submit">送信</button></form>
     </div>
     <div class="logbox parch">
       <div class="lh">バトルログ</div>
@@ -113,6 +123,11 @@
   .strip{display:flex;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
   .strip :global(.unit){flex:0 0 138px;scroll-snap-align:start}
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
+  .chatbox{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .cl{height:7em;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:4px 10px;font-size:.84rem}
+  .cl p{margin:3px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.cl .sys{color:var(--mut)}.cl b{color:var(--mut);font-weight:600}
+  .cl i{font-style:normal;font-size:.68rem;background:var(--gold);color:#2a1c06;border-radius:4px;padding:0 5px;font-weight:800}.cl .ans span{color:var(--gold);font-weight:700}
+  .cs{display:flex;gap:6px}.cs .input{flex:1;min-width:0}
   .lh{text-align:center;color:#7a1f26;font-weight:800;letter-spacing:.2em;font-family:var(--serif)}
   .ll{height:9.5em;overflow:auto}
   .logbox p{margin:6px 0 0;font-size:.82rem;border-bottom:1px dotted #8a6a3577;padding-bottom:3px}

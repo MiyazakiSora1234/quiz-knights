@@ -27,7 +27,7 @@
   </div>
   <div class="gc"><span class="qno">第{G.q}問</span>{#if showGenre}<span class="chip pur" transition:fade>ジャンル：{G.genre}</span>{/if}</div>
   <div class="gr">
-    <button class="btn sm" onclick={() => (chatOpen = !chatOpen)}>💬 チャット{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
+    <button class="btn sm chatbtn" onclick={() => (chatOpen = !chatOpen)}>💬 チャット{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
     <button class="btn sm" disabled={!host.canUndo || host.busy} onclick={() => host.undo()}>↩ 1つ戻す<kbd>Ctrl+Z</kbd></button>
     <div class="menuwrap">
       <button class="btn sm" onclick={() => (menu = !menu)} aria-haspopup="true" aria-expanded={menu}>メニュー ▾</button>
@@ -65,6 +65,11 @@
   @media(max-width:900px){
     .in{display:flex;justify-content:space-between;padding:8px 12px}.gl{display:none}
     kbd{display:none}
+  }
+  @media(min-width:901px){
+    .chatbtn{display:none}
+  }
+  @media(max-width:900px){
     .qno{font-size:1.5rem}
   }
 </style>

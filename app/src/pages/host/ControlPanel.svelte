@@ -25,7 +25,7 @@
       </button>
     </div>
     <div class="sub">
-      <button class="btn" disabled={host.busy} onclick={() => host.skip()} title="誰も答えなかった">誰も答えず<kbd>S</kbd></button>
+      <button class="btn" disabled={host.busy} onclick={() => host.skip()} title="誰も答えなかった">問題スルー<kbd>S</kbd></button>
       <button class="btn ghost" disabled={host.busy} onclick={() => (sel ? host.deselect() : host.reopen())}>{sel ? '選び直す' : '受付やり直し'}<kbd>R</kbd></button>
     </div>
   {/if}

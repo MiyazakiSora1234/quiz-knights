@@ -49,6 +49,7 @@
   <Stage {host} {G} />
   <aside class="side">
     <ControlPanel {host} {G} />
+    <div class="chatdesk"><ChatPanel {host} {G} /></div>
     <Chronicle log={G.log} />
   </aside>
 </div>
@@ -68,6 +69,8 @@
 {/if}
 
 <style>
+  .chatdesk{display:block}
+  @media(max-width:900px){.chatdesk{display:none}}
   .wait{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--gold);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 8px 24px #000a;font-weight:700}
   .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -75,7 +78,7 @@
   .sheet-in{width:min(100%,420px);max-height:calc(100dvh - 80px);overflow:auto;display:flex;flex-direction:column;gap:6px}
   .sheet-in .close{align-self:flex-end}
   .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;max-width:1320px;margin:0 auto;padding:18px}
-  .side{position:sticky;top:76px;align-self:start;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 92px)}
+  .side{position:sticky;top:76px;align-self:start;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 92px);overflow:auto}
   @media(max-width:900px){
     .layout{grid-template-columns:1fr;padding:12px 12px 270px}
     .side{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;max-height:none;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110ecc,#14110e 30%);border-top:1px solid var(--line2);gap:8px}
