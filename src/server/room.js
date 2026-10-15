@@ -29,7 +29,8 @@ export class Room extends DurableObject {
     });
   }
 
-  async fetch() {
+  async fetch(request) {
+    try { this.slot = new URL(request.url).searchParams.get('id'); } catch { /* noop */ }   // 接続先の部屋番号（作成時に照合する）
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
@@ -122,7 +123,8 @@ export class Room extends DurableObject {
   async onCreate(ws, m) {
     if (this.R) return fail(ws, 'その部屋はすでに使われています', 'taken');
     const id = String(+m.id);
-    if (!(+m.id >= 1 && +m.id <= SLOTS)) return fail(ws, '部屋番号が不正です');
+    if (this.slot && this.slot !== id) return fail(ws, '部屋番号が接続先と違います');
+    if (!(Number.isInteger(+m.id) && +m.id >= 1 && +m.id <= SLOTS) || m.id === null || m.id === '') return fail(ws, '部屋番号が不正です');
     // host:false … 進行役を決めずに部屋だけ作る（作った人は参加者として入り、あとで誰かが進行役になる）
     const withHost = m.host !== false;
     this.R = { id, name: String(m.name || `部屋${id}`).slice(0, 30), password: String(m.password || '').slice(0, 20), hostKey: withHost ? rnd(20) : null, players: {}, hostGone: null };

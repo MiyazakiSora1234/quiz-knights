@@ -874,3 +874,11 @@ for (const [name, pw, wantName] of [['新しい名前', 'pw', '新しい名前']
     host.send({ t: 'close' });
   });
 }
+
+test('入力検査: 接続先と違う番号の部屋は作れない（別の枠を乗っ取れない）', async () => {
+  const c = await client(2);
+  c.send({ t: 'create', id: 5, name: 'なりすまし' });
+  assert.ok((await c.wait('error')).msg);
+  await sleep(150);
+  assert.equal((await api())[4].used, false);
+});
