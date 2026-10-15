@@ -10,6 +10,11 @@
 <div class="panel lobby" in:fly={{ y: 12, duration: 220 }}>
   <div class="head"><div class="num" style="--sz:42px">{p.id}</div><div><h2>{p.roomName}</h2><div class="sub">{p.name} として参加中</div></div></div>
 
+  <div class="hostbar" class:none={!p.hasHost}>
+    {#if p.hasHost}<span class="dot {p.hostOnline ? 'on' : ''}"></span>進行役がいます{p.hostOnline ? '' : '（接続待ち）'}
+    {:else}<span>進行役がまだいません</span><button class="btn sm primary" onclick={() => p.claimHost()}>👑 自分が進行役になる</button>{/if}
+  </div>
+
   <div class="chips">
     {#each p.members as m (m.pid)}
       <span class="chip" class:off={!m.online} animate:flip={{ duration: 200 }}><span class="dot {m.online ? 'on' : ''}"></span>{m.name}{m.flavor ? ` 〈${m.flavor}〉` : ''}</span>
@@ -38,6 +43,8 @@
   .lobby{max-width:640px;margin:0 auto}
   .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   h2{font-size:1.3rem}
+  .hostbar{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--s2);font-size:.9rem}
+  .hostbar.none{border-color:var(--gold);background:#3a2f1a}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.chip.off{opacity:.45}
   .step{color:var(--mut);font-size:.86rem;margin-top:8px}
   .jobs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}

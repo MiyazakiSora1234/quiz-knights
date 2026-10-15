@@ -17,7 +17,7 @@ async function listRooms(env) {
   const map = await lobbyStub(env).list();
   return Array.from({ length: SLOTS }, (_, i) => {
     const r = map[i + 1];
-    return { id: i + 1, used: !!r, name: r?.name || '', count: r?.count || 0, online: r?.online || 0, hasPw: !!r?.hasPw, started: !!r?.started };
+    return { id: i + 1, used: !!r, name: r?.name || '', count: r?.count || 0, online: r?.online || 0, hasPw: !!r?.hasPw, started: !!r?.started, hasHost: r ? r.hasHost !== false : false };
   });
 }
 

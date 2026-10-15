@@ -23,5 +23,6 @@ export const KEY = {
   sound: 'qk_sound',
   hostKey: id => 'qr_hk_' + id,    // 進行役の鍵（部屋ごと）
   save: id => 'qr_save_' + id,     // 途中のバトル（部屋ごと）
+  pw: id => 'qr_pw_' + id,         // 作った部屋のパスワード（入室の自動入力用・タブごと）
   pid: id => 'qr_pid_' + id,       // 参加者の識別（部屋ごと・タブごと）
 };

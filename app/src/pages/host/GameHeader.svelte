@@ -35,6 +35,7 @@
           <button class="mi" onclick={() => { panel.rules = true; menu = false; }}>📖 職業・ルール一覧</button>
           <button class="mi" onclick={() => { host.copyUrl(); menu = false; }}>🔗 参加用URLをコピー</button>
           <button class="mi" onclick={toggleSound}>{sound.on ? '🔊 効果音：オン' : '🔇 効果音：オフ'}</button>
+          <button class="mi" onclick={() => { menu = false; host.release(); }}>👑 進行役をやめる</button>
           <div class="hr"></div>
           <button class="mi danger" onclick={() => { menu = false; quit(); }}>↺ 最初からやり直す</button>
           <button class="mi danger" onclick={() => { menu = false; closeRoom(); }}>✕ 部屋を閉じる</button>

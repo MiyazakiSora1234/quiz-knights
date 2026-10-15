@@ -1,7 +1,7 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付と配信
 import { createBattle, GENRES } from './engine.js';
 import { Conn } from './net.js';
-import { ask, toast } from './ui.svelte.js';
+import { ask, toast, confirmAsk } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
 import { store, KEY } from './storage.js';
 import { syncRoster, makeGuest, startBlock, parseGenres } from './roster.js';
@@ -75,6 +75,11 @@ export class HostStore {
         store.remove(KEY.hostKey(this.id));
         toast(m.msg, 3000); goList(1400);
         return;
+      case 'demoted':
+        store.remove(KEY.hostKey(this.id)); store.remove(KEY.save(this.id)); this.conn.close();
+        toast('進行役をおりました。参加者として入室します'); setTimeout(() => { location.href = `/play?id=${this.id}`; }, 700);
+        return;
+      case 'notice': toast(m.msg, 3000); return;
       case 'replaced':
         this.status = 'replaced'; this.conn.close();
         return;
@@ -142,6 +147,15 @@ export class HostStore {
   undo() { return this.battle.undo(); }
   reopen() { this.#openedFor = null; this.rank = ''; this.#publish(true); }
 
+  /** 進行役を、いま入室している参加者に譲る */
+  async transfer(p) {
+    if (!(await confirmAsk(`${p.name} さんに進行役を譲りますか？`, '進行中のバトルは終了し、あなたは参加者になります。', '譲る', false))) return;
+    this.conn.send({ t: 'transfer', pid: p.pid });
+  }
+  async release() {
+    if (!(await confirmAsk('進行役をやめますか？', '部屋は残り、ほかの人が進行役になれます。進行中のバトルは終了します。', 'やめる'))) return;
+    this.conn.send({ t: 'release' });
+  }
   closeRoom() {
     this.conn.send({ t: 'close' });
     store.remove(KEY.hostKey(this.id)); store.remove(KEY.save(this.id));

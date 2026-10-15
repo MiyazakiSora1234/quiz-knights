@@ -21,6 +21,7 @@
     <div class="logo">QUIZ KNIGHTS <span class="sub">／ 進行役：バトルの準備</span></div>
     <div class="acts">
       <button class="btn sm" onclick={() => (panel.rules = true)}>職業・ルール一覧</button>
+      <button class="btn sm" onclick={() => host.release()}>進行役をやめる</button>
       <button class="btn sm danger" onclick={async () => (await confirmAsk('部屋を閉じますか？', '参加者は全員退室になります。', '部屋を閉じる')) && host.closeRoom()}>部屋を閉じる</button>
     </div>
   </div>
@@ -39,7 +40,7 @@
       <div class="panel">
         <h3>参加者 <span class="chip">{host.roster.length}人</span>{#if offline}<span class="chip warn">オフライン {offline}</span>{/if}</h3>
         {#each host.roster as p (p.key)}
-          <div animate:flip={{ duration: 220 }} in:fly={{ y: 12, duration: 220 }}><RosterRow {p} {pvp} onremove={() => host.remove(p)} /></div>
+          <div animate:flip={{ duration: 220 }} in:fly={{ y: 12, duration: 220 }}><RosterRow {p} {pvp} onremove={() => host.remove(p)} ontransfer={() => host.transfer(p)} /></div>
         {/each}
         {#if !host.roster.length}
           <div class="empty"><b>参加者を待っています…</b>URLを共有してください。入室した人は、ここに自動で追加されます。</div>

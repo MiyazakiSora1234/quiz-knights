@@ -50,7 +50,8 @@ export class Room extends DurableObject {
       online: this.isOnline(p.pid, except), rtt: this.rtts.get(p.pid) ?? null,
     }));
     const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players });
-    this.toPlayers({ t: 'members', players: players.map(({ pid, name, flavor, online }) => ({ pid, name, flavor, online })) }, except);
+    const hasHost = !!this.R.hostKey;
+    this.toPlayers({ t: 'members', hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online }) => ({ pid, name, flavor, online })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -58,7 +59,7 @@ export class Room extends DurableObject {
     const ps = Object.values(this.R.players);
     this.ctx.waitUntil(lobbyStub(this.env).upsert(this.R.id, {
       name: this.R.name, count: ps.length, online: ps.filter(p => this.isOnline(p.pid, except)).length,
-      hasPw: !!this.R.password, started: !!this.state,
+      hasPw: !!this.R.password, started: !!this.state, hasHost: !!this.R.hostKey,
     }));
   }
 
@@ -112,10 +113,12 @@ export class Room extends DurableObject {
     if (this.R) return fail(ws, 'その部屋はすでに使われています', 'taken');
     const id = String(+m.id);
     if (!(+m.id >= 1 && +m.id <= SLOTS)) return fail(ws, '部屋番号が不正です');
-    this.R = { id, name: String(m.name || `部屋${id}`).slice(0, 30), password: String(m.password || '').slice(0, 20), hostKey: rnd(20), players: {}, hostGone: null };
+    // host:false … 進行役を決めずに部屋だけ作る（作った人は参加者として入り、あとで誰かが進行役になる）
+    const withHost = m.host !== false;
+    this.R = { id, name: String(m.name || `部屋${id}`).slice(0, 30), password: String(m.password || '').slice(0, 20), hostKey: withHost ? rnd(20) : null, players: {}, hostGone: null };
     await this.save();
-    ws.serializeAttachment({ role: 'host' });
-    send(ws, { t: 'created', room: id, name: this.R.name, hostKey: this.R.hostKey });
+    if (withHost) ws.serializeAttachment({ role: 'host' });
+    send(ws, { t: 'created', room: id, name: this.R.name, ...(withHost ? { hostKey: this.R.hostKey } : {}) });
     this.syncLobby();
   }
 
@@ -144,6 +147,7 @@ export class Room extends DurableObject {
       await this.save();
     }
     ws.serializeAttachment({ role: 'player', pid: p.pid });
+    if (!this.R.hostKey && this.R.hostGone) { this.R.hostGone = null; await this.save(); await this.ctx.storage.deleteAlarm(); }
     send(ws, { t: 'joined', pid: p.pid, room: this.R.id, roomName: this.R.name, name: p.name, flavor: p.flavor, job: p.job, team: p.team });
     if (this.state) send(ws, { t: 'state', state: this.state });
     this.lobby();
@@ -181,6 +185,8 @@ export class Room extends DurableObject {
         this.lobby();
         return;
       }
+      case 'transfer': return this.transferHost(m.pid);
+      case 'release': return this.releaseHost();
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
       case 'endgame':
         this.state = null;
@@ -211,6 +217,7 @@ export class Room extends DurableObject {
         await this.save();
         ws.serializeAttachment({});
         return this.lobby(ws);
+      case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
         if (!this.round.canBuzz(pid)) return;
         if (m.rtt > 0) this.rtts.set(pid, clampRtt(m.rtt));
@@ -218,6 +225,50 @@ export class Room extends DurableObject {
         send(ws, { t: 'ack' });
         this.scheduleResolve();
     }
+  }
+
+  /* ============================ 進行役の決定・交代 ============================ */
+  /** 参加者を名簿から外し、新しい進行役の鍵を発行する（鍵を受け取った画面が /host に移る） */
+  async grantHost(pid) {
+    const hostKey = rnd(20);
+    const ws = this.playerWs(pid);
+    this.R.hostKey = hostKey;
+    this.R.hostGone = Date.now();                       // 新しい進行役が繋ぐまでの猶予
+    delete this.R.players[pid];
+    await this.save();
+    await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);
+    for (const s of ws) { send(s, { t: 'host_granted', hostKey }); s.serializeAttachment({}); }
+  }
+  /** 進行役がいない部屋で、参加者が自分から進行役になる（先着） */
+  async claimHost(ws, pid) {
+    if (this.R.hostKey) return fail(ws, 'すでに進行役がいます');
+    await this.grantHost(pid);
+    this.lobby();
+  }
+  /** いまの進行役が、参加者の1人に進行役を譲る */
+  async transferHost(pid) {
+    if (!this.R.players[pid] || !this.isOnline(pid)) return this.toHost({ t: 'notice', msg: 'その人はオンラインではありません' });
+    const old = this.hostWs();
+    await this.grantHost(pid);
+    this.endBattleState();
+    if (old) { send(old, { t: 'demoted' }); old.serializeAttachment({}); }
+    this.lobby();
+  }
+  /** 進行役をやめる。部屋は残り、誰かがあとから進行役になれる */
+  async releaseHost() {
+    const old = this.hostWs();
+    this.R.hostKey = null; this.R.hostGone = null;
+    await this.save();
+    await this.ctx.storage.deleteAlarm();
+    this.endBattleState();
+    if (old) { send(old, { t: 'demoted' }); old.serializeAttachment({}); }
+    this.lobby();
+  }
+  /** 進行役が替わるとバトルの状態は引き継げないので、参加者の画面をロビーに戻す */
+  endBattleState() {
+    this.state = null; clearTimeout(this.timer); this.round = new BuzzRound();
+    this.ctx.waitUntil(Promise.all([this.ctx.storage.delete('state'), this.persistRound()]));
+    this.toPlayers({ t: 'ended' });
   }
 
   /* ============================ 切断・タイマー ============================ */
@@ -228,11 +279,17 @@ export class Room extends DurableObject {
       this.R.hostGone = Date.now();
       await this.save();
       await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);
-    } else if (att.role === 'player') this.lobby(ws);
+    } else if (att.role === 'player') {
+      // 進行役のいない部屋で、全員がいなくなったら猶予のあとに閉じる
+      if (!this.R.hostKey && !this.R.hostGone && !Object.keys(this.R.players).some(pid => this.isOnline(pid, ws))) {
+        this.R.hostGone = Date.now(); await this.save(); await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);
+      }
+      this.lobby(ws);
+    }
   }
   async webSocketError(ws) { return this.webSocketClose(ws); }
 
   async alarm() {
-    if (this.R?.hostGone && Date.now() - this.R.hostGone >= HOST_GRACE_MS - 1000) await this.closeRoom('進行役が長時間不在のため部屋を閉じました');
+    if (this.R?.hostGone && Date.now() - this.R.hostGone >= HOST_GRACE_MS - 1000) await this.closeRoom(this.R.hostKey ? '進行役が長時間不在のため部屋を閉じました' : '長時間だれもいないため部屋を閉じました');
   }
 }

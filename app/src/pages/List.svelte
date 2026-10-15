@@ -4,7 +4,7 @@
   import { flip } from 'svelte/animate';
   import { wsUrl } from '../lib/net.js';
   import { toast, panel } from '../lib/ui.svelte.js';
-  import { store, KEY } from '../lib/storage.js';
+  import { store, session, KEY } from '../lib/storage.js';
 
   let rooms = $state(null);
   let status = $state('読み込み中…');
@@ -42,12 +42,13 @@
   function create() {
     const d = dlg; if (!d || d.busy) return;
     if (!d.name.trim()) { d.err = '部屋名を入力してください'; return; }
+    if (!name.trim()) { d.err = '先に上の欄へ自分の名前を入力してください'; return; }
     d.busy = true; d.err = '';
     const ws = new WebSocket(wsUrl(d.id));
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'create', id: d.id, name: d.name.trim(), password: d.pw }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'create', id: d.id, name: d.name.trim(), password: d.pw, host: false }));
     ws.onmessage = ev => {
       const m = JSON.parse(ev.data);
-      if (m.t === 'created') { store.set(KEY.hostKey(m.room), m.hostKey); location.href = `/host?id=${m.room}`; }
+      if (m.t === 'created') { session.set(KEY.pw(m.room), d.pw); location.href = `/play?id=${m.room}`; }
       else if (m.t === 'error') { d.busy = false; d.err = m.msg; ws.close(); load(); }
     };
     ws.onerror = () => { d.busy = false; d.err = '接続に失敗しました。もう一度お試しください'; };

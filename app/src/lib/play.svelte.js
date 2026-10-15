@@ -20,6 +20,8 @@ export class PlayStore {
   myJob = $state('warrior');
   myTeam = $state('p');
   members = $state([]);
+  hasHost = $state(true);         // 進行役がいるか（いなければ誰でもなれる）
+  hostOnline = $state(false);
   gs = $state(null);              // 進行役から届く表示用の状態
   open = $state(false);           // 早押し受付中
   eligible = $state([]);          // 今回押せる人
@@ -79,9 +81,10 @@ export class PlayStore {
     if (!this.info || !this.info.used) { toast('その部屋は存在しません'); goList(); return; }
     this.roomName = this.info.name;
     this.phase = 'join';
+    const pw = session.get(KEY.pw(this.id)); if (pw != null) { this.pw = pw; session.remove(KEY.pw(this.id)); }
     const known = session.get(this.pidKey);
     // 再接続、または名前が保存済みでパスワード不要なら、入力なしで自動入室
-    if ((known && this.name) || (!this.info.hasPw && this.name && !location.hash.includes('edit'))) this.join(true);
+    if ((known && this.name) || ((!this.info.hasPw || this.pw) && this.name && !location.hash.includes('edit'))) this.join(true);
   }
 
   join(auto = false) {
@@ -103,7 +106,8 @@ export class PlayStore {
     switch (m.t) {
       case 'error': return this.#onError(m);
       case 'joined': return this.#onJoined(m);
-      case 'members': this.members = m.players; return;
+      case 'members': this.members = m.players; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
+      case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
       case 'ended': this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
@@ -158,6 +162,8 @@ export class PlayStore {
   #sendProfile() { this.conn.send({ t: 'profile', job: this.myJob, team: this.myTeam }); }
   pickJob(j) { this.myJob = j; store.set(KEY.job, j); this.#sendProfile(); }
   pickTeam(t) { this.myTeam = t; store.set(KEY.team, t); this.#sendProfile(); }
+  /** 進行役のいない部屋で、自分が進行役になる */
+  claimHost() { this.conn.send({ t: 'claim_host' }); }
   leave() { this.conn.send({ t: 'leave' }); session.remove(this.pidKey); location.href = '/'; }
   /** 名前を変える（いったん退室して入室フォームへ） */
   rename() {

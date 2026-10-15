@@ -493,3 +493,66 @@ test('時計合わせ: 端末の時計が1分ずれていても、押した時�
   assert.equal((await host.wait('winner')).pid, B.p.pid);
   host.send({ t: 'close' });
 });
+
+/* ---------- 進行役を後から決める ---------- */
+async function makeHostlessRoom() {
+  const id = await newRoomId();
+  const c = await client(id);
+  c.send({ t: 'create', id, name: '後決め', password: '', host: false });
+  const created = await c.wait('created');
+  assert.equal(created.hostKey, undefined);
+  c.ws.close();
+  return id;
+}
+
+test('進行役なしで部屋を作り、入室後に先着で進行役になれる', async () => {
+  const id = await makeHostlessRoom();
+  await sleep(100);
+  assert.equal((await api())[id - 1].hasHost, false);
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  const m = await a.wait('members', 3000, x => x.players.length === 2);
+  assert.equal(m.hasHost, false);
+  a.send({ t: 'claim_host' });
+  const g = await a.wait('host_granted');
+  assert.ok(g.hostKey);
+  b.send({ t: 'claim_host' });                       // 2人目は断られる
+  assert.match((await b.wait('error')).msg, /すでに/);
+  const host = await client(id);
+  host.send({ t: 'host_resume', id, hostKey: g.hostKey });
+  await host.wait('created');
+  const lob = await host.wait('lobby', 3000, x => x.players.length === 1);
+  assert.equal(lob.players[0].name, 'B');            // 進行役になった A は名簿から外れる
+  assert.equal((await b.wait('members', 3000, x => x.hasHost)).hasHost, true);
+  host.send({ t: 'close' });
+});
+
+test('進行役を参加者に譲る: 旧進行役は降格し、新しい鍵だけが有効', async () => {
+  const { id, host, key } = await makeRoom();
+  const p = await joinPlayer(id, 'P');
+  await host.wait('lobby', 3000, x => x.players.length === 1);
+  host.send({ t: 'transfer', pid: p.pid });
+  await host.wait('demoted');
+  const g = await p.wait('host_granted');
+  assert.notEqual(g.hostKey, key);
+  const oldTry = await client(id);
+  oldTry.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await oldTry.wait('error')).code, 'gone');
+  const nh = await client(id);
+  nh.send({ t: 'host_resume', id, hostKey: g.hostKey });
+  await nh.wait('created');
+  nh.send({ t: 'close' });
+});
+
+test('進行役をやめる: 部屋は残り、あとから誰かがなれる', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'P');
+  host.send({ t: 'release' });
+  await host.wait('demoted');
+  assert.equal((await p.wait('members', 3000, x => !x.hasHost)).hasHost, false);
+  p.send({ t: 'claim_host' });
+  const g = await p.wait('host_granted');
+  const nh = await client(id);
+  nh.send({ t: 'host_resume', id, hostKey: g.hostKey });
+  await nh.wait('created');
+  nh.send({ t: 'close' });
+});
