@@ -8,6 +8,10 @@
 
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
+  // 敵（自分と別の陣営）を上、味方を下に並べる
+  const mySide = $derived(p.me?.side ?? 'p');
+  const foes = $derived(gs.units.filter(u => u.side !== mySide));
+  const allies = $derived(gs.units.filter(u => u.side === mySide));
   let text = $state(''), msg = $state(''), chatEl = $state();
   $effect(() => { p.chat.length; tick().then(() => { if (chatEl) chatEl.scrollTop = chatEl.scrollHeight; }); });
   const answers = $derived(p.chat.filter(c => c.answer && c.q === gs.q).slice(-8));
@@ -60,8 +64,17 @@
   {/if}
 
   <div class="mid">
+    {#if foes.length}
+      <div class="grp foe">敵</div>
+      <div class="strip">
+        {#each foes as u (u.id)}
+          <Unit {u} compact jobLabel={u.jobName} tags={tagsOf(u)} />
+        {/each}
+      </div>
+    {/if}
+    <div class="grp ally">味方</div>
     <div class="strip">
-      {#each gs.units as u (u.id)}
+      {#each allies as u (u.id)}
         <Unit {u} compact ribbon={u.id === p.mine ? 'あなた' : ''} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} />
       {/each}
     </div>
@@ -120,6 +133,9 @@
   .rank{font-size:.8rem;margin-top:4px;opacity:.9}
 
   .mid{flex:1;min-width:0}
+  .grp{font-size:.8rem;font-weight:700;margin:2px 4px 0;display:flex;align-items:center;gap:6px}
+  .grp::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+  .grp.foe{color:#ff9aa2}.grp.ally{color:#9cc8ee}
   .strip{display:flex;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
   .strip :global(.unit){flex:0 0 138px;scroll-snap-align:start}
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
