@@ -104,6 +104,12 @@ export class HostStore {
   #joinLate() {
     const G = this.battle.G;
     if (!G || G.over || this.battle.busy) return;
+    // 退室した人（一覧から消えた人）は戦闘から外す。接続が切れただけの人は残す（戻ってこられる）
+    let removed = false;
+    for (const pid of Object.keys(G.pids)) {
+      if (!this.lobby.some(l => l.pid === pid) && this.battle.leave(pid)) removed = true;
+    }
+    if (removed && this.battle.G.sel == null && !this.battle.G.over) this.reopen();
     let added = false;
     for (const r of this.roster) {
       if (r.pid && r.online && G.pids[r.pid] == null && this.battle.join({ name: r.name, job: r.job, team: r.team, pid: r.pid })) added = true;

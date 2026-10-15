@@ -198,3 +198,61 @@ test('CPUの自動行動: ランダムに最後まで遊んでも落ちず、決
     }
   }
 });
+
+/* ================= 途中離脱・途中入室を繰り返す運用 ================= */
+test('途中離脱: ユニットが外れ、回答者なら選択が外れ、全員抜ければ敗北。戻ると新しいユニットで途中参戦', () => {
+  const b = battle([{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }]);
+  b.select(b.G.pids.a);
+  assert.equal(b.leave('a'), true);
+  assert.equal(b.G.sel, null);
+  assert.equal(b.G.units.some(u => u.name === 'A'), false);
+  assert.equal(b.G.pids.a, undefined);
+  assert.equal(b.leave('a'), false);                              // 二重の離脱は何もしない
+  assert.equal(b.leave('zzz'), false);
+  assert.equal(b.join({ name: 'A', pid: 'a2' }), true);           // 同じ人が戻ると新しい pid
+  assert.equal(b.G.units.filter(u => u.name === 'A').length, 1);
+  b.leave('b'); b.leave('a2');
+  assert.equal(b.G.over, 'lose');
+});
+
+test('入退室を200回ランダムに繰り返しても、戦闘の状態が壊れない（ユニット・pid の対応、決着後の扱い）', async () => {
+  let s = 12345; const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const b = createBattle({ ask: async (t, o) => { const ok = o.filter(x => !x.disabled); return ok[Math.floor(rnd() * ok.length)].value; }, toast() {}, changed() {}, random: rnd });
+  b.start({ players: [{ name: 'P0', job: 'tank', pid: 'p0' }, { name: 'P1', job: 'monk', pid: 'p1' }], mode: 'cpu', boss: 3, cpuAuto: true });
+  let next = 2; const present = new Set(['p0', 'p1']);
+  for (let i = 0; i < 200; i++) {
+    const r = rnd();
+    if (b.G.over) break;
+    if (r < 0.3) { const pid = 'p' + next++; if (b.join({ name: pid, job: 'warrior', pid })) present.add(pid); }
+    else if (r < 0.55 && present.size > 1) { const pid = [...present][Math.floor(rnd() * present.size)]; if (b.leave(pid)) present.delete(pid); }
+    else if (r < 0.8) { const alive = b.G.units.filter(u => !u.isBoss && u.alive); if (alive.length) { b.select(alive[0].id); await (rnd() < 0.7 ? b.correct() : b.wrong({ retry: rnd() < 0.5 })); } }
+    else await b.skip();
+    const ids = b.G.units.map(u => u.id);
+    assert.equal(new Set(ids).size, ids.length, 'ユニットidが重複しない');
+    for (const [pid, id] of Object.entries(b.G.pids)) assert.ok(ids.includes(id), `pid ${pid} のユニットが存在する`);
+    assert.ok(b.G.units.every(u => u.hp >= 0 && u.hp <= u.maxHp));
+    if (b.G.sel != null) assert.ok(ids.includes(b.G.sel), '選択中のユニットが存在する');
+  }
+});
+
+test('名簿の同期: 入退室・切断・復帰をランダムに繰り返しても、一覧と名簿が一致し、進行役の手動変更が残る', () => {
+  let s = 777; const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  let k = 0; const nk = () => ++k;
+  const roster = [], lobby = [];
+  let n = 0;
+  for (let i = 0; i < 300; i++) {
+    const r = rnd();
+    if (r < 0.3 || !lobby.length) lobby.push({ pid: 'p' + n, name: '人' + n++, job: 'warrior', team: 'p', online: true });
+    else if (r < 0.5) lobby.splice(Math.floor(rnd() * lobby.length), 1);
+    else if (r < 0.8) { const l = lobby[Math.floor(rnd() * lobby.length)]; l.online = !l.online; }
+    else { const l = lobby[Math.floor(rnd() * lobby.length)]; l.job = ['mage', 'monk', 'tank'][Math.floor(rnd() * 3)]; }
+    if (rnd() < 0.2 && roster.length) { const row = roster[Math.floor(rnd() * roster.length)]; row.job = 'bm'; row.touchedJob = true; }
+    syncRoster(roster, JSON.parse(JSON.stringify(lobby)), nk);
+    assert.deepEqual(roster.map(r => r.pid).sort(), lobby.map(l => l.pid).sort());
+    for (const row of roster) {
+      assert.equal(row.online, lobby.find(l => l.pid === row.pid).online);
+      if (row.touchedJob) assert.equal(row.job, 'bm');
+    }
+    assert.equal(new Set(roster.map(r => r.key)).size, roster.length, '行のキーが重複しない');
+  }
+});

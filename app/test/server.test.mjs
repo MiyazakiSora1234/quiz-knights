@@ -642,3 +642,143 @@ test('進行役が落ちたら、少し待ってから参加者が引き継げ�
   await nh.wait('created');
   nh.send({ t: 'close' });
 });
+
+/* ================= 複数人・途中離脱/入室を繰り返す運用 ================= */
+const lastOf = (c, t) => [...c.q].reverse().find(m => m.t === t);
+
+test('運用: 入室・退室・切断・復帰・キックをランダムに40回繰り返しても、進行役の一覧と実際の状態が一致する', async () => {
+  let s = 2024; const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const { id, host } = await makeRoom();
+  const model = new Map();             // pid -> { c, online, name }
+  let n = 0;
+  for (let i = 0; i < 40; i++) {
+    const r = rnd(), pids = [...model.keys()];
+    if (r < 0.3 || pids.length < 3) {
+      const c = await joinPlayer(id, 'P' + n); model.set(c.pid, { c, online: true, name: 'P' + n++ });
+    } else {
+      const pid = pids[Math.floor(rnd() * pids.length)], m = model.get(pid);
+      if (r < 0.5 && m.online) { m.c.send({ t: 'leave' }); model.delete(pid); }
+      else if (r < 0.7 && m.online) { m.c.ws.close(); m.online = false; }                       // 切断（退室ではない）
+      else if (r < 0.85 && !m.online) { const c = await joinPlayer(id, m.name, { pid }); m.c = c; m.online = true; }   // 同じ pid で復帰
+      else if (r < 0.95) { host.send({ t: 'kick', pid }); model.delete(pid); }
+    }
+    if (i % 5 === 4) await sleep(120);
+  }
+  await sleep(500);
+  const lob = lastOf(host, 'lobby');
+  assert.deepEqual(lob.players.map(p => p.pid).sort(), [...model.keys()].sort(), '名簿が一致');
+  for (const p of lob.players) assert.equal(p.online, model.get(p.pid).online, `${p.name} のオンライン状態`);
+  const room = (await api())[id - 1];
+  assert.equal(room.count, model.size);
+  assert.equal(room.online, [...model.values()].filter(m => m.online).length);
+  host.send({ t: 'close' });
+});
+
+test('運用: 早押しの最中に参加者が切断しても、勝者が決まる（押した直後に落ちても有効）', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B'), c = await joinPlayer(id, 'C');
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0, [b.pid]: 0, [c.pid]: 0 } });
+  await a.wait('open');
+  c.ws.close();                                                  // 押す前に切断
+  a.send({ t: 'buzz', ts: Date.now(), rtt: 40 });
+  a.ws.close();                                                  // 押した直後に切断
+  const w = await host.wait('winner', 4000);
+  assert.equal(w.pid, a.pid);
+  const bw = await b.wait('winner', 4000);
+  assert.equal(bw.pid, a.pid);
+  host.send({ t: 'close' });
+});
+
+test('運用: 進行役が再読み込みしても部屋は残り、戻ったあとの早押しが進行役に届く。不在中に決まった勝者も戻ると伝わる', async () => {
+  const { id, host, key } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'state', state: { q: 1, units: [], pids: {} } });
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0, [b.pid]: 0 } });
+  await a.wait('open');
+  host.ws.close();                                               // 進行役の画面が落ちる
+  await sleep(100);
+  a.send({ t: 'buzz', ts: Date.now(), rtt: 30 });                // 不在中に押される
+  await a.wait('winner', 4000);
+  const host2 = await client(id);
+  host2.send({ t: 'host_resume', id, hostKey: key });
+  await host2.wait('created');
+  const w = await host2.wait('winner', 3000);                    // 戻ったら勝者が伝わる
+  assert.equal(w.pid, a.pid);
+  // 戻ったあとの新しい問題も、通常どおり
+  host2.send({ t: 'open', q: 2, eligible: { [a.pid]: 0, [b.pid]: 0 } });
+  await b.wait('open', 3000, x => x.q === 2);
+  b.send({ t: 'buzz', ts: Date.now(), rtt: 30 });
+  assert.equal((await host2.wait('winner', 4000)).pid, b.pid);
+  assert.equal((await api())[id - 1].count, 2);
+  host2.send({ t: 'close' });
+});
+
+test('運用: 途中入室した人は、再受付されるまで押せない。再受付に含まれれば押せる', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0 } });
+  await a.wait('open');
+  const late = await joinPlayer(id, 'Late');                     // 受付中に入室
+  late.send({ t: 'buzz', ts: Date.now(), rtt: 30 });             // まだ対象外 → 無視される
+  await sleep(300);
+  assert.equal(late.has('ack'), false);
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0, [late.pid]: 0 } });   // 進行役が受付を出し直す
+  await late.wait('open', 3000, x => x.eligible.includes(late.pid));
+  late.send({ t: 'buzz', ts: Date.now(), rtt: 30 });
+  assert.equal((await host.wait('winner', 4000)).pid, late.pid);
+  host.send({ t: 'close' });
+});
+
+test('運用: 同じ人が2つのタブで入っても人数は増えず、片方を閉じてもオンラインのまま。退室すると両方消える', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  const tab2 = await joinPlayer(id, 'A', { pid: a.pid });
+  assert.equal(tab2.pid, a.pid);
+  await sleep(150);
+  assert.equal((await api())[id - 1].count, 1);
+  a.ws.close();
+  await sleep(300);
+  assert.equal(lastOf(host, 'lobby').players[0].online, true);
+  tab2.send({ t: 'leave' });
+  await sleep(300);
+  assert.equal(lastOf(host, 'lobby').players.length, 0);
+  tab2.send({ t: 'buzz', ts: Date.now() });                      // 退室後の操作は無視される
+  tab2.send({ t: 'chat', text: '幽霊' });
+  await sleep(200);
+  assert.equal(host.q.some(m => m.t === 'chat' && m.text === '幽霊'), false);
+  host.send({ t: 'close' });
+});
+
+test('運用: 12人が同時に入室・同時に押しても、勝者は1人に決まり全員に同じ結果が届く', async () => {
+  const { id, host } = await makeRoom();
+  const ps = await Promise.all(Array.from({ length: 12 }, (_, i) => joinPlayer(id, 'P' + i)));
+  const eligible = Object.fromEntries(ps.map(p => [p.pid, 0]));
+  host.send({ t: 'open', q: 1, eligible });
+  await Promise.all(ps.map(p => p.wait('open')));
+  const t = Date.now();
+  ps.forEach((p, i) => p.send({ t: 'buzz', ts: t + i, rtt: 30 }));
+  const results = await Promise.all(ps.map(p => p.wait('winner', 5000)));
+  assert.equal(new Set(results.map(w => w.pid)).size, 1);
+  assert.equal(results[0].pid, ps[0].pid);                       // 一番早い申告
+  assert.equal(results[0].ranking.length, 12);
+  assert.equal((await host.wait('winner')).pid, ps[0].pid);
+  host.send({ t: 'close' });
+});
+
+test('運用: 部屋を閉じると全員に通知され、同じ番号ですぐ作り直せる（前の部屋の人・チャットは残らない）', async () => {
+  const { id, host } = await makeRoom({ name: '一回目' });
+  const a = await joinPlayer(id, 'A');
+  a.send({ t: 'chat', text: '前の部屋の発言' });
+  await host.wait('chat', 3000, x => x.text === '前の部屋の発言');
+  host.send({ t: 'close' });
+  assert.ok((await a.wait('closed')).why);
+  await sleep(300);
+  const h2 = await client(id);
+  h2.send({ t: 'create', id, name: '二回目', password: '' });
+  await h2.wait('created');
+  const b = await joinPlayer(id, 'B');
+  await sleep(200);
+  assert.equal(b.q.some(m => m.t === 'chat' && m.text === '前の部屋の発言'), false);
+  assert.equal((await api())[id - 1].count, 1);
+  h2.send({ t: 'close' });
+});

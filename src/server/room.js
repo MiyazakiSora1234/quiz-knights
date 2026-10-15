@@ -19,6 +19,7 @@ export class Room extends DurableObject {
     this.state = null;             // 進行役が送ってくる表示用の状態
     this.rtts = new Map();         // pid -> 往復遅延(ms)。参加者が自己申告（メモリのみ）
     this.chat = [];                // 直近のチャット（メモリのみ）
+    this.lastWinner = null;        // 直近の早押しの勝者（進行役が戻ったとき用）
     this.round = new BuzzRound();  // 今の問題の早押し
     this.timer = null;             // 勝者を確定するタイマー
     ctx.blockConcurrencyWhile(async () => {
@@ -75,7 +76,7 @@ export class Room extends DurableObject {
     this.toPlayers({ t: 'closed', why });
     const id = this.R?.id;
     for (const s of this.socks()) { try { s.close(1000, 'closed'); } catch { /* noop */ } }
-    this.R = null; this.state = null; this.chat = []; this.round = new BuzzRound();
+    this.R = null; this.state = null; this.lastWinner = null; this.chat = []; this.round = new BuzzRound();
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     if (id) await lobbyStub(this.env).remove(id);
@@ -98,6 +99,7 @@ export class Room extends DurableObject {
     await this.persistRound();
     if (!ranking.length) return;
     const msg = { t: 'winner', q: round.q, pid: ranking[0].pid, name: ranking[0].name, ranking };
+    this.lastWinner = msg;                // 進行役が不在でも、戻ってきたときに伝えられるよう覚えておく
     this.toHost(msg);
     this.toPlayers(msg);
   }
@@ -158,6 +160,8 @@ export class Room extends DurableObject {
     ws.serializeAttachment({ role: 'host' });
     send(ws, { t: 'created', room: this.R.id, name: this.R.name, password: this.R.password, hostKey: this.R.hostKey });
     this.lobby();
+    // 受付が終わっていて、勝者がまだ回答者に選ばれていないなら、戻った進行役にもう一度伝える
+    if (this.lastWinner && this.lastWinner.q === this.round.q && !this.round.open) send(ws, this.lastWinner);
   }
 
   async onJoin(ws, m) {

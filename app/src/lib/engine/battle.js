@@ -275,6 +275,23 @@ export function createBattle(ui) {
       emit();
       return true;
     },
+    /** 退室した参加者のユニットを戦闘から外す（途中離脱）。外したら true。戻る場合は新しい参加者として途中参戦する */
+    leave(pid) {
+      if (!G || busy || G.pids[pid] == null) return false;
+      const id = G.pids[pid];
+      const u = G.units.find(x => x.id === id);
+      delete G.pids[pid];
+      if (!u) return false;
+      G.units = G.units.filter(x => x.id !== id);
+      if (G.sel === id) G.sel = null;
+      if (G.prevCorrect === id) G.prevCorrect = null;
+      G.wrongOn = (G.wrongOn || []).filter(x => x !== id);
+      log(`${u.name} が離脱した`, 'sys');
+      checkEnd();
+      ui.persist && ui.persist(G);
+      emit();
+      return true;
+    },
     load(saved) { G = saved; undoStack = []; busy = false; emit(); },
     reset() { G = null; undoStack = []; busy = false; emit(); },
 
