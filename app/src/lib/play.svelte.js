@@ -1,5 +1,4 @@
 // 参加者の状態: 入室・ロビー・バトル中の表示用状態と、早押し
-import { SELECTABLE } from './engine.js';
 import { Conn } from './net.js';
 import { toast } from './ui.svelte.js';
 import { sfx, vib, unlockAudio } from './sound.svelte.js';
@@ -136,14 +135,6 @@ export class PlayStore {
     this.pid = m.pid; session.set(this.pidKey, m.pid);
     store.set(KEY.name, m.name); store.set(KEY.flavor, m.flavor || '');
     this.myJob = m.job; this.myTeam = m.team; this.roomName = m.roomName;
-    // 前回選んだ職業・チームを引き継ぐ
-    const sj = store.get(KEY.job), st = store.get(KEY.team);
-    const wantJob = sj && SELECTABLE.includes(sj) ? sj : null, wantTeam = st === 'p' || st === 'e' ? st : null;
-    if ((wantJob && wantJob !== m.job) || (wantTeam && wantTeam !== m.team)) {
-      if (wantJob) this.myJob = wantJob;
-      if (wantTeam) this.myTeam = wantTeam;
-      this.#sendProfile();
-    }
     this.phase = this.gs ? 'game' : 'lobby';
     this.keepAwake();
   }
