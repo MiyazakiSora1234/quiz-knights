@@ -82,7 +82,6 @@
   {/if}
 
   <h2 class="sec">部屋を作る（進行役）</h2>
-  <p class="sub" style="margin:0 0 10px">空いている番号を選んで、部屋名を付けて作成します。あなたが進行役になります。</p>
   <div class="slots">
     {#each free as r (r.id)}
       <button class="slot" onclick={() => openCreate(r.id)}><b>{r.id}</b>作成</button>
@@ -96,8 +95,7 @@
   <div class="backdrop" transition:fade={{ duration: 120 }} onmousedown={(e) => e.target === e.currentTarget && (dlg = null)} role="presentation">
     <form class="dlg" transition:scale={{ start: .96, duration: 140 }} onsubmit={(e) => { e.preventDefault(); create(); }}>
       <h2>{dlg.id}番の部屋を作る</h2>
-      <div class="sub">あなたが進行役になります。</div>
-      <label class="field"><span>部屋名</span><input class="input" use:focusOnMount bind:value={dlg.name} maxlength="30" placeholder="例：夜の円卓"></label>
+      <label class="field"><span>部屋名</span><input class="input" use:focusOnMount bind:value={dlg.name} maxlength="30" placeholder="部屋の名前"></label>
       <label class="field"><span>パスワード（任意）</span><input class="input" bind:value={dlg.pw} maxlength="20" autocomplete="off"></label>
       <div class="err">{dlg.err}</div>
       <div class="row">
