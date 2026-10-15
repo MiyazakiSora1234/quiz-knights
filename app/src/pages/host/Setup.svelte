@@ -7,6 +7,7 @@
   import RosterRow from './RosterRow.svelte';
   import BossPicker from './BossPicker.svelte';
   import FoePicker from './FoePicker.svelte';
+  import { LEVELS } from '../../lib/engine.js';
 
   // バトルの準備画面: 左に招待URLと参加者の名簿、右にモード・魔王・開始ボタン
   let { host } = $props();
@@ -59,6 +60,13 @@
         <div class="seg"><button class:sel={host.buzzRule === 'next'} onclick={() => (host.buzzRule = 'next')}>誤答で次の問題へ</button><button class:sel={host.buzzRule === 'retry'} onclick={() => (host.buzzRule = 'retry')}>誤答者を除いて再受付</button></div>
         <div class="sub desc">{host.buzzRule === 'retry' ? '誰かが誤答しても問題は終わらず、その人を除いてもう一度早押しを受け付けます（全員が誤答すると終了）。' : '誰かが誤答したら、その問題は終わりです。'}</div>
       </div>
+      {#if !pvp}
+        <div class="panel">
+          <h3>難易度</h3>
+          <div class="seg">{#each Object.entries(LEVELS) as [k, l]}<button class:sel={host.level === k} onclick={() => (host.level = k)}>{l.n}</button>{/each}</div>
+          <div class="sub desc">{LEVELS[host.level].d}</div>
+        </div>
+      {/if}
       {#if host.mode === 'cpu'}<BossPicker {host} />{:else if host.mode === 'squad'}<FoePicker {host} />{/if}
 
       <div class="start">

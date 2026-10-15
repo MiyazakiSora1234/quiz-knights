@@ -1,6 +1,6 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, GENRES, jobName, nm, bossHp } from './data.js';
+import { CANCEL, JOB, BOSS, GENRES, LEVELS, jobName, nm, bossHp } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
 
@@ -219,12 +219,13 @@ export function createBattle(ui) {
     get canUndo() { return undoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
-    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false }) {
+    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'normal' }) {
+      if (!LEVELS[level]) level = 'normal';
       // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
       const squad = mode === 'cpu' && foes.length > 0;
       if (squad) mode = 'pvp';
       G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
-            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto } };
+            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level } };
       const pvp = mode === 'pvp';
       for (const p of players) {
         const u = mkPlayer(p.name.trim(), p.job);
@@ -248,7 +249,7 @@ export function createBattle(ui) {
         log(squad ? `バトル開始！ プレイヤー vs CPU（${G.units.filter(u => u.cpu).map(u => u.name).join('・')}）` : '対戦開始！ チームA vs チームB', 'sys');
       } else {
         const S = G.units.reduce((s, u) => s + u.atk, 0);
-        const b = mkBoss(+boss, S);
+        const b = mkBoss(+boss, S * LEVELS[level].hp);
         G.units.push(b);
         log(`バトル開始！ ${b.name} (HP ${b.hp}) ／ プレイヤー攻撃合計 ${S}`, 'sys');
       }

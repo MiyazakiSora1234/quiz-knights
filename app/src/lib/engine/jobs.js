@@ -128,8 +128,35 @@ const BOSS_SKILLS = {
     }, { disabled: !(prev && prev.alive && prev.side !== a.side) });
   },
   4(ctx, a, add) {
-    add('通常ボタンで正解', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), 1); });
-    add('ディレイボタンで正解', '1人を倒す', [P('倒す相手', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 9999); });
+    add('技1', '敵1人に毒（次の2問が終わるたびに1ダメージ）', [P('対象', foe(a))], async ([t]) => {
+      if (!(t.poison > 0)) t.poisonSkip = true;
+      t.poison = 2;
+      ctx.log(`☠ ${t.name} は毒を受けた`, 'sys');
+    });
+    const poisoned = ctx.G.units.filter(u => u.alive && u.side !== a.side && u.poison > 0).length;
+    const amt = poisoned >= 3 ? 2 : 1;
+    add(`技2（敵全体に${amt}）`, '敵全体に1ダメージ（毒を受けている敵が3人以上なら2ダメージ）', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, amt)); });
+  },
+  5(ctx, a, add) {
+    const prev = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
+    const ok = prev && prev.alive && prev.side !== a.side;
+    const copyable = ok && !prev.isBoss && prev.job !== 'mimic';
+    const copied = copyable ? buildActions(ctx, a, prev.job).slice(1) : [];   // 通常攻撃は除く
+    for (const x of copied) add(`模倣：${x.label}`, x.desc, x.prompts, x.run, { disabled: x.disabled });
+    if (copyable && prev.job === 'thief') add('模倣：ジャンル選択', '次の問題のジャンルを選ぶ', [], async () => { await ctx.pickGenre(); });
+    if (!copied.length && !(copyable && prev.job === 'thief')) add('模倣', '直前に正解した敵の技をコピー（コピーできる技なし）', [], async () => {}, { disabled: true });
+    add(`反射${ok ? `（${prev.name}）` : ''}`, '直前に正解した敵に2ダメージ', [], async () => {
+      const t = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
+      if (t && t.alive && t.side !== a.side) await ctx.dmgTo(a, [t], ctx.dm(a, 2)); else ctx.log('直前の正解者がいないため不発');
+    }, { disabled: !ok });
+  },
+  6(ctx, a, add) {
+    add('技1', '敵1人に5ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 5)); });
+    add('技2', '敵全体に2ダメージ。自分も1ダメージ（体力が1のときは受けない）', [], async () => {
+      const evs = ctx.foesOf(a).map(t => ({ src: a, to: t, amt: ctx.dm(a, 2) }));
+      if (a.hp > 1) evs.push({ src: null, to: a, amt: 1 });
+      await ctx.applyEvents(evs);
+    });
   },
 };
 
@@ -142,7 +169,7 @@ export function buildActions(ctx, a, asJob = null) {
   const list = [];
   const add = (label, desc, prompts, run, opt = {}) => list.push({ label, desc, prompts, run, ...opt });
 
-  if (a.isBoss) { BOSS_SKILLS[a.bossId](ctx, a, add); return list; }
+  if (a.isBoss && !asJob) { BOSS_SKILLS[a.bossId](ctx, a, add); return list; }
 
   const job = asJob || a.job;
   if (job === 'mw') {

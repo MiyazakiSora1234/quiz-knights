@@ -307,12 +307,12 @@ test('魔王3: HP1で正解すると5回復（プレイヤー側では起きな�
   assert.ok(b.hp >= 6);
 });
 
-test('魔王4: ディレイボタンの「倒す」もバリアで防がれる', async () => {
+test('魔王6: 技1の5ダメージもバリアで防がれる', async () => {
   const h = harness();
-  h.b.start({ players: [P('A', 'warrior'), P('B', 'cleric')], boss: 4 });
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'cleric')], boss: 6 });
   h.u('A').barrier = 1;
-  await h.correct('魔王4', 'ディレイボタン', 'A');
-  assert.equal(h.u('A').alive, true);
+  await h.correct('魔王6', '技1', 'A');
+  assert.equal(h.u('A').hp, 7);
   assert.equal(h.u('A').barrier, 0);
 });
 

@@ -1,5 +1,5 @@
 // 戦闘中の共通部品: ログ・位置関係・回復・対象選択・ダメージ処理（庇う→同時ダメージ→死亡処理）
-import { BOSS, GENRES, jobName, nm, bossHp, bonusOf, iconKey } from './data.js';
+import { BOSS, GENRES, LEVELS, jobName, nm, bossHp, bonusOf, iconKey } from './data.js';
 
 /**
  * ui = { ask, random }、getG = 現在の戦闘状態を返す関数、emit = 画面へ変化を知らせる関数。
@@ -57,7 +57,12 @@ export function createContext({ ui, getG, emit }) {
   const neighbors = u => { const r = row(u), i = r.indexOf(u); return [r[i - 1], r[i + 1]].filter(Boolean); };
   const foesOf = a => getG().units.filter(u => u.alive && u.side !== a.side);
   /** 魔王1の「半分以下で+2」を含めた与ダメージ */
-  const dm = (a, n) => n + bonusOf(a);
+  // 魔王・CPUの与えるダメージは、難易度で加減される（0ダメージの技は0のまま、1以上は1未満にならない）
+  const dm = (a, n) => {
+    const lv = LEVELS[getG().cfg?.level] ?? LEVELS.normal;
+    const adj = (a && (a.isBoss || a.cpu)) ? lv.dmg : 0;
+    return n > 0 ? Math.max(1, n + bonusOf(a) + adj) : n + bonusOf(a);
+  };
 
   /* ---------- 回復・休み ---------- */
   function heal(u, n) {

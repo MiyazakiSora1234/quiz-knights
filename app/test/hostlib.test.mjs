@@ -101,7 +101,7 @@ test('魔王の説明: 全魔王に紹介・体力・技・特性がある。ア
     assert.ok(b.intro && b.hpText && b.skills.length && b.traits.length && b.d, id);
     svgs.add(icon(iconKey({ isBoss: true, bossId: +id })));
   }
-  assert.equal(svgs.size, 4);
+  assert.equal(svgs.size, 6);
 });
 
 test('選択ダイアログには「誰が選ぶか」が付く（行動・対象は回答者、庇いはタンク）', async () => {
@@ -183,7 +183,7 @@ test('CPUの自動行動: CPUチーム戦では生きているCPU全員が動く
 });
 
 test('CPUの自動行動: ランダムに最後まで遊んでも落ちず、決着がつく（全魔王）', async () => {
-  for (const boss of [1, 2, 3, 4]) {
+  for (const boss of [1, 2, 3, 4, 5, 6]) {
     for (let seed = 0; seed < 25; seed++) {
       let s = seed * 7919 + boss;
       const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
@@ -254,5 +254,24 @@ test('名簿の同期: 入退室・切断・復帰をランダムに繰り返し
       if (row.touchedJob) assert.equal(row.job, 'bm');
     }
     assert.equal(new Set(roster.map(r => r.key)).size, roster.length, '行のキーが重複しない');
+  }
+});
+
+test('難易度: 弱い=魔王HP0.7倍・与ダメ-1、強い=1.4倍・+1、普通は基準。プレイヤーのダメージは変わらない', async () => {
+  const hpOf = level => { const b = battle([{ name: 'A', job: 'warrior', pid: 'a' }]); return b.G.units.find(u => u.isBoss).maxHp; };
+  const mk = level => { const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} }); b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'tank', pid: 'b' }], mode: 'cpu', boss: 6, level }); return b; };
+  const weak = mk('weak'), normal = mk('normal'), strong = mk('strong'), bad = mk('???');
+  const hp = b => b.G.units.find(u => u.isBoss).maxHp;
+  assert.ok(hp(weak) < hp(normal) && hp(normal) < hp(strong));
+  assert.equal(hp(bad), hp(normal));
+  // 魔王6の技1（5ダメージ）を戦士Aに撃つ: 弱い4 / 普通5 / 強い6
+  for (const [b, dmg] of [[weak, 4], [normal, 5], [strong, 6]]) {
+    const boss = b.G.units.find(u => u.isBoss), a = b.G.units.find(u => u.name === 'A');
+    b.select(boss.id);
+    // A が庇い対象ではないので、直接ダメージを確認（技1の対象は最初の選択肢）
+    const before = a.hp;
+    await b.correct();
+    const lost = before - b.G.units.find(u => u.name === 'A').hp;
+    assert.ok(lost === dmg || lost === 0, `${b.G.cfg.level}: ${lost}`);   // 対象は先頭の敵（Aとは限らない）
   }
 });

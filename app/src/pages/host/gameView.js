@@ -18,7 +18,6 @@ export function tagsFor(u, G) {
   if (JOB[u.job]?.tag && u.job !== 'tank') t.push({ t: JOB[u.job].tag });
   if (u.converted) t.push({ t: '魔王軍に寝返り', cls: 'warn' });
   if (u.isBoss && u.bossId === 1 && bonusOf(u)) t.push({ t: '与ダメ+2', cls: 'warn' });
-  if (u.isBoss && u.bossId === 4) t.push({ t: '通常/ディレイ' });
   t.push(...statusTags(u, true, G.q));
   return t;
 }

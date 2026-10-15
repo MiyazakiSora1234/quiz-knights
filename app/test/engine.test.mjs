@@ -288,13 +288,41 @@ test('魔王3: 技1は与ダメ分回復、技2は直前の正解者、HP1で正
   assert.equal(boss.hp, Math.min(boss.maxHp, 1 + 5 + 2));
 });
 
-test('魔王4: 通常ボタン=敵全体1、ディレイボタン=1人を倒す', async () => {
+test('魔王4: 技1は毒（2問のまま）、技2は敵全体に1', async () => {
   const h = harness();
-  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], boss: 4 });
-  await h.correct('魔王4', '通常ボタン');
-  assert.equal(h.u('A').hp, 6); assert.equal(h.u('B').hp, 5);
-  await h.correct('魔王4', 'ディレイボタン', 'A');
-  assert.equal(h.u('A').alive, false);
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk'), P('C', 'bard'), P('D', 'mage')], boss: 4 });
+  await h.correct('魔王4', '技1', 'A');
+  assert.equal(h.u('A').poison, 2);
+  await h.correct('魔王4', '技1', 'A');
+  assert.equal(h.u('A').poison, 1);   // 重ねがけは2にリセット。その問題の終わりで1つ進む
+  const hpB = h.u('B').hp;
+  await h.correct('魔王4', '技2');
+  assert.ok(hpB - h.u('B').hp >= 1);
+});
+
+test('魔王5: 直前の正解者の技をコピーし、反射で2ダメージ', async () => {
+  const h = harness();
+  h.b.start({ players: [P('A', 'monk'), P('B', 'warrior')], boss: 5 });
+  await h.correct('A', '回復', 'A');
+  await h.correct('魔王5', '模倣：回復', '魔王5');
+  h.b.G.prevCorrect = h.u('B').id;
+  const hp = h.u('B').hp;
+  await h.correct('魔王5', '反射');
+  assert.equal(h.u('B').hp, hp - 2);
+});
+
+test('魔王6: 技1は5ダメージ、技2は敵全体2＋自分1（体力1なら反動なし）', async () => {
+  const h = harness();
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], boss: 6 });
+  await h.correct('魔王6', '技1', 'A');
+  assert.equal(h.u('A').hp, 2);
+  const bhp = h.u('魔王6').hp;
+  await h.correct('魔王6', '技2');
+  assert.equal(h.u('B').hp, 4);
+  assert.equal(h.u('魔王6').hp, bhp - 1);
+  h.u('魔王6').hp = 1;
+  await h.correct('魔王6', '技2');
+  assert.equal(h.u('魔王6').hp, 1);
 });
 
 test('勝敗: 魔王撃破で勝ち／全滅で負け', async () => {
