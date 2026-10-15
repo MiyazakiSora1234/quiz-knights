@@ -1,5 +1,5 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import { fade, scale, fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { wsUrl } from '../lib/net.js';
@@ -8,13 +8,9 @@
 
   let rooms = $state(null);
   let status = $state('読み込み中…');
-  let name = $state(store.get(KEY.name) ?? '');
-  let nameEl = $state();
-  let need = $state(false);
   let dlg = $state(null); // { id, name, pw, busy, err }
   const focusOnMount = node => { node.focus(); };
 
-  $effect(() => { store.set(KEY.name, name.trim()); });
 
   async function load() {
     try {
@@ -30,11 +26,6 @@
   const mine = id => !!store.get(KEY.hostKey(id));
 
   function join(id) {
-    if (!name.trim()) {
-      toast('先に名前を入力してください');
-      need = false; tick().then(() => { need = true; nameEl?.focus(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-      return;
-    }
     location.href = `/play?id=${id}`;
   }
 
@@ -42,7 +33,6 @@
   function create() {
     const d = dlg; if (!d || d.busy) return;
     if (!d.name.trim()) { d.err = '部屋名を入力してください'; return; }
-    if (!name.trim()) { d.err = '先に上の欄へ自分の名前を入力してください'; return; }
     d.busy = true; d.err = '';
     const ws = new WebSocket(wsUrl(d.id));
     ws.onopen = () => ws.send(JSON.stringify({ t: 'create', id: d.id, name: d.name.trim(), password: d.pw, host: false }));
@@ -61,12 +51,7 @@
     <h1 class="logo">QUIZ KNIGHTS<small>クイズ騎士団</small></h1>
   </header>
 
-  <div class="who panel">
-    <label for="myName">あなたの名前</label>
-    <input id="myName" class="input" class:need bind:this={nameEl} bind:value={name} maxlength="12" placeholder="ここに入力" autocomplete="nickname" onanimationend={() => (need = false)}>
-    <span class="hint">入力しておくと、部屋への参加がワンタップになります</span>
-    <button class="btn sm ghost" onclick={() => (panel.rules = true)}>職業・ルールを見る</button>
-  </div>
+  <div class="who"><button class="btn sm ghost" onclick={() => (panel.rules = true)}>職業・ルールを見る</button></div>
 
   <h2 class="sec">開いている部屋</h2>
   {#if rooms === null}
