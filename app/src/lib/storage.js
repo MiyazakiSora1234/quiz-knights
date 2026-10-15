@@ -19,7 +19,6 @@ export const KEY = {
   flavor: 'qr_flavor',
   job: 'qr_job',
   team: 'qr_team',
-  genres: 'qr_genres',
   sound: 'qk_sound',
   hostKey: id => 'qr_hk_' + id,    // 進行役の鍵（部屋ごと）
   save: id => 'qr_save_' + id,     // 途中のバトル（部屋ごと）

@@ -4,7 +4,7 @@
   import { PlayStore } from '../lib/play.svelte.js';
   import { sound, toggleSound } from '../lib/sound.svelte.js';
   import JoinForm from './play/JoinForm.svelte';
-  import PlayLobby from './play/PlayLobby.svelte';
+  import PlayLobby from './play/RoomView.svelte';
   import PlayGame from './play/PlayGame.svelte';
 
   let { id } = $props();

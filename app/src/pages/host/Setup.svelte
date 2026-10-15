@@ -6,7 +6,6 @@
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
   import BossPicker from './BossPicker.svelte';
-  import GenreEditor from './GenreEditor.svelte';
 
   // バトルの準備画面: 左に招待URLと参加者の名簿、右にモード・魔王・開始ボタン
   let { host } = $props();
@@ -45,7 +44,6 @@
         {#if !host.roster.length}
           <div class="empty"><b>参加者を待っています…</b>URLを共有してください。入室した人は、ここに自動で追加されます。</div>
         {/if}
-        <button class="btn ghost sm" onclick={() => host.addGuest()}>＋ その場にいる人を手動で追加</button>
       </div>
     </section>
 
@@ -55,7 +53,6 @@
         <div class="seg"><button class:sel={!pvp} onclick={() => (host.mode = 'cpu')}>CPU戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
         <div class="sub desc">{pvp ? '参加者を2チームに分けて戦います。片方が全滅したら決着です。' : '全員で協力して、魔王（CPU）を倒します。'}</div>
       </div>
-      <GenreEditor {host} />
       {#if !pvp}<BossPicker {host} />{/if}
 
       <div class="start">

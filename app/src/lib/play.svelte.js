@@ -19,6 +19,7 @@ export class PlayStore {
   myJob = $state('warrior');
   myTeam = $state('p');
   members = $state([]);
+  chat = $state([]);              // 部屋のチャットと入退室のお知らせ
   hasHost = $state(true);         // 進行役がいるか（いなければ誰でもなれる）
   hostOnline = $state(false);
   gs = $state(null);              // 進行役から届く表示用の状態
@@ -107,6 +108,7 @@ export class PlayStore {
       case 'error': return this.#onError(m);
       case 'joined': return this.#onJoined(m);
       case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
+      case 'chat': this.chat = [...this.chat, m].slice(-100); return;
       case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
       case 'ended': this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
@@ -154,6 +156,7 @@ export class PlayStore {
   #sendProfile() { this.conn.send({ t: 'profile', job: this.myJob, team: this.myTeam }); }
   pickJob(j) { this.myJob = j; store.set(KEY.job, j); this.#sendProfile(); }
   pickTeam(t) { this.myTeam = t; store.set(KEY.team, t); this.#sendProfile(); }
+  sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   /** 部屋の中で名前・ひとことを変える */
   saveProfile(name, flavor) {
     if (!name.trim()) return;

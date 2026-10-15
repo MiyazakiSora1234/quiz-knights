@@ -18,6 +18,7 @@ export class Room extends DurableObject {
     this.R = null;                 // {id,name,password,hostKey,players:{pid:{...}},hostGone}
     this.state = null;             // 進行役が送ってくる表示用の状態
     this.rtts = new Map();         // pid -> 往復遅延(ms)。参加者が自己申告（メモリのみ）
+    this.chat = [];                // 直近のチャット（メモリのみ）
     this.round = new BuzzRound();  // 今の問題の早押し
     this.timer = null;             // 勝者を確定するタイマー
     ctx.blockConcurrencyWhile(async () => {
@@ -41,6 +42,12 @@ export class Room extends DurableObject {
   isOnline(pid, except) { return this.playerWs(pid, except).length > 0; }
   toPlayers(m, except) { for (const s of this.socks()) if (s !== except && this.roleOf(s).role === 'player') send(s, m); }
   toHost(m) { const h = this.hostWs(); if (h) send(h, m); }
+  /** チャットを全員（進行役含む）に配る。直近50件は入室した人に送る */
+  say(entry) {
+    const e = { t: 'chat', ts: Date.now(), ...entry };
+    this.chat.push(e); if (this.chat.length > 50) this.chat.shift();
+    for (const s of this.socks()) if (this.roleOf(s).role) send(s, e);
+  }
   save() { return this.ctx.storage.put('room', this.R); }
 
   /** 参加者一覧を進行役・参加者に配り、部屋一覧のサマリーも更新する */
@@ -51,7 +58,7 @@ export class Room extends DurableObject {
     }));
     const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players });
     const hasHost = !!this.R.hostKey;
-    this.toPlayers({ t: 'members', roomName: this.R.name, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online }) => ({ pid, name, flavor, online })) }, except);
+    this.toPlayers({ t: 'members', roomName: this.R.name, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team }) => ({ pid, name, flavor, online, job, team })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -103,6 +110,7 @@ export class Room extends DurableObject {
     if (m.t === 'create') return this.onCreate(ws, m);
     if (m.t === 'host_resume') return this.onHostResume(ws, m);
     if (m.t === 'join') return this.onJoin(ws, m);
+    if (m.t === 'chat') return this.onChat(ws, m);
     if (!this.R) return;
     const att = this.roleOf(ws);
     if (att.role === 'host') return this.onHostMessage(m);
@@ -120,6 +128,14 @@ export class Room extends DurableObject {
     if (withHost) ws.serializeAttachment({ role: 'host' });
     send(ws, { t: 'created', room: id, name: this.R.name, ...(withHost ? { hostKey: this.R.hostKey } : {}) });
     this.syncLobby();
+  }
+
+  onChat(ws, m) {
+    const text = String(m.text || '').trim().slice(0, 200);
+    if (!this.R || !text) return;
+    const att = this.roleOf(ws);
+    if (att.role === 'host') return this.say({ name: '進行役', text, host: true });
+    if (att.role === 'player' && this.R.players[att.pid]) this.say({ name: this.R.players[att.pid].name, text, pid: att.pid });
   }
 
   async onHostResume(ws, m) {
@@ -140,7 +156,9 @@ export class Room extends DurableObject {
     if (!this.R) return fail(ws, 'その部屋は存在しません', 'gone');
     let p = m.pid && this.R.players[m.pid];
     if (!p && this.R.password && this.R.password !== String(m.password || '')) return fail(ws, 'パスワードが違います', 'pw');
+    let isNew = false;
     if (!p) {
+      isNew = true;
       const pid = rnd(8);
       p = { pid, name: String(m.name || '名無し').slice(0, 12), flavor: String(m.flavor || '').slice(0, 20), job: 'warrior', team: 'p' };
       this.R.players[pid] = p;
@@ -149,7 +167,9 @@ export class Room extends DurableObject {
     ws.serializeAttachment({ role: 'player', pid: p.pid });
     if (!this.R.hostKey && this.R.hostGone) { this.R.hostGone = null; await this.save(); await this.ctx.storage.deleteAlarm(); }
     send(ws, { t: 'joined', pid: p.pid, room: this.R.id, roomName: this.R.name, name: p.name, flavor: p.flavor, job: p.job, team: p.team });
+    for (const e of this.chat) send(ws, e);
     if (this.state) send(ws, { t: 'state', state: this.state });
+    if (isNew) this.say({ sys: true, text: `${p.name} が入室しました。` });
     this.lobby();
   }
 
@@ -216,6 +236,7 @@ export class Room extends DurableObject {
         await this.save();
         return this.lobby();
       case 'leave':
+        this.say({ sys: true, text: `${p.name} が退室しました。` });
         delete this.R.players[pid];
         await this.save();
         ws.serializeAttachment({});

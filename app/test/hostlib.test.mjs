@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { syncRoster, makeGuest, startBlock, parseGenres, validJob } from '../src/lib/roster.js';
+import { syncRoster, startBlock, validJob } from '../src/lib/roster.js';
 import { publicState, eligibleDelays } from '../src/lib/publish.js';
 import { createBattle } from '../src/lib/engine.js';
 
@@ -19,9 +19,8 @@ test('syncRoster: 追加・更新・退室、手動変更は上書きしない',
   r[0].touchedJob = true; r[0].job = 'tank';
   syncRoster(r, [{ pid: 'a', name: 'A', job: 'thief', team: 'e', online: false, rtt: 50 }], nk);
   assert.equal(r[0].job, 'tank'); assert.equal(r[0].team, 'e'); assert.equal(r[0].online, false); assert.equal(r[0].rtt, 50);
-  r.push(makeGuest(r, nk));
   syncRoster(r, [], nk);
-  assert.equal(r.length, 1); assert.equal(r[0].pid, null);   // 退室者は消え、ゲストは残る
+  assert.equal(r.length, 0);   // 退室者は消える
 });
 
 test('startBlock', () => {
@@ -29,12 +28,6 @@ test('startBlock', () => {
   assert.equal(startBlock([{ name: 'A', team: 'p' }], 'cpu'), '');
   assert.ok(startBlock([{ name: 'A', team: 'p' }], 'pvp'));
   assert.equal(startBlock([{ name: 'A', team: 'p' }, { name: 'B', team: 'e' }], 'pvp'), '');
-});
-
-test('parseGenres: 区切り・重複・上限・空', () => {
-  assert.deepEqual(parseGenres('理系、文系, 理系 青問/緑問'), ['理系', '文系', '青問', '緑問']);
-  assert.equal(parseGenres(Array.from({ length: 20 }, (_, i) => 'g' + i).join('、')).length, 12);
-  assert.deepEqual(parseGenres('  ', ['x']), ['x']);
 });
 
 function battle(players) {

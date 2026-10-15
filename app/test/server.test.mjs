@@ -571,3 +571,17 @@ test('進行役をやめる: 部屋は残り、あとから誰かがなれる', 
   await nh.wait('created');
   nh.send({ t: 'close' });
 });
+
+test('チャット: 全員に届き、入退室のお知らせが出て、後から入った人にも履歴が届く', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  assert.match((await a.wait('chat', 3000, x => x.sys)).text, /A が入室/);
+  a.send({ t: 'chat', text: 'こんにちは' });
+  assert.equal((await host.wait('chat', 3000, x => !x.sys)).text, 'こんにちは');
+  const b = await joinPlayer(id, 'B');
+  const hist = await b.wait('chat', 3000, x => x.text === 'こんにちは');
+  assert.equal(hist.name, 'A');
+  host.send({ t: 'chat', text: '開始します' });
+  assert.equal((await b.wait('chat', 3000, x => x.host)).name, '進行役');
+  host.send({ t: 'close' });
+});

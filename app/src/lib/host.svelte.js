@@ -1,10 +1,10 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付と配信
-import { createBattle, GENRES } from './engine.js';
+import { createBattle } from './engine.js';
 import { Conn } from './net.js';
 import { ask, toast, confirmAsk } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
 import { store, KEY } from './storage.js';
-import { syncRoster, makeGuest, startBlock, parseGenres } from './roster.js';
+import { syncRoster, startBlock } from './roster.js';
 import { publicState, eligibleDelays } from './publish.js';
 
 let rowKey = 0;
@@ -21,7 +21,6 @@ export class HostStore {
   mode = $state('cpu');
   boss = $state(1);
   penalty = $state(true);
-  genresText = $state(store.get(KEY.genres) || GENRES.join('、'));
   G = $state(null);                  // バトルの状態（engine から届く写し）
   busy = $state(false);
   canUndo = $state(false);
@@ -43,12 +42,10 @@ export class HostStore {
   }
 
   /* ---------- 画面が使う導出値 ---------- */
-  get genreList() { return parseGenres(this.genresText); }
   get playersNamed() { return this.roster.filter(p => p.name.trim()); }
   get online() { return this.lobby.filter(p => p.online).length; }
   get joinUrl() { return `${location.origin}/play?id=${this.id}`; }
   get startBlock() { return startBlock(this.roster, this.mode); }
-  resetGenres() { this.genresText = GENRES.join('、'); }
 
   /* ---------- 接続 ---------- */
   connect() {
@@ -114,7 +111,6 @@ export class HostStore {
   }
 
   /* ---------- 名簿 ---------- */
-  addGuest() { this.roster.push(makeGuest(this.roster, nextKey)); }
   remove(p) {
     if (p.pid) this.conn.send({ t: 'kick', pid: p.pid });
     this.roster = this.roster.filter(x => x !== p);
@@ -123,10 +119,9 @@ export class HostStore {
   /* ---------- バトル ---------- */
   start() {
     if (this.startBlock) { toast(this.startBlock); return; }
-    store.set(KEY.genres, this.genresText);
     this.battle.start({
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
-      mode: this.mode, boss: this.boss, bossPenalty: this.penalty, genres: this.genreList,
+      mode: this.mode, boss: this.boss, bossPenalty: this.penalty,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null;
   }
