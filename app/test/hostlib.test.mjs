@@ -53,3 +53,24 @@ test('publicState: 秘密を含まず、必要な項目がある', () => {
   assert.ok(s.units.some(u => u.isBoss));
   assert.ok(JSON.stringify(s).length < 20000);
 });
+
+test('途中参戦: CPU戦では魔王の前に加わり、魔王HPは変わらない。同じ pid は二重に入らない', () => {
+  const b = battle([{ name: 'A', job: 'warrior', team: 'p', pid: 'a' }]);
+  const hp = b.G.units.find(u => u.isBoss).hp;
+  assert.equal(b.join({ name: 'B', job: 'mage', pid: 'b' }), true);
+  assert.equal(b.join({ name: 'B', job: 'mage', pid: 'b' }), false);
+  assert.equal(b.G.units.at(-1).isBoss, true);
+  assert.equal(b.G.units.find(u => u.isBoss).hp, hp);
+  assert.equal(b.G.units.find(u => u.id === b.G.pids.b).job, 'mage');
+  assert.deepEqual(eligibleDelays(b.G), { a: 0, b: 0 });
+});
+
+test('途中参戦: 対戦では自分のチームの最後尾に入り、不正な職業は戦士、終了後は不可', () => {
+  const b = createBattle({ ask: async () => 0, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', team: 'p', pid: 'a' }, { name: 'B', job: 'warrior', team: 'e', pid: 'b' }], mode: 'pvp' });
+  assert.equal(b.join({ name: 'C', job: 'nope', team: 'p', pid: 'c' }), true);
+  assert.deepEqual(b.G.units.map(u => u.name + u.side), ['Ap', 'Cp', 'Be']);
+  assert.equal(b.G.units[1].job, 'warrior');
+  b.G.over = 'teamp';
+  assert.equal(b.join({ name: 'D', pid: 'd' }), false);
+});

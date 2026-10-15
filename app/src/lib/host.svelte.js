@@ -34,7 +34,7 @@ export class HostStore {
     this.id = id;
     this.battle = createBattle({
       ask, toast,
-      changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.#publish(); },
+      changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
       persist: G => store.set(KEY.save(id), JSON.stringify(G)),
     });
     try { this.saved = JSON.parse(store.get(KEY.save(id))); } catch { this.saved = null; }
@@ -91,6 +91,17 @@ export class HostStore {
     this.#lobbyInit = true;
     this.lobby = players;
     syncRoster(this.roster, players, nextKey);
+    this.#joinLate();
+  }
+  /** バトル中に入室した人を、途中参戦としてバトルに加える */
+  #joinLate() {
+    const G = this.battle.G;
+    if (!G || G.over || this.battle.busy) return;
+    let added = false;
+    for (const r of this.roster) {
+      if (r.pid && r.online && G.pids[r.pid] == null && this.battle.join({ name: r.name, job: r.job, team: r.team, pid: r.pid })) added = true;
+    }
+    if (added && this.battle.G.sel == null) this.reopen();   // 新しい人も押せるよう、受付を出し直す
   }
   /** 入室・再接続・切断・退室をトーストで知らせる（最初の一覧は除く） */
   #announceChanges(players) {

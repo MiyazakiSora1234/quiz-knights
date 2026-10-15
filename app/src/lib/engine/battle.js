@@ -211,6 +211,24 @@ export function createBattle(ui) {
       ui.persist && ui.persist(G);
       emit();
     },
+    /** 戦闘中に新しい参加者を加える（途中参戦）。魔王のHPは変えない。加えられたら true */
+    join({ name, job = 'warrior', team = 'p', pid }) {
+      if (!G || G.over || busy || (pid && G.pids[pid] != null)) return false;
+      const u = mkPlayer(String(name).trim() || '名無し', JOB[job] && job !== 'hero' ? job : 'warrior');
+      if (G.mode === 'pvp') {
+        u.side = team === 'e' ? 'e' : 'p';
+        const last = G.units.map(x => x.side).lastIndexOf(u.side);   // 自分のチームの最後尾に入れる
+        G.units.splice(last + 1, 0, u);
+      } else {
+        const b = G.units.findIndex(x => x.isBoss);
+        G.units.splice(b < 0 ? G.units.length : b, 0, u);
+      }
+      if (pid) G.pids[pid] = u.id;
+      log(`${u.name} が途中参戦！（${JOB[u.job].n}）`, 'sys');
+      ui.persist && ui.persist(G);
+      emit();
+      return true;
+    },
     load(saved) { G = saved; undoStack = []; busy = false; emit(); },
     reset() { G = null; undoStack = []; busy = false; emit(); },
 
