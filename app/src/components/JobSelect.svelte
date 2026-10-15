@@ -5,7 +5,7 @@
 
   // 職業を選ぶドロップダウン（標準のセレクトの代わり）。アイコン・名前・攻撃/体力を見せる
   let { value = $bindable(), onchange, label = '職業' } = $props();
-  let open = $state(false), btn = $state(), pos = $state({ top: 0, left: 0, width: 0, up: false }), hi = $state(0);
+  let open = $state(false), btn = $state(), listEl = $state(), pos = $state({ top: 0, left: 0, width: 0, up: false }), hi = $state(0);
 
   function toggle() {
     if (open) { open = false; return; }
@@ -29,9 +29,11 @@
   }
   $effect(() => {
     if (!open) return;
+    // 外側（ページ）がスクロールされたら閉じる。リストの中のスクロールでは閉じない
+    const onScroll = e => { if (!listEl?.contains(e.target)) open = false; };
     const close = () => { open = false; };
-    addEventListener('scroll', close, true); addEventListener('resize', close);
-    return () => { removeEventListener('scroll', close, true); removeEventListener('resize', close); };
+    addEventListener('scroll', onScroll, true); addEventListener('resize', close);
+    return () => { removeEventListener('scroll', onScroll, true); removeEventListener('resize', close); };
   });
 </script>
 
@@ -47,7 +49,7 @@
 
 {#if open}
   <div class="back" role="presentation" onclick={() => (open = false)}></div>
-  <div class="list" role="listbox" transition:fade={{ duration: 90 }}
+  <div class="list" bind:this={listEl} role="listbox" transition:fade={{ duration: 90 }}
     style="left:{pos.left}px;width:{pos.width}px;{pos.up ? `bottom:${innerHeight - pos.top + 4}px` : `top:${pos.top + 4}px`};max-height:{Math.min(320, (pos.up ? pos.top : innerHeight - pos.top) - 16)}px">
     {#each SELECTABLE as j, i}
       <button type="button" role="option" aria-selected={j === value} class="opt" class:cur={j === value} class:hi={i === hi} onmouseenter={() => (hi = i)} onclick={() => pick(j)}>

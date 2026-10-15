@@ -4,7 +4,7 @@
   import JobSelect from '../../components/JobSelect.svelte';
 
   /** 名簿の1行。p は名簿の要素（直接書き換える）。pvp のときはチームも選べる */
-  let { p, pvp, onremove, ontransfer } = $props();
+  let { p, pvp, onremove } = $props();
 </script>
 
 <div class="rrow" class:pvp>
@@ -21,7 +21,6 @@
     </div>
   {/if}
   <div class="btns">
-  {#if p.pid && p.online && ontransfer}<button class="btn ghost sm" onclick={ontransfer} title="この人に進行役を譲る" aria-label="進行役を譲る">👑</button>{/if}
   <button class="btn ghost sm" onclick={onremove} title={p.pid ? '退室させる' : '削除'} aria-label="削除">✕</button>
   </div>
 </div>

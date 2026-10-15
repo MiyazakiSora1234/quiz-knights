@@ -181,7 +181,7 @@ export class HostStore {
     if (this.startBlock) { toast(this.startBlock); return; }
     this.battle.start({
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
-      mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: this.penalty,
+      mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: this.penalty, cpuAuto: true,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];
   }

@@ -9,7 +9,36 @@ export function createContext({ ui, getG, emit }) {
   // 選択ダイアログには「誰が選ぶか」(actor=ユニットid) を添える。その人の端末で選んでもらうため（null なら進行役）
   let actor = null;
   const setActor = id => { actor = id; };
-  const ask = (title, options, opts = {}) => ui.ask(title, options, { actor, ...opts });
+  // CPU（魔王・CPUの職業ユニット）の行動中は、選択を自動で決める。ただし「誰が選ぶか」を指定した選択（タンクの庇いなど）は人に聞く
+  let auto = null;
+  const setAuto = u => { auto = u; };
+  const ask = (title, options, opts = {}) => {
+    if (auto && opts.actor == null) return Promise.resolve(autoPick(title, options, auto));
+    return ui.ask(title, options, { actor, ...opts });
+  };
+  const pickOf = list => list[Math.floor(rand() * list.length)];
+  /** CPU の選び方: 行動はランダム。攻撃は体力の低い敵を狙い、回復は体力の割合が低い味方、蘇生・味方への補助は味方から選ぶ */
+  function autoPick(title, options, a) {
+    const G = getG();
+    const real = options.filter(o => !o.disabled && o.cls !== 'ghost');
+    if (title.startsWith('💰')) return null;                                  // ジャンル選択はしない
+    if (!real.length) return options.find(o => o.cls === 'ghost')?.value ?? null;
+    if (title.endsWith('の行動')) return pickOf(real).value;
+    const cands = real.map(o => ({ o, u: typeof o.value === 'number' ? G.units.find(x => x.id === o.value) : null })).filter(c => c.u);
+    if (!cands.length) return real[0].value;
+    const lowest = (list, ratio) => {
+      const key = c => (ratio ? c.u.hp / c.u.maxHp : c.u.hp);
+      const m = Math.min(...list.map(key));
+      return pickOf(list.filter(c => key(c) === m)).o.value;
+    };
+    if (/回復|蘇生|守る|指示する味方/.test(title)) {
+      const mine = cands.filter(c => c.u.side === a.side);
+      const pool = mine.length ? mine : cands;
+      return /回復/.test(title) ? lowest(pool.filter(c => c.u.alive).length ? pool.filter(c => c.u.alive) : pool, true) : pickOf(pool).o.value;
+    }
+    const foes = cands.filter(c => c.u.side !== a.side && c.u.alive);
+    return lowest(foes.length ? foes : cands, false);
+  }
   const rand = () => (ui.random ? ui.random() : Math.random());
 
   const log = (m, c = '') => {
@@ -171,6 +200,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    ask, setActor, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    ask, setActor, setAuto, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }

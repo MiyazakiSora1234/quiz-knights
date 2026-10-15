@@ -51,8 +51,26 @@ export function createBattle(ui) {
     if (events.length) { log('☠ 毒のダメージ', 'sys'); await applyEvents(events); }
   }
 
+  /** CPU（魔王・CPUの職業ユニット）は、1問ごとに自動で1回行動する（行動も対象も自動で決まる） */
+  async function cpuTurn() {
+    const cpus = G.units.filter(u => (u.isBoss || u.cpu) && u.alive && !u.restNow);
+    for (const u of cpus) {
+      if (G.over) return;
+      const cur = G.units.find(x => x.id === u.id);
+      if (!cur || !cur.alive) continue;                       // 先に動いたCPUの行動で倒された
+      log(`🤖 ${nm(cur)} の行動`, 'sys');
+      ctx.setAuto(cur);
+      try {
+        if (!(await stepOnMine(cur))) { await chooseAndRunAction(cur); await afterAction(cur); }
+      } finally { ctx.setAuto(null); }
+      checkEnd();
+    }
+  }
+
   /** 1問が終わったとき。correct は正解した人（いなければ null） */
   async function endQuestion(correct) {
+    checkEnd();
+    if (!G.over && G.cfg.cpuAuto) await cpuTurn();
     await tickPoison();
     for (const u of G.units) { u.restNow = u.restNext; u.restNext = false; }
     G.prevCorrect = correct ? correct.id : null;
@@ -201,12 +219,12 @@ export function createBattle(ui) {
     get canUndo() { return undoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
-    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [] }) {
+    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false }) {
       // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
       const squad = mode === 'cpu' && foes.length > 0;
       if (squad) mode = 'pvp';
       G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
-            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty } };
+            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto } };
       const pvp = mode === 'pvp';
       for (const p of players) {
         const u = mkPlayer(p.name.trim(), p.job);

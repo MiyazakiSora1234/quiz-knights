@@ -158,3 +158,43 @@ test('ユニット調整: 職業変更で基本の数値に、HP0で戦闘不能
   assert.equal(b.G.units.find(u => u.isBoss).job, 'boss');
   assert.equal(b.G.units.find(u => u.isBoss).hp, 2);
 });
+
+test('CPUの自動行動: 1問ごとに魔王が1回、勝手に誰かを攻撃する（選択は自動）', async () => {
+  const asked = [];
+  const b = createBattle({ ask: async (t, o, opts) => { asked.push(t); return o.find(x => !x.disabled).value; }, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', boss: 1, cpuAuto: true });
+  const total = () => b.G.units.filter(u => !u.isBoss).reduce((s, u) => s + u.hp, 0);
+  const before = total();
+  await b.skip();
+  assert.ok(total() < before, '魔王の攻撃でプレイヤーの体力が減る');
+  assert.ok(b.G.log.some(l => l.m.includes('🤖 魔王1 の行動')));
+  assert.deepEqual(asked, [], '自動の選択では進行役にも参加者にも聞かない');
+  assert.equal(b.G.q, 2);
+});
+
+test('CPUの自動行動: CPUチーム戦では生きているCPU全員が動く。切れたら動かない。休みは休む', async () => {
+  const b = createBattle({ ask: async (t, o) => o.at(-1).value, toast() {}, changed() {} });   // タンクの庇いだけは人に聞く（庇わない）
+  b.start({ players: [{ name: 'A', job: 'tank', pid: 'a' }], mode: 'cpu', foes: ['warrior', 'monk'], cpuAuto: true });
+  const foes = b.G.units.filter(u => u.cpu);
+  foes[1].restNow = true;
+  await b.skip();
+  assert.ok(b.G.log.some(l => l.m.includes('CPU戦士(戦士) の行動')));
+  assert.ok(!b.G.log.some(l => l.m.includes('CPU僧侶(僧侶) の行動')));
+});
+
+test('CPUの自動行動: ランダムに最後まで遊んでも落ちず、決着がつく（全魔王）', async () => {
+  for (const boss of [1, 2, 3, 4]) {
+    for (let seed = 0; seed < 25; seed++) {
+      let s = seed * 7919 + boss;
+      const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+      const b = createBattle({ ask: async (t, o) => { const ok = o.filter(x => !x.disabled); return ok[Math.floor(rnd() * ok.length)].value; }, toast() {}, changed() {}, random: rnd });
+      b.start({ players: ['warrior', 'monk', 'mage'].map((job, i) => ({ name: 'P' + i, job, pid: 'p' + i })), mode: 'cpu', boss, cpuAuto: true });
+      for (let i = 0; i < 60 && !b.G.over; i++) {
+        const alive = b.G.units.filter(u => !u.isBoss && u.alive);
+        if (rnd() < 0.5 && alive.length) { b.select(alive[0].id); await (rnd() < 0.6 ? b.correct() : b.wrong()); } else await b.skip();
+        assert.ok(b.G.units.every(u => u.hp >= 0 && u.hp <= u.maxHp), '体力が範囲内');
+      }
+      assert.ok(b.G.over, `魔王${boss} seed${seed} が決着しない`);
+    }
+  }
+});
