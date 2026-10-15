@@ -107,7 +107,9 @@
   .bottom{flex:none;display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
   .chat{display:flex;flex-direction:column;gap:8px;min-width:0}
   .log{height:150px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:6px 10px;font-size:.88rem}
-  .log p{margin:4px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.log p.sys{color:var(--mut)}.log p.host b{color:var(--gold)}
+  .log{overflow-x:hidden}
+  .log p{margin:4px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;min-width:0}
+  .log span{min-width:0;overflow-wrap:anywhere;word-break:break-word}.log p.sys{color:var(--mut)}.log p.host b{color:var(--gold)}
   .log time{color:var(--mut);font-size:.72rem}
   .send{display:flex;gap:8px}.send .input{flex:1}
   .big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:110px;border-radius:14px;border:2px solid var(--line2);background:var(--s2);font-weight:800;font-size:1.6rem;color:var(--mut);cursor:default;text-align:center;padding:10px}

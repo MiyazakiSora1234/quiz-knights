@@ -122,7 +122,9 @@
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
   .chatbox{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
   .cl{height:7em;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:4px 10px;font-size:.84rem}
-  .cl p{margin:3px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.cl .sys{color:var(--mut)}.cl b{color:var(--mut);font-weight:600}
+  .cl{overflow-x:hidden}
+  .cl p{margin:3px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;min-width:0}
+  .cl span{min-width:0;overflow-wrap:anywhere;word-break:break-word}.cl .sys{color:var(--mut)}.cl b{color:var(--mut);font-weight:600}
   .cl i{font-style:normal;font-size:.68rem;background:var(--gold);color:#2a1c06;border-radius:4px;padding:0 5px;font-weight:800}.cl .ans span{color:var(--gold);font-weight:700}
   .cs{display:flex;gap:6px}.cs .input{flex:1;min-width:0}
   .lh{text-align:center;color:#7a1f26;font-weight:800;letter-spacing:.2em;font-family:var(--serif)}
