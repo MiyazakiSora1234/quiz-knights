@@ -2,6 +2,7 @@
   import { fade, scale } from 'svelte/transition';
   import { modal, answerModal, cancelModal } from '../lib/ui.svelte.js';
   import { icon } from '../lib/icons.js';
+  import { groupOptions } from '../lib/groups.js';
 
   function onkey(e) {
     if (!modal.req) return;
@@ -19,12 +20,15 @@
       <h3>{modal.req.title}</h3>
       {#if modal.req.sub}<div class="sub">{modal.req.sub}</div>{/if}
       <div class="opts">
-        {#each modal.req.options as o, i}
-          <button class="opt {o.cls ?? ''}" disabled={o.disabled} onclick={() => answerModal(i)}>
-            <span class="no">{i + 1}</span>
-            {#if o.unit}<span class="uic {o.unit.side === 'e' ? 'foe' : ''}" class:dead={!o.unit.alive}>{@html icon(o.unit.job)}</span>{/if}
-            <span class="tx"><b>{o.label}</b>{#if o.sub}<small>{o.sub}</small>{/if}</span>
-          </button>
+        {#each groupOptions(modal.req.options) as g}
+          {#if g.label}<div class="gh {g.cls}">{g.label}</div>{/if}
+          {#each g.items as { o, i }}
+            <button class="opt {o.cls ?? ''}" disabled={o.disabled} onclick={() => answerModal(i)}>
+              <span class="no">{i + 1}</span>
+              {#if o.unit}<span class="uic {o.unit.side === 'e' ? 'foe' : ''}" class:dead={!o.unit.alive}>{@html icon(o.unit.job)}</span>{/if}
+              <span class="tx"><b>{o.label}</b>{#if o.sub}<small>{o.sub}</small>{/if}</span>
+            </button>
+          {/each}
         {/each}
       </div>
       {#if modal.req.cancel}
@@ -39,6 +43,9 @@
   .dlg{background:var(--s1);border:1px solid var(--gold);border-radius:16px;padding:22px;max-width:600px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px #000}
   h3{font-size:1.2rem;color:var(--gold);margin-bottom:4px}
   .opts{display:grid;gap:8px;margin-top:14px}
+  .gh{margin:8px 2px 0;font-size:.82rem;font-weight:800;letter-spacing:.08em;display:flex;align-items:center;gap:8px;color:#9cc8ee}.gh.foe{color:#ff9aa2}
+  .gh::after{content:"";flex:1;height:1px;background:currentColor;opacity:.35}
+  .gh:first-child{margin-top:0}
   .opt{display:flex;align-items:center;gap:12px;background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:10px 14px;text-align:left;cursor:pointer;transition:.1s}
   .opt:hover:not(:disabled){border-color:var(--gold);background:var(--s3)}
   .opt:disabled{opacity:.35;cursor:not-allowed}

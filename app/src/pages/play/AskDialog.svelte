@@ -1,6 +1,7 @@
 <script>
   import { fade, scale } from 'svelte/transition';
   import { icon } from '../../lib/icons.js';
+  import { groupOptions } from '../../lib/groups.js';
 
   // 自分が選ぶ場面（行動・対象・押し付け先など）のダイアログ。進行役の画面でも同じ選択が出ていて、先に答えたほうが有効
   let { p } = $props();   // PlayStore
@@ -22,11 +23,14 @@
       <h3>{req.title}</h3>
       {#if req.sub}<div class="sub">{req.sub}</div>{/if}
       <div class="opts">
-        {#each req.options as o, i}
-          <button class="opt {o.cls ?? ''}" disabled={o.disabled} onclick={() => p.answer(i)}>
-            {#if o.unit}<span class="uic {o.unit.side === 'e' ? 'foe' : ''}" class:dead={!o.unit.alive}>{@html icon(o.unit.job)}</span>{/if}
-            <span class="tx"><b>{o.label}</b>{#if o.sub}<small>{o.sub}</small>{/if}</span>
-          </button>
+        {#each groupOptions(req.options) as g}
+          {#if g.label}<div class="gh {g.cls}">{g.label}</div>{/if}
+          {#each g.items as { o, i }}
+            <button class="opt {o.cls ?? ''}" disabled={o.disabled} onclick={() => p.answer(i)}>
+              {#if o.unit}<span class="uic {o.unit.side === 'e' ? 'foe' : ''}" class:dead={!o.unit.alive}>{@html icon(o.unit.job)}</span>{/if}
+              <span class="tx"><b>{o.label}</b>{#if o.sub}<small>{o.sub}</small>{/if}</span>
+            </button>
+          {/each}
         {/each}
       </div>
     </div>
@@ -40,6 +44,9 @@
   h3{font-size:1.15rem;color:var(--gold)}
   .sub{color:var(--mut);font-size:.85rem;margin-top:2px}
   .opts{display:grid;gap:8px;margin-top:12px}
+  .gh{margin:10px 2px 0;font-size:.82rem;font-weight:800;letter-spacing:.08em;display:flex;align-items:center;gap:8px;color:#9cc8ee}.gh.foe{color:#ff9aa2}
+  .gh::after{content:"";flex:1;height:1px;background:currentColor;opacity:.35}
+  .gh:first-child{margin-top:0}
   .opt{display:flex;align-items:center;gap:12px;background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:12px 14px;text-align:left;cursor:pointer;min-height:52px}
   .opt:active:not(:disabled){border-color:var(--gold);background:var(--s3)}
   .opt:disabled{opacity:.35}

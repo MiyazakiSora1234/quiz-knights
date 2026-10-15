@@ -19,8 +19,8 @@ export class HostStore {
   password = $state('');
   lobby = $state([]);                // サーバーから届いた参加者一覧
   roster = $state([]);               // 準備画面の名簿（進行役が職業などを調整できる）
-  mode = $state('cpu');              // cpu=魔王戦 / squad=CPUの職業チーム戦 / pvp=ユーザー対戦
-  foes = $state(['warrior', 'monk', 'mage']);   // CPUチーム戦の相手の職業
+  mode = $state('cpu');              // cpu=CPU戦（魔王・CPUの職業を好きに並べる） / pvp=ユーザー対戦
+  foes = $state(['boss1']);          // CPU戦の相手: 'boss1'〜'boss6'（魔王）と職業のキー
   boss = $state(1);
   level = $state('normal');          // 難易度: weak / normal / strong
   buzzRule = $state('next');         // next=誤答したら次の問題 / retry=誤答した人を除いて同じ問題を再受付 / chain=誤答したら次の順位の人へ回答権が移る（連チャン）
@@ -92,7 +92,7 @@ export class HostStore {
       case 'replaced':
         this.status = 'replaced'; this.conn.close();
         return;
-      case 'lobby': if (m.boss) this.boss = m.boss; return this.#onLobby(m.players);
+      case 'lobby': if (m.boss && m.boss !== this.boss) this.#setFirstBoss(m.boss); return this.#onLobby(m.players);
       case 'winner': return this.#onWinner(m);
       case 'nobody': return this.#chainExhausted();
       case 'ranking': this.ranks = rankTags(m.all); return;
@@ -162,7 +162,7 @@ export class HostStore {
       const done = () => { this.#remote = null; this.waiting = null; this.conn.send({ t: 'ask_close', qid }); };
       this.#remote = { qid, pid, title, options, o, resolve: v => { done(); resolve(v); }, reject: e => { done(); reject(e); } };
       this.waiting = { name: unit.name };
-      this.conn.send({ t: 'ask', to: pid, qid, title, sub: o.sub || '', options: options.map(({ label, sub, disabled, cls, unit }) => ({ label, sub, disabled, cls, unit })) });
+      this.conn.send({ t: 'ask', to: pid, qid, title, sub: o.sub || '', options: options.map(({ label, sub, disabled, cls, unit, group, gcls, gorder }) => ({ label, sub, disabled, cls, unit, group, gcls, gorder })) });
     });
   }
   #onAnswer(m) {
@@ -198,7 +198,7 @@ export class HostStore {
     if (this.startBlock) { toast(this.startBlock); return; }
     this.battle.start({
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
-      mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: false, cpuAuto: true, level: this.level,
+      mode: this.mode, foes: this.mode === 'cpu' ? [...this.foes] : [], boss: this.boss, bossPenalty: false, cpuAuto: true, level: this.level,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];
   }
@@ -256,7 +256,22 @@ export class HostStore {
 
   saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
   /** 魔王を選ぶ（参加者も選べるので、サーバー経由で全員に反映される） */
-  pickBoss(id) { this.boss = id; this.conn?.send({ t: 'settings', boss: id }); }
+  pickBoss(id) { this.#setFirstBoss(id); this.conn?.send({ t: 'settings', boss: id }); }
+  /** 部屋で選ばれた魔王を、相手の先頭の魔王にする（魔王がいなければ追加する） */
+  #setFirstBoss(id) {
+    this.boss = id;
+    const i = this.foes.findIndex(f => /^boss\d+$/.test(f));
+    if (this.foes.includes('boss' + id)) return;
+    if (i >= 0) this.foes[i] = 'boss' + id; else this.foes.unshift('boss' + id);
+  }
+  /** 魔王を相手に加える／外す（複数の魔王や、魔王と職業の混成もできる） */
+  toggleBoss(id) {
+    const key = 'boss' + id, i = this.foes.indexOf(key);
+    if (i >= 0) { if (this.foes.length > 1) this.foes.splice(i, 1); }
+    else if (this.foes.length < 6) this.foes.push(key);
+    const first = this.foes.find(f => /^boss\d+$/.test(f));
+    if (first) { this.boss = +first.slice(4); this.conn?.send({ t: 'settings', boss: this.boss }); }
+  }
   /** 進行役を、いま入室している参加者に譲る */
   async transfer(p) {
     if (!(await confirmAsk(`${p.name} さんに進行役を譲りますか？`, '進行中のバトルは終了し、あなたは参加者になります。', '譲る', false))) return;

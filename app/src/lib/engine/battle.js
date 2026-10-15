@@ -250,7 +250,10 @@ export function createBattle(ui) {
       }
       if (squad) {
         const count = {};
+        const S = G.units.reduce((s, u) => s + u.atk, 0);          // 魔王の体力はプレイヤーの攻撃合計から決まる
         for (const j of foes) {
+          const bm = typeof j === 'string' && /^boss[0-9]+$/.test(j) ? +j.slice(4) : 0;
+          if (bm && BOSS[bm]) { G.units.push(mkBoss(bm, S * LEVELS[level].hp)); continue; }   // 'boss3' = 魔王3
           const key = JOB[j] && j !== 'hero' ? j : 'warrior';
           count[key] = (count[key] || 0) + 1;
           const total = foes.filter(x => x === j).length;
@@ -261,7 +264,7 @@ export function createBattle(ui) {
       }
       if (pvp) {
         G.units.sort((a, b) => TEAM_ORDER[a.side] - TEAM_ORDER[b.side]); // チームごとに席を連続させる（安定ソート）
-        log(squad ? `バトル開始！ プレイヤー vs CPU（${G.units.filter(u => u.cpu).map(u => u.name).join('・')}）` : '対戦開始！ チームA vs チームB', 'sys');
+        log(squad ? `バトル開始！ プレイヤー vs ${G.units.filter(u => u.cpu || u.isBoss).map(u => u.name).join('・')}` : '対戦開始！ チームA vs チームB', 'sys');
       } else {
         const S = G.units.reduce((s, u) => s + u.atk, 0);
         const b = mkBoss(+boss, S * LEVELS[level].hp);

@@ -88,7 +88,16 @@ export function createContext({ ui, getG, emit }) {
     const me = auto || (actor != null ? G.units.find(x => x.id === actor) : null);
     return me ? u.side !== me.side : u.side === 'e';
   };
+  // 対象の選択肢を、敵・味方（対戦ではチーム）ごとに分けて見せるための印
+  const TEAM_NAME = { p: 'チームA', e: 'チームB', c: 'チームC' };
+  const groupInfo = u => {
+    const G = getG(), foe = isFoe(u);
+    const versus = G.mode === 'pvp' && !G.cpu;
+    const label = versus ? `${TEAM_NAME[u.side] ?? 'チーム'}（${foe ? '敵' : '味方'}）` : (foe ? '敵' : '味方');
+    return { group: label, gcls: foe ? 'foe' : 'ally', gorder: (foe ? 0 : 10) + ({ p: 0, e: 1, c: 2 }[u.side] ?? 0) };
+  };
   const unitOption = (u, extra = {}) => ({
+    ...groupInfo(u),
     label: u.name,
     sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}${u.alive ? '' : '（死亡）'}${isFoe(u) ? '　【敵】' : ''}`,
     value: u.id,

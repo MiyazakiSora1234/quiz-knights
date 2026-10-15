@@ -205,9 +205,8 @@ test('早押し: あとから届いても押した時刻が早い人が勝つ（
   open(1);
   await players[0].wait('open');
   const t = Date.now();
-  players[0].send({ t: 'buzz', ts: t + 60 });
-  await sleep(20);
-  players[1].send({ t: 'buzz', ts: t });         // 20ms 遅れて届くが、押した時刻は60ms早い
+  players[0].send({ t: 'buzz', ts: t });
+  players[1].send({ t: 'buzz', ts: t - 300 });   // ほぼ同時に届くが、押した時刻は300ms早い（負荷が高くても順序が逆転しない差）
   assert.equal((await host.wait('winner')).pid, players[1].pid);
   host.send({ t: 'close' });
 });

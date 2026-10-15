@@ -5,7 +5,6 @@
   import { panel, confirmAsk } from '../../lib/ui.svelte.js';
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
-  import BossPicker from './BossPicker.svelte';
   import FoePicker from './FoePicker.svelte';
   import { LEVELS } from '../../lib/engine.js';
 
@@ -13,7 +12,6 @@
   let { host } = $props();
   const pvp = $derived(host.mode === 'pvp');
   const offline = $derived(host.roster.filter(p => p.pid && !p.online).length);
-  const teamCount = t => host.playersNamed.filter(p => p.team === t).length;
   const block = $derived(host.startBlock);
 </script>
 
@@ -52,8 +50,8 @@
     <aside class="side">
       <div class="panel">
         <h3>モード</h3>
-        <div class="seg"><button class:sel={host.mode === 'cpu'} onclick={() => (host.mode = 'cpu')}>魔王戦</button><button class:sel={host.mode === 'squad'} onclick={() => (host.mode = 'squad')}>CPUチーム戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
-        <div class="sub desc">{pvp ? '参加者を2チームに分けて戦います。片方が全滅したら決着です。' : host.mode === 'squad' ? '全員で協力して、CPUの職業チーム（戦士・僧侶など）と戦います。CPUの行動は進行役が操作します。' : '全員で協力して、魔王（CPU）を倒します。'}</div>
+        <div class="seg"><button class:sel={host.mode === 'cpu'} onclick={() => (host.mode = 'cpu')}>CPU戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
+        <div class="sub desc">{pvp ? '参加者を2〜3チームに分けて戦います。最後に1チームだけ残れば決着です。' : '全員で協力して、魔王や職業のCPUと戦います。CPUは1問ごとに自動で行動します。'}</div>
       </div>
       <div class="panel">
         <h3>早押しのルール</h3>
@@ -67,12 +65,12 @@
           <div class="sub desc">{LEVELS[host.level].d}</div>
         </div>
       {/if}
-      {#if host.mode === 'cpu'}<BossPicker {host} />{:else if host.mode === 'squad'}<FoePicker {host} />{/if}
+      {#if host.mode === 'cpu'}<FoePicker {host} />{/if}
 
     </aside>
   </div>
   <div class="startbar"><div class="start">
-    <div class="info">{block || (pvp ? [['p', 'A'], ['e', 'B'], ['c', 'C']].filter(([t]) => t !== 'c' || teamCount('c') > 0).map(([t, n]) => `チーム${n} ${teamCount(t)}人`).join(' vs ') : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
+    <div class="info">{block}</div>
     <button class="btn primary go" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
   </div></div>
 </div>
