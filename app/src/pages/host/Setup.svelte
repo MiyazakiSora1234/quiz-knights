@@ -69,12 +69,12 @@
       {/if}
       {#if host.mode === 'cpu'}<BossPicker {host} />{:else if host.mode === 'squad'}<FoePicker {host} />{/if}
 
-      <div class="start">
-        <button class="btn primary xl wide" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
-        <div class="sub">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
-      </div>
     </aside>
   </div>
+  <div class="startbar"><div class="start">
+        <button class="btn primary xl wide" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
+        <div class="sub">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
+      </div></div>
 </div>
 
 <style>
@@ -93,6 +93,8 @@
   .desc{margin-top:8px}
   .empty{border:1px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--mut);margin-bottom:10px}
   .empty b{display:block;color:var(--tx)}
-  .start{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,#2d2414,#1e1914)}
-  .start .sub{text-align:center}
+  .startbar{position:sticky;bottom:0;z-index:25;margin:18px -18px -50px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110e00,#14110e 28%)}
+  .start{max-width:1120px;margin:0 auto;display:flex;flex-direction:row;align-items:center;gap:16px;padding:14px;border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,#2d2414,#1e1914)}
+  .start .btn{flex:0 0 auto;min-width:min(320px,50%)}.start .sub{flex:1;text-align:left}
+  @media(max-width:700px){.start{flex-direction:column;gap:6px}.start .btn{width:100%}.start .sub{text-align:center}}
 </style>
