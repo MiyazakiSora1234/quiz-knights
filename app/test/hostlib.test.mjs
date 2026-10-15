@@ -275,3 +275,24 @@ test('難易度: 弱い=魔王HP0.7倍・与ダメ-1、強い=1.4倍・+1、普�
     assert.ok(lost === dmg || lost === 0, `${b.G.cfg.level}: ${lost}`);   // 対象は先頭の敵（Aとは限らない）
   }
 });
+
+test('誤答の日: 誤答した本人だけが2ダメージ。その問題が終わるとCPUも動く', async () => {
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', boss: 1, cpuAuto: true });
+  const hp = n => b.G.units.find(u => u.name === n).hp;
+  const [a0, b0] = [hp('A'), hp('B')];
+  b.select(b.G.pids.a);
+  await b.wrong();
+  const lost = (a0 - hp('A')) + (b0 - hp('B'));
+  assert.ok(b.G.log.some(l => l.m.includes('❌ A')), '誤答の記録');
+  assert.ok(b.G.log.some(l => l.m.includes('🤖 魔王1 の行動')), 'CPUが動く');
+  // 誤答の2ダメージは本人のみ（それ以外の減りは、すべて魔王の攻撃によるもの）
+  assert.ok(lost >= 2);
+  assert.equal(b.G.q, 2);
+  // 魔王が動かない設定なら、減るのは本人の2だけ
+  const c = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} });
+  c.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', boss: 1 });
+  c.select(c.G.pids.a); await c.wrong();
+  assert.equal(c.G.units.find(u => u.name === 'A').hp, 5);
+  assert.equal(c.G.units.find(u => u.name === 'B').hp, 6);
+});
