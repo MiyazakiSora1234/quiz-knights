@@ -15,11 +15,11 @@
 {/snippet}
 
 <main>
-  <div class="team-label foe">{pvp ? 'チームB' : '魔王軍'}</div>
+  <div class="team-label foe">{G.cpu ? 'CPUチーム' : pvp ? 'チームB' : '魔王軍'}</div>
   <div class="foes">
     {#each foes as u (u.id)}{@render card(u, pvp ? seatOf(u, G) : null)}{/each}
   </div>
-  <div class="team-label ally" style="margin-top:8px">{pvp ? 'チームA' : 'プレイヤー'}</div>
+  <div class="team-label ally" style="margin-top:8px">{G.cpu ? 'プレイヤー' : pvp ? 'チームA' : 'プレイヤー'}</div>
   <div class="units">
     {#each allies as u (u.id)}<div animate:flip={{ duration: 240 }}>{@render card(u, seatOf(u, G))}</div>{/each}
   </div>

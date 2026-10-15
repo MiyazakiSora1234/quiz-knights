@@ -29,7 +29,7 @@
             <tr><th><span class="ic">{@html icon(k)}</span>{j.n}</th><td><span class="st">ATK {j.atk} / HP {j.hp}</span>{j.d}</td></tr>
           {/each}
           {#each Object.entries(BOSS) as [k, b]}
-            <tr class="boss"><th><span class="ic">{@html icon('boss')}</span>{b.n}</th><td>{b.d}</td></tr>
+            <tr class="boss"><th><span class="ic">{@html icon('boss' + k)}</span>{b.n}</th><td>{b.d}</td></tr>
           {/each}
         </tbody>
       </table>

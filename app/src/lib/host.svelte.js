@@ -1,7 +1,7 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付と配信
 import { createBattle } from './engine.js';
 import { Conn } from './net.js';
-import { ask, toast, confirmAsk } from './ui.svelte.js';
+import { ask, toast, confirmAsk, modal } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
 import { store, KEY } from './storage.js';
 import { syncRoster, startBlock } from './roster.js';
@@ -18,7 +18,8 @@ export class HostStore {
   password = $state('');
   lobby = $state([]);                // サーバーから届いた参加者一覧
   roster = $state([]);               // 準備画面の名簿（進行役が職業などを調整できる）
-  mode = $state('cpu');
+  mode = $state('cpu');              // cpu=魔王戦 / squad=CPUの職業チーム戦 / pvp=ユーザー対戦
+  foes = $state(['warrior', 'monk', 'mage']);   // CPUチーム戦の相手の職業
   boss = $state(1);
   penalty = $state(true);
   G = $state(null);                  // バトルの状態（engine から届く写し）
@@ -33,7 +34,7 @@ export class HostStore {
   constructor(id) {
     this.id = id;
     this.battle = createBattle({
-      ask, toast,
+      ask: (title, options, o) => this.#ask(title, options, o), toast,
       changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
       persist: G => store.set(KEY.save(id), JSON.stringify(G)),
     });
@@ -77,6 +78,7 @@ export class HostStore {
         store.remove(KEY.hostKey(this.id)); store.remove(KEY.save(this.id)); this.conn.close();
         toast('進行役をおりました。参加者として入室します'); setTimeout(() => { location.href = `/play?id=${this.id}`; }, 700);
         return;
+      case 'answer': return this.#onAnswer(m);
       case 'settings': this.roomName = m.name; this.password = m.password; toast('部屋の設定を変更しました'); return;
       case 'notice': toast(m.msg, 3000); return;
       case 'replaced':
@@ -121,6 +123,34 @@ export class HostStore {
     if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid]);
   }
 
+  /* ---------- 選択ダイアログ（回答者の端末へ送る） ---------- */
+  #qid = 0;
+  #remote = null;     // 回答者の端末に出している選択 { qid, pid, options, resolve }
+  /** o.actor のユニットを操作している人がオンラインなら、その人の画面にも同じ選択を出す（先に答えたほうが有効） */
+  #ask(title, options, o = {}) {
+    const G = this.battle.G;
+    const unit = o.actor != null && G ? G.units.find(u => u.id === o.actor) : null;
+    const pid = unit && Object.keys(G.pids).find(p => G.pids[p] === unit.id);
+    const online = !!pid && this.lobby.some(l => l.pid === pid && l.online);
+    if (!online) return ask(title, options, o);
+    const qid = ++this.#qid;
+    const local = ask(title, options, { ...o, sub: `${unit.name} の画面に表示中です。代わりにここで選ぶこともできます。${o.sub ? '　' + o.sub : ''}` });
+    return new Promise((resolve, reject) => {
+      const done = () => { this.#remote = null; this.conn.send({ t: 'ask_close', qid }); };
+      this.#remote = { qid, pid, options, resolve: v => { done(); resolve(v); } };
+      this.conn.send({ t: 'ask', to: pid, qid, title, sub: o.sub || '', options: options.map(({ label, sub, disabled, cls, unit }) => ({ label, sub, disabled, cls, unit })) });
+      local.then(v => { done(); resolve(v); }, e => { done(); reject(e); });
+    });
+  }
+  #onAnswer(m) {
+    const r = this.#remote;
+    if (!r || r.qid !== m.qid || r.pid !== m.pid) return;
+    const o = r.options[m.i];
+    if (!o || o.disabled) return;
+    modal.req = null;            // ここの選択ダイアログは閉じる
+    r.resolve(o.value);
+  }
+
   /* ---------- 名簿 ---------- */
   remove(p) {
     if (p.pid) this.conn.send({ t: 'kick', pid: p.pid });
@@ -132,7 +162,7 @@ export class HostStore {
     if (this.startBlock) { toast(this.startBlock); return; }
     this.battle.start({
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
-      mode: this.mode, boss: this.boss, bossPenalty: this.penalty,
+      mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: this.penalty,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null;
   }

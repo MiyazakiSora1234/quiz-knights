@@ -1,7 +1,7 @@
 <script>
   import { fade, scale } from 'svelte/transition';
   import { icon } from '../../lib/icons.js';
-  import { RESULT_TEXT } from './gameView.js';
+  import { RESULT_TEXT, RESULT_TEXT_CPU } from './gameView.js';
 
   let { host, G } = $props();
   const players = $derived(G.units.filter(u => !u.isBoss));
@@ -10,7 +10,7 @@
 
 <div class="over" transition:fade={{ duration: 200 }}>
   <div class="in" in:scale={{ start: .9, duration: 260 }}>
-    <h2 class:lose={G.over === 'lose'}>{RESULT_TEXT[G.over] ?? 'バトル終了'}</h2>
+    <h2 class:lose={G.over === 'lose'}>{(G.cpu ? RESULT_TEXT_CPU : RESULT_TEXT)[G.over] ?? 'バトル終了'}</h2>
     <div class="sub">{G.q - 1}問で決着</div>
     <table class="score">
       <thead><tr><th>プレイヤー</th><th>正解</th><th>誤答</th></tr></thead>

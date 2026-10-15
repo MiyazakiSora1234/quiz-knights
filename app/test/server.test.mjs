@@ -585,3 +585,22 @@ test('チャット: 全員に届き、入退室のお知らせが出て、後か
   assert.equal((await b.wait('chat', 3000, x => x.host)).name, '進行役');
   host.send({ t: 'close' });
 });
+
+test('選択ダイアログ: 進行役 → 指定した参加者だけに届き、答えは進行役に戻る', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'ask', to: a.pid, qid: 7, title: '行動', sub: '', options: [{ label: '通常攻撃' }, { label: '何もしない', disabled: false }] });
+  const got = await a.wait('ask');
+  assert.equal(got.qid, 7);
+  await sleep(150);
+  assert.equal(b.has('ask'), false);
+  b.send({ t: 'answer', qid: 7, i: 0 });                // 本人でなくても届くが、進行役が pid で照合する
+  const fromB = await host.wait('answer');
+  assert.equal(fromB.pid, b.pid);
+  a.send({ t: 'answer', qid: 7, i: 1 });
+  const ans = await host.wait('answer');
+  assert.deepEqual([ans.pid, ans.qid, ans.i], [a.pid, 7, 1]);
+  host.send({ t: 'ask_close', qid: 7 });
+  assert.equal((await b.wait('ask_close')).qid, 7);
+  host.send({ t: 'close' });
+});

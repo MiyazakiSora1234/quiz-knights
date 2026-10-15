@@ -6,6 +6,7 @@
   import JoinForm from './play/JoinForm.svelte';
   import PlayLobby from './play/RoomView.svelte';
   import PlayGame from './play/PlayGame.svelte';
+  import AskDialog from './play/AskDialog.svelte';
 
   let { id } = $props();
   // svelte-ignore state_referenced_locally
@@ -45,6 +46,7 @@
   {:else if p.gs}
     <PlayGame {p} />
   {/if}
+  <AskDialog {p} />
 </div>
 
 <style>

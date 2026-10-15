@@ -6,7 +6,10 @@ import { BOSS, GENRES, jobName, nm, bossHp, bonusOf, iconKey } from './data.js';
  * G は取り消し・キャンセルで差し替わるため、使うたびに getG() で最新を取る。
  */
 export function createContext({ ui, getG, emit }) {
-  const ask = (...a) => ui.ask(...a);
+  // 選択ダイアログには「誰が選ぶか」(actor=ユニットid) を添える。その人の端末で選んでもらうため（null なら進行役）
+  let actor = null;
+  const setActor = id => { actor = id; };
+  const ask = (title, options, opts = {}) => ui.ask(title, options, { actor, ...opts });
   const rand = () => (ui.random ? ui.random() : Math.random());
 
   const log = (m, c = '') => {
@@ -80,7 +83,7 @@ export function createContext({ ui, getG, emit }) {
         if (tanks.length) {
           const opts = tanks.map(t => ({ label: `${t.name} が代わりに受ける`, sub: `守り残り ${t.guards}`, value: t.id, cls: 'ok' }));
           opts.push({ label: '庇わない', value: null, cls: 'ghost' });
-          const c = await ask(`🛡 ${e.to.name} への ${e.amt} ダメージ（${e.src.name}）`, opts, { sub: 'タンクが庇いますか？' });
+          const c = await ask(`🛡 ${e.to.name} への ${e.amt} ダメージ（${e.src.name}）`, opts, { sub: 'タンクが庇いますか？', actor: tanks.length === 1 ? tanks[0].id : null });
           if (c !== null) {
             const t = G.units.find(x => x.id === c);
             t.guards--;
@@ -168,6 +171,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    ask, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    ask, setActor, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }

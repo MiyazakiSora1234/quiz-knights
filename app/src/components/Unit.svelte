@@ -36,7 +36,7 @@
   {#if ribbon}<div class="ribbon">{ribbon}</div>{/if}
   {#if seat != null}<div class="seat" title="席順（両隣の判定に使います）">{seat}</div>{/if}
   <div class="u-in">
-    <div class="ic-wrap">{@html icon(u.isBoss ? 'boss' : u.job)}</div>
+    <div class="ic-wrap">{@html icon(u.isBoss ? `boss${u.bossId || 1}` : u.job)}</div>
     <div class="nm">{u.name}</div>
     <div class="jb">{label}{u.isBoss || u.atk == null ? '' : ` ／ ATK ${u.atk}`}</div>
     <div class="bar {level}" style="margin-top:8px"><i style="width:{pct}%"></i></div>

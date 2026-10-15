@@ -74,3 +74,45 @@ test('途中参戦: 対戦では自分のチームの最後尾に入り、不正
   b.G.over = 'teamp';
   assert.equal(b.join({ name: 'D', pid: 'd' }), false);
 });
+
+test('CPUチーム戦: 相手は職業ユニット。プレイヤーは全員チームA、全滅で決着、途中参戦もチームA', async () => {
+  const b = createBattle({ ask: async () => 0, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', team: 'e', pid: 'a' }], mode: 'cpu', foes: ['warrior', 'warrior', 'monk', 'nope'] });
+  assert.equal(b.G.cpu, true);
+  assert.equal(b.G.mode, 'pvp');
+  assert.equal(b.G.units.find(u => u.pid === undefined && u.name === 'A').side, 'p');
+  const foes = b.G.units.filter(u => u.cpu);
+  assert.deepEqual(foes.map(u => u.name), ['CPU戦士1', 'CPU戦士2', 'CPU僧侶', 'CPU戦士'.concat('3')].slice(0, 3).concat(foes[3].name));
+  assert.ok(foes.every(u => u.side === 'e' && !u.isBoss));
+  assert.equal(b.join({ name: 'B', team: 'e', pid: 'b' }), true);
+  assert.equal(b.G.units.find(u => u.id === b.G.pids.b).side, 'p');
+  assert.deepEqual(eligibleDelays(b.G), { a: 0, b: 0 });   // CPU は押さない
+  assert.equal(publicState(b.G).cpu, true);
+  foes.forEach(u => { u.alive = false; u.hp = 0; });
+  await b.skip();
+  assert.equal(b.G.over, 'teamp');
+});
+
+test('魔王の説明: 全魔王に紹介・体力・技・特性がある。アイコンは魔王ごとに別', async () => {
+  const { BOSS, iconKey } = await import('../src/lib/engine.js');
+  const { icon } = await import('../src/lib/icons.js');
+  const svgs = new Set();
+  for (const [id, b] of Object.entries(BOSS)) {
+    assert.ok(b.intro && b.hpText && b.skills.length && b.traits.length && b.d, id);
+    svgs.add(icon(iconKey({ isBoss: true, bossId: +id })));
+  }
+  assert.equal(svgs.size, 4);
+});
+
+test('選択ダイアログには「誰が選ぶか」が付く（行動・対象は回答者、庇いはタンク）', async () => {
+  const seen = [];
+  const b = createBattle({ ask: async (title, options, o) => { seen.push({ title, actor: o.actor }); return options.find(x => !x.disabled).value; }, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', team: 'p', pid: 'a' }, { name: 'T', job: 'tank', team: 'p', pid: 't' }], mode: 'cpu', boss: 1 });
+  const a = b.G.units.find(u => u.name === 'A');
+  b.select(a.id);
+  await b.correct();
+  assert.ok(seen.length >= 1);
+  assert.ok(seen.filter(s => !s.title.startsWith('🛡')).every(s => s.actor === a.id), JSON.stringify(seen));
+  const tank = b.G.units.find(u => u.name === 'T');
+  for (const s of seen.filter(s => s.title.startsWith('🛡'))) assert.equal(s.actor, tank.id);
+});

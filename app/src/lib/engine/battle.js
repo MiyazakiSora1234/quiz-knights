@@ -116,7 +116,11 @@ export function createBattle(ui) {
     if (a.ghost) { a.ghost = false; a.ghostUsed = true; log(`👻 ${a.name} は成仏した`, 'sys'); }
   }
 
-  async function doCorrect(a) {
+  /** その人が選ぶ場面（行動・対象・押し付け先など）では、その人の端末に選択ダイアログを出す */
+  const asActor = async (a, fn) => { ctx.setActor(a.id); try { await fn(); } finally { ctx.setActor(null); } };
+
+  const doCorrect = a => asActor(a, () => doCorrectBody(a));
+  async function doCorrectBody(a) {
     stat(a, 'correct');
     log(`⭕ ${nm(a)} 正解！`, 'sys');
     if (await stepOnMine(a)) { await endQuestion(a); return; }
@@ -147,7 +151,8 @@ export function createBattle(ui) {
     await applyEvents([{ src: null, to: a, amt: 2 }]);
   }
 
-  async function doWrong(a) {
+  const doWrong = a => asActor(a, () => doWrongBody(a));
+  async function doWrongBody(a) {
     stat(a, 'wrong');
     log(`❌ ${nm(a)} 誤答`, 'sys');
     await wrongPenalty(a);
@@ -187,19 +192,33 @@ export function createBattle(ui) {
     get canUndo() { return undoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
-    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null }) {
-      G = { mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
+    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [] }) {
+      // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
+      const squad = mode === 'cpu' && foes.length > 0;
+      if (squad) mode = 'pvp';
+      G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
             genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty } };
       const pvp = mode === 'pvp';
       for (const p of players) {
         const u = mkPlayer(p.name.trim(), p.job);
-        if (pvp) u.side = p.team || 'p';
+        if (pvp) u.side = squad ? 'p' : (p.team || 'p');
         G.units.push(u);
         if (p.pid) G.pids[p.pid] = u.id;
       }
+      if (squad) {
+        const count = {};
+        for (const j of foes) {
+          const key = JOB[j] && j !== 'hero' ? j : 'warrior';
+          count[key] = (count[key] || 0) + 1;
+          const total = foes.filter(x => x === j).length;
+          const u = mkPlayer(`CPU${JOB[key].n}${total > 1 ? count[key] : ''}`, key);
+          u.side = 'e'; u.cpu = true;
+          G.units.push(u);
+        }
+      }
       if (pvp) {
         G.units.sort((a, b) => (a.side === 'p' ? 0 : 1) - (b.side === 'p' ? 0 : 1)); // チームごとに席を連続させる
-        log('対戦開始！ チームA vs チームB', 'sys');
+        log(squad ? `バトル開始！ プレイヤー vs CPU（${G.units.filter(u => u.cpu).map(u => u.name).join('・')}）` : '対戦開始！ チームA vs チームB', 'sys');
       } else {
         const S = G.units.reduce((s, u) => s + u.atk, 0);
         const b = mkBoss(+boss, S);
@@ -216,7 +235,7 @@ export function createBattle(ui) {
       if (!G || G.over || busy || (pid && G.pids[pid] != null)) return false;
       const u = mkPlayer(String(name).trim() || '名無し', JOB[job] && job !== 'hero' ? job : 'warrior');
       if (G.mode === 'pvp') {
-        u.side = team === 'e' ? 'e' : 'p';
+        u.side = team === 'e' && !G.cpu ? 'e' : 'p';
         const last = G.units.map(x => x.side).lastIndexOf(u.side);   // 自分のチームの最後尾に入れる
         G.units.splice(last + 1, 0, u);
       } else {

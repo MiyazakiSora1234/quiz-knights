@@ -206,6 +206,12 @@ export class Room extends DurableObject {
         return;
       }
       case 'settings': return this.updateSettings(m);
+      case 'ask': {                                      // 回答者の端末に選択ダイアログを出す
+        const { to, qid, title, sub, options } = m;
+        for (const s of this.playerWs(to)) send(s, { t: 'ask', qid, title, sub, options });
+        return;
+      }
+      case 'ask_close': this.toPlayers({ t: 'ask_close', qid: m.qid }); return;
       case 'transfer': return this.transferHost(m.pid);
       case 'release': return this.releaseHost();
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
@@ -242,6 +248,7 @@ export class Room extends DurableObject {
         ws.serializeAttachment({});
         return this.lobby(ws);
       case 'settings': if (!this.R.hostKey) return this.updateSettings(m); return;   // 進行役がいない間は誰でも変えられる
+      case 'answer': this.toHost({ t: 'answer', pid, qid: m.qid, i: m.i }); return;
       case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
         if (!this.round.canBuzz(pid)) return;

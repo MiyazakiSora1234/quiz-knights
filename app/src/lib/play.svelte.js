@@ -19,6 +19,7 @@ export class PlayStore {
   myJob = $state('warrior');
   myTeam = $state('p');
   members = $state([]);
+  req = $state(null);             // 自分が選ぶ場面（行動・対象など）{qid,title,sub,options}
   chat = $state([]);              // 部屋のチャットと入退室のお知らせ
   hasHost = $state(true);         // 進行役がいるか（いなければ誰でもなれる）
   hostOnline = $state(false);
@@ -67,6 +68,8 @@ export class PlayStore {
     if (!gs?.over) return '';
     if (gs.over === 'win') return '勝利！';
     if (gs.over === 'lose') return '全滅…';
+    if (gs.cpu && gs.over === 'teame') return '全滅…';
+    if (gs.cpu && gs.over === 'teamp') return '勝利！';
     if (gs.over === 'draw') return '引き分け';
     const winSide = gs.over === 'teamp' ? 'p' : 'e';
     return me ? (me.side === winSide ? '勝利！' : '敗北…') : (winSide === 'p' ? 'チームAの勝利' : 'チームBの勝利');
@@ -108,10 +111,12 @@ export class PlayStore {
       case 'error': return this.#onError(m);
       case 'joined': return this.#onJoined(m);
       case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
+      case 'ask': this.req = m; if (typeof navigator.vibrate === 'function') vib(40); sfx.open(); return;
+      case 'ask_close': if (this.req?.qid === m.qid) this.req = null; return;
       case 'chat': this.chat = [...this.chat, m].slice(-100); return;
       case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
-      case 'ended': this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
+      case 'ended': this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
         this.open = true; this.eligible = m.eligible; this.sent = false; this.winner = null;
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
@@ -156,6 +161,12 @@ export class PlayStore {
   #sendProfile() { this.conn.send({ t: 'profile', job: this.myJob, team: this.myTeam }); }
   pickJob(j) { this.myJob = j; store.set(KEY.job, j); this.#sendProfile(); }
   pickTeam(t) { this.myTeam = t; store.set(KEY.team, t); this.#sendProfile(); }
+  /** 選択ダイアログの答え（i=選択肢の番号） */
+  answer(i) {
+    const r = this.req; if (!r || r.options[i]?.disabled) return;
+    this.conn.send({ t: 'answer', qid: r.qid, i });
+    this.req = null;
+  }
   sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   /** 部屋の中で名前・ひとことを変える */
   saveProfile(name, flavor) {

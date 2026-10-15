@@ -6,6 +6,7 @@
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
   import BossPicker from './BossPicker.svelte';
+  import FoePicker from './FoePicker.svelte';
 
   // バトルの準備画面: 左に招待URLと参加者の名簿、右にモード・魔王・開始ボタン
   let { host } = $props();
@@ -50,14 +51,14 @@
     <aside class="side">
       <div class="panel">
         <h3>モード</h3>
-        <div class="seg"><button class:sel={!pvp} onclick={() => (host.mode = 'cpu')}>CPU戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
-        <div class="sub desc">{pvp ? '参加者を2チームに分けて戦います。片方が全滅したら決着です。' : '全員で協力して、魔王（CPU）を倒します。'}</div>
+        <div class="seg"><button class:sel={host.mode === 'cpu'} onclick={() => (host.mode = 'cpu')}>魔王戦</button><button class:sel={host.mode === 'squad'} onclick={() => (host.mode = 'squad')}>CPUチーム戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
+        <div class="sub desc">{pvp ? '参加者を2チームに分けて戦います。片方が全滅したら決着です。' : host.mode === 'squad' ? '全員で協力して、CPUの職業チーム（戦士・僧侶など）と戦います。CPUの行動は進行役が操作します。' : '全員で協力して、魔王（CPU）を倒します。'}</div>
       </div>
-      {#if !pvp}<BossPicker {host} />{/if}
+      {#if host.mode === 'cpu'}<BossPicker {host} />{:else if host.mode === 'squad'}<FoePicker {host} />{/if}
 
       <div class="start">
         <button class="btn primary xl wide" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
-        <div class="sub">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : `${BOSS[host.boss].n} に挑みます`)}</div>
+        <div class="sub">{block || (pvp ? `チームA ${teamCount('p')}人 vs チームB ${teamCount('e')}人` : host.mode === 'squad' ? `CPU ${host.foes.length}体と戦います` : `${BOSS[host.boss].n} に挑みます`)}</div>
       </div>
     </aside>
   </div>
