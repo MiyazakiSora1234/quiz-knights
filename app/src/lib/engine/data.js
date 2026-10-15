@@ -34,6 +34,13 @@ export const JOB = {
 };
 /** 参加者が選べる職業（勇者は遊び人の転職先なので除く） */
 export const SELECTABLE = Object.keys(JOB).filter(k => k !== 'hero');
+/** 職業の分類（職業一覧・ルール表示の見出し用） */
+export const JOB_GROUPS = [
+  { n: '基本', keys: ['warrior', 'monk', 'mage', 'sage'] },
+  { n: '攻撃', keys: ['bm', 'berserker', 'mw', 'gambler', 'minelayer', 'poisoner', 'necro'] },
+  { n: '守り・支援', keys: ['tank', 'cleric', 'bard', 'tactician', 'oracle'] },
+  { n: '特殊', keys: ['thief', 'mimic', 'ghost', 'jester', 'bomb', 'apprentice', 'playboy'] },
+];
 export const GENRES = ['理系','文系','青問','緑問','赤問'];
 export const BERSERKER_DELAY_MS = 700;
 

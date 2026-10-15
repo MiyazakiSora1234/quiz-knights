@@ -2,52 +2,103 @@
   import { fade, scale } from 'svelte/transition';
   import { panel } from '../lib/ui.svelte.js';
   import { icon } from '../lib/icons.js';
-  import { JOB, BOSS } from '../lib/engine.js';
+  import { JOB, BOSS, JOB_GROUPS, LEVELS } from '../lib/engine.js';
+
   const close = () => (panel.rules = false);
+  let tab = $state('play');
+  let open = $state(null);   // 開いている職業
+  const TABS = [['play', '遊び方'], ['jobs', '職業'], ['boss', '魔王']];
+  const STEPS = [
+    ['問題が出る', '早押しボタンを押します。いちばん早く押した人が、回答権を取ります。'],
+    ['答える', '回答権を取った人が答えます。進行役が「正解」か「誤答」を決めます。'],
+    ['正解したら', '自分の画面で、通常攻撃か職業の能力を1回選んで使えます。'],
+    ['誤答したら', '答えた本人だけが2ダメージを受けます。'],
+    ['CPUの番', '魔王やCPUは、1問ごとに自動で1回行動します。'],
+    ['勝ち負け', '魔王（CPU）を倒せば勝ち。プレイヤーが全員倒れると負けです。ユーザー対戦は、相手チームを全滅させたほうの勝ちです。'],
+  ];
+  const NOTES = [
+    '攻撃は、自分や味方にも当てられます（おすすめはしません）。',
+    '「休み」になった人は、その問題の早押しに参加できません。休みが続けて掛かることはありません。',
+    '体力が0になると戦闘不能です。戦闘不能の人は、押せません（幽霊と蘇生を除く）。',
+    '遊び人は、同じ人が2問続けて正解すると勇者に転職し、体力が満タンになります。',
+    'タンクの守り回数は、死んでも残ります。',
+  ];
 </script>
 
 <svelte:window onkeydown={(e) => panel.rules && e.key === 'Escape' && close()} />
 
 {#if panel.rules}
   <div class="backdrop" transition:fade={{ duration: 120 }} onmousedown={(e) => e.target === e.currentTarget && close()} role="presentation">
-    <div class="dlg" transition:scale={{ start: .96, duration: 140 }} role="dialog" aria-modal="true" aria-label="職業・ルール一覧">
-      <div class="head"><h3>職業・ルール一覧</h3><button class="btn sm" onclick={close}>閉じる<kbd>Esc</kbd></button></div>
-      <div class="common">
-        <b>共通ルール</b>
-        <ul>
-          <li>正解すると、通常攻撃か能力を1回使える</li>
-          <li>誤答すると、役職に関係なく2ダメージ</li>
-          <li>「休み」は連続にならない</li>
-          <li>自分や自チームへの攻撃もできる</li>
-          <li>遊び人が勇者に転職したときは、体力がリセットされる</li>
-          <li>タンクは死んでも守り回数が続く。範囲攻撃で自分が死ぬ場合も庇える</li>
-        </ul>
+    <div class="dlg" transition:scale={{ start: .96, duration: 140 }} role="dialog" aria-modal="true" aria-label="遊び方・職業・魔王">
+      <div class="head">
+        <div class="tabs" role="tablist">{#each TABS as [k, n]}<button role="tab" aria-selected={tab === k} class:on={tab === k} onclick={() => (tab = k)}>{n}</button>{/each}</div>
+        <button class="btn sm" onclick={close}>閉じる<kbd>Esc</kbd></button>
       </div>
-      <table>
-        <tbody>
-          {#each Object.entries(JOB) as [k, j]}
-            <tr><th><span class="ic">{@html icon(k)}</span>{j.n}</th><td><span class="st">ATK {j.atk} / HP {j.hp}</span>{j.d}</td></tr>
+
+      <div class="body">
+        {#if tab === 'play'}
+          <ol class="steps">
+            {#each STEPS as [t, d], i}<li><span class="no">{i + 1}</span><div><b>{t}</b><span>{d}</span></div></li>{/each}
+          </ol>
+          <div class="box"><b>知っておくと便利</b><ul>{#each NOTES as n}<li>{n}</li>{/each}</ul></div>
+          <div class="box"><b>難易度</b><ul>{#each Object.values(LEVELS) as l}<li><b>{l.n}</b>：{l.d}</li>{/each}</ul></div>
+        {:else if tab === 'jobs'}
+          {#each JOB_GROUPS as g}
+            <h4>{g.n}</h4>
+            <div class="grid">
+              {#each g.keys as k}
+                {@const j = JOB[k]}
+                <button class="job" class:on={open === k} onclick={() => (open = open === k ? null : k)}>
+                  <span class="av">{@html icon(k)}</span>
+                  <span class="tx"><b>{j.n}</b><small>ATK {j.atk} ／ HP {j.hp}</small></span>
+                </button>
+                {#if open === k}<div class="desc">{@html icon(k)}<p><b>{j.n}</b>　{j.d}</p></div>{/if}
+              {/each}
+            </div>
           {/each}
+          <div class="hint">職業をタップすると、くわしい説明が開きます。</div>
+        {:else}
           {#each Object.entries(BOSS) as [k, b]}
-            <tr class="boss"><th><span class="ic">{@html icon('boss' + k)}</span>{b.n}</th><td>{b.d}</td></tr>
+            <div class="boss">
+              <div class="bh"><span class="av foe">{@html icon('boss' + k)}</span><div><b>{b.n}</b><small>{b.intro}</small></div></div>
+              <div class="row"><span class="k">体力</span><span>{b.hpText}</span></div>
+              {#each b.skills as s}<div class="row"><span class="k">{s.n}</span><span>{s.d}</span></div>{/each}
+              {#each b.traits as t}<div class="row"><span class="k tr">特性</span><span>{t}</span></div>{/each}
+            </div>
           {/each}
-        </tbody>
-      </table>
+        {/if}
+      </div>
     </div>
   </div>
 {/if}
 
 <style>
-  .backdrop{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:16px;z-index:70}
-  .dlg{background:var(--s1);border:1px solid var(--gold);border-radius:16px;padding:22px;max-width:760px;width:100%;max-height:90vh;overflow:auto}
-  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  h3{font-size:1.3rem;color:var(--gold)}
-  .common{background:#0003;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.88rem;margin-bottom:12px}
-  .common ul{margin:6px 0 0;padding-left:20px;color:var(--mut)}
-  table{border-collapse:collapse;width:100%;font-size:.88rem}
-  th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
-  th{white-space:nowrap;color:var(--gold)}
-  .ic{display:inline-block;width:1.5em;font-size:1.2rem;vertical-align:middle;margin-right:4px;color:var(--tx)}
-  .st{display:block;color:var(--tx);font-weight:700;font-size:.8rem}
-  .boss th{color:#ff9aa2}
+  .backdrop{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px;z-index:90}
+  .dlg{background:var(--s1);border:1px solid var(--gold);border-radius:16px;max-width:720px;width:100%;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden}
+  .head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .tabs{display:flex;gap:6px}
+  .tabs button{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 18px;font-weight:700;cursor:pointer;color:var(--mut)}
+  .tabs button.on{background:var(--gold);color:#2a1c06;border-color:var(--gold)}
+  .body{overflow:auto;padding:14px 16px 18px}
+  .steps{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:8px}
+  .steps li{display:flex;gap:12px;align-items:flex-start;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .no{flex:none;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#2a1c06;font-weight:900;display:grid;place-items:center}
+  .steps b{display:block;color:var(--gold)}.steps span:not(.no){color:var(--tx);font-size:.9rem;line-height:1.5}
+  .box{background:#0003;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:.88rem}
+  .box ul{margin:6px 0 0;padding-left:20px;color:var(--mut);line-height:1.6}.box li b{color:var(--tx)}
+  h4{margin:14px 2px 8px;color:var(--gold);font-size:.95rem;letter-spacing:.1em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+  .job{display:flex;align-items:center;gap:10px;text-align:left;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer}
+  .job:hover{border-color:var(--line2)}.job.on{border-color:var(--gold);background:#3a2f1a}
+  .av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:1.45rem;background:#120f0c;border:2px solid var(--line2)}
+  .av.foe{border-color:var(--red-d)}
+  .tx b{display:block}.tx small{color:var(--mut);font-size:.74rem}
+  .desc{grid-column:1/-1;display:flex;gap:12px;align-items:flex-start;background:#0004;border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:10px 12px;font-size:.9rem;line-height:1.55}
+  .desc :global(.ic){font-size:1.6rem;flex:none}.desc p{margin:0}.desc b{color:var(--gold)}
+  .hint{text-align:center;color:var(--dim);font-size:.8rem;margin-top:12px}
+  .boss{background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;font-size:.86rem}
+  .bh{display:flex;gap:12px;align-items:center;margin-bottom:2px}.bh b{display:block;font-size:1.02rem}.bh small{color:var(--mut)}
+  .row{display:grid;grid-template-columns:5.6em 1fr;gap:8px;line-height:1.5}
+  .k{font-weight:700;color:var(--gold);font-size:.78rem;background:#0004;border-radius:6px;padding:1px 6px;text-align:center;align-self:start}.k.tr{color:#ff9aa2}
+  @media(max-width:560px){.tabs button{padding:6px 12px}}
 </style>

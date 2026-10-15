@@ -297,3 +297,10 @@ test('誤答の日: 誤答した本人だけが2ダメージ。その問題が�
   assert.equal(c.G.units.find(u => u.name === 'A').hp, 5);
   assert.equal(c.G.units.find(u => u.name === 'B').hp, 6);
 });
+
+test('職業の分類: すべての選べる職業がちょうど1つの分類に入り、順番は職業表と同じ', async () => {
+  const { JOB_GROUPS, SELECTABLE } = await import('../src/lib/engine.js');
+  const flat = JOB_GROUPS.flatMap(g => g.keys);
+  assert.deepEqual(flat, SELECTABLE);
+  assert.equal(new Set(flat).size, flat.length);
+});
