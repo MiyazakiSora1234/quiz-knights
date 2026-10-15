@@ -13,6 +13,11 @@
   const foes = $derived(gs.units.filter(u => u.side !== mySide));
   const allies = $derived(gs.units.filter(u => u.side === mySide));
   let text = $state(''), msg = $state(''), chatEl = $state();
+  // チャットは初期状態では閉じておく。閉じている間に届いた分は件数で知らせる
+  let chatOpen = $state(false), seen = $state(0);
+  const unread = $derived(chatOpen ? 0 : Math.max(0, p.chat.filter(c => !c.answer && !c.sys).length - seen));
+  const toggleChat = () => { chatOpen = !chatOpen; if (chatOpen) seen = p.chat.filter(c => !c.answer && !c.sys).length; };
+  $effect(() => { if (chatOpen) seen = p.chat.filter(c => !c.answer && !c.sys).length; });
   $effect(() => { p.chat.length; tick().then(() => { if (chatEl) chatEl.scrollTop = chatEl.scrollHeight; }); });
   const bubbles = $derived.by(() => {
     const out = {};
@@ -55,6 +60,7 @@
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
     <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
+    <button class="btn sm chat-t" type="button" onclick={toggleChat} aria-expanded={chatOpen} title="チャット">💬{#if unread}<span class="badge">{unread}</span>{/if}</button>
   </form>
   </div>
 
@@ -73,6 +79,7 @@
         <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
       {/each}
     </div>
+    {#if chatOpen}
     <div class="chatbox">
       <div class="cl" bind:this={chatEl}>
         {#each p.chat as c}
@@ -81,6 +88,7 @@
       </div>
       <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="チャット…" aria-label="チャット"><button class="btn sm" type="submit">送信</button></form>
     </div>
+    {/if}
   </div>
 
   {#if p.me}<div class="buzzarea"><BuzzButton {p} /></div>{/if}
@@ -120,6 +128,8 @@
   .strip{display:flex;gap:12px;overflow-x:auto;padding:12px 4px 12px;scroll-snap-type:x proximity}
   .strip :global(.unit){flex:0 0 138px;scroll-snap-align:start}
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
+  .chat-t{position:relative;flex:none}
+  .badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:.7rem;font-weight:800;display:grid;place-items:center;padding:0 4px}
   .chatbox{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
   .cl{height:7em;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:4px 10px;font-size:.84rem}
   .cl{overflow-x:hidden}

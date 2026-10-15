@@ -50,7 +50,6 @@
   <Stage {host} {G} />
   <aside class="side">
     <ControlPanel {host} {G} />
-    <div class="chatdesk"><ChatPanel {host} {G} /></div>
   </aside>
 </div>
 
@@ -71,8 +70,6 @@
 {/if}
 
 <style>
-  .chatdesk{display:block}
-  @media(max-width:900px){.chatdesk{display:none}}
   .wait{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--gold);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 8px 24px #000a;font-weight:700}
   .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}

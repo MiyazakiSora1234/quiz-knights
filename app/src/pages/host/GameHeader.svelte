@@ -67,9 +67,6 @@
     .in{display:flex;justify-content:space-between;padding:8px 12px}.gl{display:none}
     kbd{display:none}
   }
-  @media(min-width:901px){
-    .chatbtn{display:none}
-  }
   @media(max-width:900px){
     .qno{font-size:1.5rem}
   }
