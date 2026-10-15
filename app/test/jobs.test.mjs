@@ -197,7 +197,7 @@ test('道化師: 誤答の2ダメージを他の1人に押し付けられる／�
   assert.equal(h.u('J').hp, 2);
 });
 
-test('賭博師: 表なら敵に5ダメージ、裏なら自分が3ダメージ', async () => {
+test('賭博師: 表なら敵に5ダメージ、裏なら自分が2ダメージ', async () => {
   const h = harness();
   h.b.start({ players: [P('G', 'gambler'), P('W', 'warrior')], boss: 3 });
   h.rolls.push(0.1);
@@ -205,7 +205,7 @@ test('賭博師: 表なら敵に5ダメージ、裏なら自分が3ダメージ'
   assert.equal(h.u('魔王3').hp, h.u('魔王3').maxHp - 5);
   h.rolls.push(0.9);
   await h.correct('G', 'コイントス');
-  assert.equal(h.u('G').hp, 2);
+  assert.equal(h.u('G').hp, 3);
 });
 
 test('盗賊: 進行役が決めたジャンル一覧から選べる', async () => {

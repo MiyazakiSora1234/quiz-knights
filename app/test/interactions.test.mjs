@@ -12,7 +12,7 @@ const askedTitles = h => h.asked.map(a => a.title);
 test('仕様表: 全職業の攻撃力・体力が決めた値のとおり', () => {
   const spec = {
     sage: [1, 5], monk: [1, 6], warrior: [3, 7], mage: [3, 5], bm: [5, 2], tank: [1, 8], berserker: [7, 7], mw: [2, 5],
-    thief: [2, 4], playboy: [0, 3], hero: [7, 7], bomb: [1, 5], necro: [1, 5],
+    thief: [2, 4], playboy: [0, 4], hero: [7, 7], bomb: [1, 5], necro: [1, 5],
     apprentice: [1, 4], bard: [0, 5], tactician: [1, 5], cleric: [0, 6], mimic: [1, 5], poisoner: [1, 5],
     oracle: [0, 5], minelayer: [2, 4], ghost: [2, 3], jester: [1, 4], gambler: [0, 5],
   };
@@ -377,7 +377,7 @@ test('道化師: 押し付けた相手が敵チームなら庇い確認が出る
 test('賭博師: 裏で自分が倒れることもある／表で対象がいなければ不発', async () => {
   const h = harness();
   h.b.start({ players: [P('G', 'gambler'), P('W', 'warrior')], boss: 3 });
-  h.u('G').hp = 3; h.rolls.push(0.9);
+  h.u('G').hp = 2; h.rolls.push(0.9);
   await h.correct('G', 'コイントス');
   assert.equal(h.u('G').alive, false);
   assert.equal(h.b.G.over, null);

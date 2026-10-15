@@ -77,10 +77,10 @@ const SPECIALS = {
     });
   },
   gambler(ctx, a, add) {
-    add('コイントス', '表なら敵1人に5ダメージ、裏なら自分が3ダメージ', [], async () => {
+    add('コイントス', '表なら敵1人に5ダメージ、裏なら自分が2ダメージ', [], async () => {
       const heads = ctx.rand() < 0.5;
       ctx.log(`🪙 コインは${heads ? '表' : '裏'}！`, 'sys');
-      if (!heads) { await ctx.applyEvents([{ src: a, to: a, amt: 3 }]); return; }
+      if (!heads) { await ctx.applyEvents([{ src: a, to: a, amt: 2 }]); return; }
       const t = await ctx.pickUnit('表！ 5ダメージを与える相手', foe(a), []);
       if (t) await ctx.dmgTo(a, [t], ctx.dm(a, 5)); else ctx.log('対象がいない');
     });
