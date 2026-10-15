@@ -3,6 +3,7 @@
   import { tick } from 'svelte';
   import Unit from '../../components/Unit.svelte';
   import MePanel from './MePanel.svelte';
+  import ScoreTable from '../../components/ScoreTable.svelte';
   import BuzzButton from './BuzzButton.svelte';
   import { sfx, vib } from '../../lib/sound.svelte.js';
 
@@ -98,9 +99,8 @@
   <div class="over" transition:fade={{ duration: 200 }}>
     <div class="ov-in" in:scale={{ start: .9, duration: 260 }}>
       <h2 class:lose={p.lost}>{p.overText}</h2>
-      {#if p.me && gs.stats?.[p.me.id]}
-        <div class="mine">あなたの成績：正解 <b class="ok">{gs.stats[p.me.id].correct}</b>　誤答 <b class="ng">{gs.stats[p.me.id].wrong}</b></div>
-      {/if}
+      <div class="sub">{gs.q - 1}問で決着</div>
+      <ScoreTable units={gs.units} stats={gs.stats} mine={p.mine} />
       <div class="sub">進行役の操作を待っています</div>
     </div>
   </div>
@@ -142,10 +142,9 @@
   .logbox p{margin:6px 0 0;font-size:.82rem;border-bottom:1px dotted #8a6a3577;padding-bottom:3px}
   .buzzarea{position:sticky;bottom:0;padding:14px 0 calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#0000,var(--bg) 30%)}
 
-  .over{position:fixed;inset:0;background:#000d;z-index:70;display:flex;align-items:center;justify-content:center;text-align:center}
-  .ov-in{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .over{position:fixed;inset:0;overflow:auto;padding:16px;background:#000d;z-index:70;display:flex;align-items:center;justify-content:center;text-align:center}
+  .ov-in{display:flex;flex-direction:column;gap:12px;align-items:center;margin:auto}
   .over h2{font-size:3rem;color:var(--gold)}.over h2.lose{color:var(--red)}
-  .mine{font-size:1.05rem}.mine .ok{color:#8fe0a6}.mine .ng{color:#ff9aa2}
 
   /* PC: 左に自分とボタン、右に全員とバトルログ */
   @media(min-width:900px){
