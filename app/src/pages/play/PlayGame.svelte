@@ -86,10 +86,6 @@
       </div>
       <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="チャット…" aria-label="チャット"><button class="btn sm" type="submit">送信</button></form>
     </div>
-    <div class="logbox parch">
-      <div class="lh">バトルログ</div>
-      <div class="ll">{#each gs.log ?? [] as l}<p>{l}</p>{/each}</div>
-    </div>
   </div>
 
   {#if p.me}<div class="buzzarea"><BuzzButton {p} /></div>{/if}

@@ -8,6 +8,7 @@
   import PlayLobby from './play/RoomView.svelte';
   import PlayGame from './play/PlayGame.svelte';
   import AskDialog from './play/AskDialog.svelte';
+  import LogSheet from '../components/LogSheet.svelte';
 
   let { id } = $props();
   let menu = $state(false);
@@ -46,6 +47,7 @@
     <button onclick={() => (menu = !menu)} aria-label="メニュー" aria-expanded={menu}>☰</button>
     {#if menu}
       <div class="menu" transition:fly={{ y: -6, duration: 120 }}>
+        <button class="mi" onclick={() => { panel.log = true; menu = false; }}>📜 バトルログ</button>
         <button class="mi" onclick={() => { panel.rules = true; menu = false; }}>📖 職業・ルール一覧</button>
         <button class="mi" onclick={() => { copyUrl(); menu = false; }}>🔗 参加用URLをコピー</button>
         <button class="mi" onclick={toggleSound}>{sound.on ? '🔊 効果音：オン' : '🔇 効果音：オフ'}</button>
@@ -69,6 +71,7 @@
     <PlayGame {p} />
   {/if}
   <AskDialog {p} />
+  <LogSheet lines={(p.gs?.log ?? []).map(m => ({ m }))} />
 </div>
 
 <style>

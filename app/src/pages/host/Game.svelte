@@ -2,10 +2,10 @@
   import GameHeader from './GameHeader.svelte';
   import Stage from './Stage.svelte';
   import ControlPanel from './ControlPanel.svelte';
-  import Chronicle from './Chronicle.svelte';
   import GameOver from './GameOver.svelte';
   import UnitEditor from './UnitEditor.svelte';
   import ChatPanel from './ChatPanel.svelte';
+  import LogSheet from '../../components/LogSheet.svelte';
   import { fade, fly } from 'svelte/transition';
   import { panel, modal } from '../../lib/ui.svelte.js';
   import { sfx, unlockAudio } from '../../lib/sound.svelte.js';
@@ -19,7 +19,7 @@
 
   /** キーボード操作: O=正解 X=誤答 S=スルー R=選び直し/受付やり直し Ctrl+Z=戻す */
   function onkey(e) {
-    if (modal.req || panel.rules || host.editing != null) return;
+    if (modal.req || panel.rules || panel.log || host.editing != null) return;
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || e.metaKey || e.altKey) return;
     if (G.over) return;
     const k = e.key.toLowerCase();
@@ -50,12 +50,12 @@
   <aside class="side">
     <ControlPanel {host} {G} />
     <div class="chatdesk"><ChatPanel {host} {G} /></div>
-    <Chronicle log={G.log} />
   </aside>
 </div>
 
 {#if G.over}<GameOver {host} {G} />{/if}
 <UnitEditor {host} {G} />
+<LogSheet lines={G.log} />
 {#if host.waiting}
   <div class="wait" transition:fly={{ y: -10, duration: 150 }}><span class="spin"></span><span>{host.waiting.name} が選択中…</span><button class="btn ghost sm" onclick={() => host.abortWaiting()}>取り消す</button></div>
 {/if}
