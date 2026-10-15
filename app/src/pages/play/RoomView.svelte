@@ -95,7 +95,7 @@
   .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 10px}
   .ttl b{display:block;font-family:var(--serif);font-size:1.25rem;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
   .ttl .sub{display:flex;align-items:center;gap:6px;font-size:.8rem}
-  .tools{display:flex;gap:6px}
+  .tools{display:flex;gap:6px;margin-right:48px}
   .ib{width:40px;height:40px;border-radius:10px;background:var(--s2);border:1px solid var(--line);font-size:1.1rem;padding:0;cursor:pointer}
   .ib:hover{border-color:var(--gold)}
   .members{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-content:start}
