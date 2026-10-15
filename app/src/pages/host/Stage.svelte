@@ -7,7 +7,9 @@
   const foes = $derived(G.units.filter(u => u.side === 'e'));
   const allies = $derived(G.units.filter(u => u.side === 'p'));
   const pvp = $derived(G.mode === 'pvp');
-  const canPick = u => (u.alive || u.ghost) && !u.restNow && !G.over && !host.busy;
+  // 参加者（端末を持つ人）は早押しで決まるので、進行役は選べない。魔王・CPUだけ進行役が選ぶ
+  const isHuman = u => Object.values(G.pids ?? {}).includes(u.id);
+  const canPick = u => !isHuman(u) && (u.alive || u.ghost) && !u.restNow && !G.over && !host.busy;
 </script>
 
 {#snippet card(u, seat)}
