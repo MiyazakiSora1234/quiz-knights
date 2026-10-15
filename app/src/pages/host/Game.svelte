@@ -55,6 +55,9 @@
 
 {#if G.over}<GameOver {host} {G} />{/if}
 <UnitEditor {host} {G} />
+{#if host.waiting}
+  <div class="wait" transition:fly={{ y: -10, duration: 150 }}><span class="spin"></span><span>{host.waiting.name} が選択中…</span><button class="btn ghost sm" onclick={() => host.abortWaiting()}>取り消す</button></div>
+{/if}
 {#if chatOpen}
   <div class="sheet" role="presentation" onclick={(e) => e.target === e.currentTarget && (chatOpen = false)} transition:fade={{ duration: 120 }}>
     <div class="sheet-in" in:fly={{ y: 16, duration: 180 }}>
@@ -65,6 +68,9 @@
 {/if}
 
 <style>
+  .wait{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--gold);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 8px 24px #000a;font-weight:700}
+  .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
   .sheet{position:fixed;inset:0;background:#0009;z-index:60;display:flex;justify-content:flex-end;align-items:flex-start;padding:64px 14px 14px}
   .sheet-in{width:min(100%,420px);max-height:calc(100dvh - 80px);overflow:auto;display:flex;flex-direction:column;gap:6px}
   .sheet-in .close{align-self:flex-end}

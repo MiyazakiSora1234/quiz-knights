@@ -1,7 +1,7 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付と配信
-import { createBattle } from './engine.js';
+import { createBattle, CANCEL } from './engine.js';
 import { Conn } from './net.js';
-import { ask, toast, confirmAsk, modal } from './ui.svelte.js';
+import { ask, toast, confirmAsk } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
 import { store, KEY } from './storage.js';
 import { syncRoster, startBlock } from './roster.js';
@@ -97,6 +97,7 @@ export class HostStore {
     this.#lobbyInit = true;
     this.lobby = players;
     syncRoster(this.roster, players, nextKey);
+    this.#fallbackIfOffline(players);
     this.#joinLate();
   }
   /** バトル中に入室した人を、途中参戦としてバトルに加える */
@@ -129,8 +130,10 @@ export class HostStore {
 
   /* ---------- 選択ダイアログ（回答者の端末へ送る） ---------- */
   #qid = 0;
-  #remote = null;     // 回答者の端末に出している選択 { qid, pid, options, resolve }
-  /** o.actor のユニットを操作している人がオンラインなら、その人の画面にも同じ選択を出す（先に答えたほうが有効） */
+  #remote = null;     // 回答者の端末に出している選択 { qid, pid, title, options, o, resolve, reject }
+  waiting = $state(null);   // 回答者の選択待ち { name }
+  /** o.actor のユニットを操作している人がオンラインなら、その人の端末にだけ選択を出し、進行役の画面には出さない。
+   *  選択中にその人が切断したら、進行役の画面に出し直す。魔王・CPU・オフラインの人は進行役が選ぶ。 */
   #ask(title, options, o = {}) {
     const G = this.battle.G;
     const unit = o.actor != null && G ? G.units.find(u => u.id === o.actor) : null;
@@ -138,12 +141,11 @@ export class HostStore {
     const online = !!pid && this.lobby.some(l => l.pid === pid && l.online);
     if (!online) return ask(title, options, o);
     const qid = ++this.#qid;
-    const local = ask(title, options, { ...o, sub: `${unit.name} の画面に表示中です。代わりにここで選ぶこともできます。${o.sub ? '　' + o.sub : ''}` });
     return new Promise((resolve, reject) => {
-      const done = () => { this.#remote = null; this.conn.send({ t: 'ask_close', qid }); };
-      this.#remote = { qid, pid, options, resolve: v => { done(); resolve(v); } };
+      const done = () => { this.#remote = null; this.waiting = null; this.conn.send({ t: 'ask_close', qid }); };
+      this.#remote = { qid, pid, title, options, o, resolve: v => { done(); resolve(v); }, reject: e => { done(); reject(e); } };
+      this.waiting = { name: unit.name };
       this.conn.send({ t: 'ask', to: pid, qid, title, sub: o.sub || '', options: options.map(({ label, sub, disabled, cls, unit }) => ({ label, sub, disabled, cls, unit })) });
-      local.then(v => { done(); resolve(v); }, e => { done(); reject(e); });
     });
   }
   #onAnswer(m) {
@@ -151,8 +153,17 @@ export class HostStore {
     if (!r || r.qid !== m.qid || r.pid !== m.pid) return;
     const o = r.options[m.i];
     if (!o || o.disabled) return;
-    modal.req = null;            // ここの選択ダイアログは閉じる
     r.resolve(o.value);
+  }
+  /** 選択待ちを取り消す（この問題の処理を元に戻す） */
+  abortWaiting() { this.#remote?.reject(CANCEL); }
+  /** 選択中の人が切断したら、進行役の画面で代わりに選ぶ */
+  #fallbackIfOffline(players) {
+    const r = this.#remote;
+    if (!r || players.some(p => p.pid === r.pid && p.online)) return;
+    this.#remote = null; this.waiting = null; this.conn.send({ t: 'ask_close', qid: r.qid });
+    toast('選択中の人の接続が切れたため、進行役の画面で選びます');
+    ask(r.title, r.options, r.o).then(r.resolve, r.reject);
   }
 
   /* ---------- 名簿 ---------- */
@@ -179,6 +190,7 @@ export class HostStore {
   }
   select(id) {
     const G = this.battle.G; if (!G) return;
+    if (Object.values(G.pids ?? {}).includes(id)) return;   // 参加者は早押しで決まる。進行役は選べない
     if (G.sel === id) { this.battle.select(null); this.reopen(); return; }
     if (this.battle.select(id)) this.conn.send({ t: 'lock' });
   }
