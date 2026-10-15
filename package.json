@@ -3,10 +3,17 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev": "vite --config app/vite.config.js",
+    "build": "vite build --config app/vite.config.js",
+    "worker": "wrangler dev",
+    "test": "node --test app/test/engine.test.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "preview": "npm run build && wrangler dev"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "svelte": "^5.57.2",
+    "vite": "^7.3.7",
     "wrangler": "^4"
   }
 }
