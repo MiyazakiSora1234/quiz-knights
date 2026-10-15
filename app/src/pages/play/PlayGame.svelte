@@ -63,14 +63,14 @@
       <div class="grp foe">敵</div>
       <div class="strip">
         {#each foes as u (u.id)}
-          <Unit {u} compact jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} />
+          <Unit {u} compact jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
         {/each}
       </div>
     {/if}
     <div class="grp ally">味方</div>
     <div class="strip">
       {#each allies as u (u.id)}
-        <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} />
+        <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} sel={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
       {/each}
     </div>
     <div class="chatbox">

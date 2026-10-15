@@ -2,7 +2,7 @@
   import { icon } from '../lib/icons.js';
   import { jobName } from '../lib/engine.js';
 
-  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false } = $props();
+  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false } = $props();
   const label = $derived(jobLabel ?? jobName(u));
 
   let floats = $state([]);
@@ -26,7 +26,7 @@
 
 <button
   class="unit {u.side === 'e' ? 'foe' : 'ally'} {anim}"
-  class:can class:sel class:dead={!u.alive} class:compact class:acting
+  class:can class:sel class:dead={!u.alive} class:compact class:acting class:answering class:dim
   tabindex={can ? 0 : -1}
   disabled={!onpick}
   onclick={() => can && onpick?.(u)}
@@ -52,6 +52,10 @@
 </button>
 
 <style>
+  .answering{z-index:6;transform:scale(1.07);border-color:var(--gold);animation:ans 1.1s ease-in-out infinite;filter:brightness(1.12)}
+  @keyframes ans{0%,100%{box-shadow:0 0 0 2px #f0c964,0 0 18px 2px #e3b84f88}50%{box-shadow:0 0 0 3px #fff3c0,0 0 40px 10px #e3b84fcc}}
+  .answering .ribbon{background:linear-gradient(180deg,#fff3c0,#e3b84f)!important;color:#2a1c06!important;font-size:.9rem!important;font-weight:900!important;letter-spacing:.12em}
+  .dim{opacity:.55;filter:saturate(.7)}
   .acting{animation:act 0.9s ease-in-out infinite;z-index:5}
   @keyframes act{0%,100%{box-shadow:0 0 0 0 #ff4d5e00;transform:scale(1)}50%{box-shadow:0 0 34px 8px #ff4d5eaa;transform:scale(1.06)}}
   .bubble{position:absolute;left:6px;right:6px;top:-12px;z-index:6;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.82rem;line-height:1.25;padding:3px 8px;border-radius:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 4px 12px #000a;pointer-events:none}
