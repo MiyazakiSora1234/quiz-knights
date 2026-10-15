@@ -3,17 +3,18 @@
   import { fade, scale, fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { wsUrl } from '../lib/net.js';
-  import { toast, store, panel } from '../lib/ui.svelte.js';
+  import { toast, panel } from '../lib/ui.svelte.js';
+  import { store, KEY } from '../lib/storage.js';
 
   let rooms = $state(null);
   let status = $state('読み込み中…');
-  let name = $state(store.get('qr_name') ?? '');
+  let name = $state(store.get(KEY.name) ?? '');
   let nameEl = $state();
   let need = $state(false);
   let dlg = $state(null); // { id, name, pw, busy, err }
   const focusOnMount = node => { node.focus(); };
 
-  $effect(() => { store.set('qr_name', name.trim()); });
+  $effect(() => { store.set(KEY.name, name.trim()); });
 
   async function load() {
     try {
@@ -26,7 +27,7 @@
 
   const used = $derived((rooms ?? []).filter(r => r.used));
   const free = $derived((rooms ?? []).filter(r => !r.used));
-  const mine = id => !!store.get('qr_hk_' + id);
+  const mine = id => !!store.get(KEY.hostKey(id));
 
   function join(id) {
     if (!name.trim()) {
@@ -46,7 +47,7 @@
     ws.onopen = () => ws.send(JSON.stringify({ t: 'create', id: d.id, name: d.name.trim(), password: d.pw }));
     ws.onmessage = ev => {
       const m = JSON.parse(ev.data);
-      if (m.t === 'created') { store.set('qr_hk_' + m.room, m.hostKey); location.href = `/host?id=${m.room}`; }
+      if (m.t === 'created') { store.set(KEY.hostKey(m.room), m.hostKey); location.href = `/host?id=${m.room}`; }
       else if (m.t === 'error') { d.busy = false; d.err = m.msg; ws.close(); load(); }
     };
     ws.onerror = () => { d.busy = false; d.err = '接続に失敗しました。もう一度お試しください'; };
@@ -139,7 +140,6 @@
   .rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:12px;margin-bottom:30px}
   .room{display:flex;align-items:center;flex-wrap:wrap;gap:12px 14px;background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:14px 16px;transition:.12s}
   .room:hover{border-color:var(--line2);background:#241e17}
-  .num{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:1.2rem;background:#120f0c;border:2px solid var(--gold);color:var(--gold);flex:none}
   .info{flex:1 1 150px;min-width:0}
   .info b{display:block;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}

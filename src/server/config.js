@@ -1,0 +1,12 @@
+// サーバーの設定値（数値の調整はここだけ触ればOK）
+export const SLOTS = 16;                  // 部屋の数（1〜16番）
+export const HOST_GRACE_MS = 30 * 60e3;   // 進行役が切断してから部屋を解放するまで
+
+// 早押し判定: 「押した時刻」が最も早い人が勝つ。ただし遅れて届く押下を拾うため、
+// 押せる人のうち最も遅延の大きい人の片道遅延ぶん（＋余裕）だけ待ってから確定する。
+export const TOLERANCE_MIN_MS = 40;       // これより短くは待たない
+export const TOLERANCE_MAX_MS = 600;      // これより長くは待たない（遅い回線に引きずられすぎない）
+export const TOLERANCE_MARGIN_MS = 25;    // 測定誤差の余裕
+export const DEFAULT_RTT_MS = 120;        // 遅延が未報告の参加者の仮定値
+export const TS_MAX_PAST_MS = 2000;       // 押下時刻の申告は、到着の2秒前までしか遡れない（偽装対策）
+export const RTT_MAX_MS = 3000;
