@@ -24,7 +24,6 @@
       {/if}
     </div>
   {/each}
-  <label class="switch"><input type="checkbox" bind:checked={host.penalty}><span>魔王も誤答で2ダメージを受ける</span></label>
 </div>
 
 <style>
@@ -39,6 +38,4 @@
   .row{display:grid;grid-template-columns:5.6em 1fr;gap:8px;align-items:start;line-height:1.45}
   .k{font-weight:700;color:var(--gold);font-size:.78rem;background:#0004;border-radius:6px;padding:1px 6px;text-align:center}
   .k.tr{color:#ff9aa2}
-  .switch{display:flex;align-items:center;gap:10px;margin-top:6px;cursor:pointer;font-size:.9rem}
-  .switch input{width:18px;height:18px;accent-color:var(--gold)}
 </style>

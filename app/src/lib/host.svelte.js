@@ -21,7 +21,6 @@ export class HostStore {
   mode = $state('cpu');              // cpu=魔王戦 / squad=CPUの職業チーム戦 / pvp=ユーザー対戦
   foes = $state(['warrior', 'monk', 'mage']);   // CPUチーム戦の相手の職業
   boss = $state(1);
-  penalty = $state(true);
   level = $state('normal');          // 難易度: weak / normal / strong
   buzzRule = $state('next');         // next=誤答したら次の問題 / retry=誤答した人を除いて同じ問題を再受付 / chain=誤答したら次の順位の人へ回答権が移る（連チャン）
   chat = $state([]);                 // チャット（参加者のチャット回答を含む）
@@ -191,7 +190,7 @@ export class HostStore {
     if (this.startBlock) { toast(this.startBlock); return; }
     this.battle.start({
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
-      mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: this.penalty, cpuAuto: true, level: this.level,
+      mode: this.mode === 'squad' ? 'cpu' : this.mode, foes: this.mode === 'squad' ? [...this.foes] : [], boss: this.boss, bossPenalty: false, cpuAuto: true, level: this.level,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];
   }
