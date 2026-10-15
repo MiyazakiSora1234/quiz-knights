@@ -75,7 +75,7 @@ export class Room extends DurableObject {
     this.toPlayers({ t: 'closed', why });
     const id = this.R?.id;
     for (const s of this.socks()) { try { s.close(1000, 'closed'); } catch { /* noop */ } }
-    this.R = null; this.state = null; this.round = new BuzzRound();
+    this.R = null; this.state = null; this.chat = []; this.round = new BuzzRound();
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     if (id) await lobbyStub(this.env).remove(id);
