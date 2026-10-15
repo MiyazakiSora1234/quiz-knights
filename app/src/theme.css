@@ -79,7 +79,7 @@ select.input{padding-right:8px}
 .unit .hp b{font-size:1.05rem}
 .unit .tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:4px;min-height:1px}
 .unit .tag{font-size:.68rem;border:1px solid var(--line2);background:#0005;border-radius:4px;padding:0 5px}
-.unit .tag.warn{border-color:var(--gold);color:var(--gold)}
+.unit .tag.warn{border-color:var(--gold);color:var(--gold)}.unit .tag.rank1{background:var(--gold);border-color:var(--gold);color:#2a1c06;font-weight:800}.unit .tag.rank{border-color:#7fd6e8;color:#7fd6e8}
 .unit .ribbon{position:absolute;top:0;left:0;right:0;z-index:2;background:var(--gold);color:#2a1c06;font-size:.72rem;font-weight:800;letter-spacing:.08em;padding:2px 0;line-height:1.3}
 .unit.sel .seat{color:#2a1c06}
 .unit.hit{animation:hit .5s}.unit.heal{animation:heal .6s}

@@ -59,7 +59,11 @@
     ...(u.restNow ? [{ t: '💤 休み', cls: 'warn' }] : []),
     ...(u.job === 'tank' ? [{ t: `🛡×${u.guards}`, cls: 'warn' }] : []),
     ...(u.st ?? []),
+    ...(rankTagOf(u) ? [rankTagOf(u)] : []),
   ];
+  /** この問題で押した順位（1着・2着 +〇ms）。pid から自分のユニットに結び付ける */
+  const pidOf = u => Object.keys(gs.pids ?? {}).find(k => gs.pids[k] === u.id);
+  const rankTagOf = u => p.ranks[pidOf(u)] ?? null;
 </script>
 
 <div class="flash {flash}"></div>

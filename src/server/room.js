@@ -100,7 +100,7 @@ export class Room extends DurableObject {
     round.decided();
     await this.persistRound();
     if (!ranking.length) return;
-    const msg = { t: 'winner', q: round.q, pid: ranking[0].pid, name: ranking[0].name, ranking };
+    const msg = { t: 'winner', q: round.q, pid: ranking[0].pid, name: ranking[0].name, ranking, all: ranking };
     this.lastWinner = msg;                // 進行役が不在でも、戻ってきたときに伝えられるよう覚えておく
     this.toHost(msg);
     this.toPlayers(msg);
@@ -205,10 +205,18 @@ export class Room extends DurableObject {
         await this.persistRound();
         this.toPlayers({ t: 'open', q: m.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
+      case 'add_eligible': {                            // 途中参戦した人を、いまの受付に加える（ほかの人の受付は変えない）
+        const pid = m.pid;
+        if (!this.R.players[pid] || !(this.round.open || this.round.backup) || pid in this.round.eligible) return;
+        this.round.eligible[pid] = Math.max(0, Math.min(2000, +m.delay || 0));
+        await this.persistRound();
+        for (const s of this.playerWs(pid)) send(s, { t: 'open', q: this.round.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
+        return;
+      }
       case 'next': {                                    // 連チャン: 誤答のあと、次の順位の人に回答権を移す
         const list = this.round.ranking(pid => this.R?.players[pid]?.name, Array.isArray(m.exclude) ? m.exclude : []);
         if (!list.length) return this.toHost({ t: 'nobody', q: this.round.q });
-        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, ranking: list };
+        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, ranking: list, all: this.round.ranking(pid => this.R?.players[pid]?.name) };
         this.lastWinner = msg;
         this.toHost(msg); this.toPlayers(msg);
         return;
@@ -279,7 +287,12 @@ export class Room extends DurableObject {
         if (m.rtt > 0) this.rtts.set(pid, clampRtt(m.rtt));
         this.round.record(pid, m.ts, Date.now());
         send(ws, { t: 'ack' });
-        if (this.round.open) this.scheduleResolve();      // 勝者が決まったあとの押下（連チャンの2着以降）は記録だけ
+        if (this.round.open) this.scheduleResolve();
+        else {                                            // 勝者が決まったあとの押下（連チャンの2着以降）は記録して、順位を全員に知らせる
+          const all = this.round.ranking(p2 => this.R?.players[p2]?.name);
+          const msg = { t: 'ranking', q: this.round.q, all };
+          this.toHost(msg); this.toPlayers(msg);
+        }
     }
   }
 

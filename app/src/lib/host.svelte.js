@@ -6,6 +6,7 @@ import { sfx } from './sound.svelte.js';
 import { store, KEY } from './storage.js';
 import { syncRoster, startBlock } from './roster.js';
 import { publicState, eligibleDelays } from './publish.js';
+import { rankTags } from './ranks.js';
 
 let rowKey = 0;
 const nextKey = () => ++rowKey;
@@ -28,7 +29,8 @@ export class HostStore {
   G = $state(null);                  // バトルの状態（engine から届く写し）
   busy = $state(false);
   canUndo = $state(false);
-  rank = $state('');                 // 直近の早押しの順位
+  rank = $state('');
+  ranks = $state({});                // この問題の早押しの順位 pid → 表示用のタグ                 // 直近の早押しの順位
   rtt = $state(null);
   saved = $state(null);              // 途中のバトル（再開できる）
   #openedFor = null;                 // 早押しを受け付け済みの問題番号
@@ -93,6 +95,7 @@ export class HostStore {
       case 'lobby': if (m.boss) this.boss = m.boss; return this.#onLobby(m.players);
       case 'winner': return this.#onWinner(m);
       case 'nobody': return this.#chainExhausted();
+      case 'ranking': this.ranks = rankTags(m.all); return;
     }
   }
   #onLobby(players) {
@@ -113,11 +116,15 @@ export class HostStore {
       if (!this.lobby.some(l => l.pid === pid) && this.battle.leave(pid)) removed = true;
     }
     if (removed && this.battle.G.sel == null && !this.battle.G.over) this.reopen();
-    let added = false;
+    const added = [];
     for (const r of this.roster) {
-      if (r.pid && r.online && G.pids[r.pid] == null && this.battle.join({ name: r.name, job: r.job, team: r.team, pid: r.pid })) added = true;
+      if (r.pid && r.online && G.pids[r.pid] == null && this.battle.join({ name: r.name, job: r.job, team: r.team, pid: r.pid })) added.push(r.pid);
     }
-    if (added && this.battle.G.sel == null) this.reopen();   // 新しい人も押せるよう、受付を出し直す
+    // 途中参戦した人だけを今の受付に加える（ほかの人の受付はそのまま。押した記録も消えない）
+    if (added.length && this.battle.G.sel == null) {
+      const el = eligibleDelays(this.battle.G);
+      for (const pid of added) if (pid in el) this.conn.send({ t: 'add_eligible', pid, delay: el[pid] });
+    }
   }
   /** 入室・再接続・切断・退室をトーストで知らせる（最初の一覧は除く） */
   #announceChanges(players) {
@@ -132,6 +139,7 @@ export class HostStore {
   /** 最初に押した人を回答者として自動で選ぶ */
   #onWinner(m) {
     sfx.buzz();
+    this.ranks = rankTags(m.all ?? m.ranking);
     this.rank = m.ranking.map((x, i) => `${i + 1}. ${x.name}${i ? ` (+${Math.round(x.ms)}ms)` : ''}`).join('　');
     const G = this.battle.G;
     if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid]);
@@ -275,6 +283,7 @@ export class HostStore {
     this.conn.send({ t: 'state', state: publicState(G) });
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {
       this.#openedFor = G.q;
+      this.ranks = {};
       this.conn.send({ t: 'open', q: G.q, chain: this.buzzRule === 'chain', eligible: eligibleDelays(G) });
     }
   }

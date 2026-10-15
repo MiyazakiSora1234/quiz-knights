@@ -3,6 +3,7 @@ import { Conn } from './net.js';
 import { toast } from './ui.svelte.js';
 import { sfx, vib, unlockAudio } from './sound.svelte.js';
 import { store, session, KEY } from './storage.js';
+import { rankTags } from './ranks.js';
 
 const goList = (ms = 1200) => setTimeout(() => { location.href = '/'; }, ms);
 
@@ -20,6 +21,7 @@ export class PlayStore {
   myTeam = $state('p');
   members = $state([]);
   answered = $state(null);        // 最後に送ったチャット回答 {q,text}
+  ranks = $state({});             // この問題の早押しの順位 pid → 表示用のタグ
   req = $state(null);             // 自分が選ぶ場面（行動・対象など）{qid,title,sub,options}
   boss = $state(1);               // 部屋で選ばれている魔王（誰でも変えられる）
   chat = $state([]);              // 部屋のチャットと入退室のお知らせ
@@ -122,12 +124,14 @@ export class PlayStore {
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
       case 'ended': this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
-        this.open = true; this.chain = !!m.chain; this.eligible = m.eligible; this.sent = false; this.winner = null;
+        this.ranks = {}; this.open = true; this.chain = !!m.chain; this.eligible = m.eligible; this.sent = false; this.winner = null;
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
         return;
       case 'locked': if (!this.chain) this.open = false; return;   // 連チャンでは、回答者が決まったあとも2着以降の押下を受け付ける
       case 'ack': this.sent = true; return;
+      case 'ranking': if (m.q === this.gs?.q || this.gs == null) this.ranks = rankTags(m.all); return;
       case 'winner':
+        this.ranks = rankTags(m.all ?? m.ranking);
         if (!this.chain) this.open = false;
         this.winner = m;
         if (m.pid === this.pid) { sfx.win(); vib([120, 60, 200]); } else sfx.other();

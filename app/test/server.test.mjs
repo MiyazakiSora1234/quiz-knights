@@ -899,3 +899,57 @@ for (const [who, boss, want] of [['player', 3, 3], ['player', 6, 6], ['player', 
     host.send({ t: 'close' });
   });
 }
+
+test('途中参戦: いまの受付に加えても、ほかの人の押した記録や受付は消えない', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'open', q: 5, eligible: { [a.pid]: 0, [b.pid]: 0 } });
+  await a.wait('open');
+  a.clear(); b.clear();
+  const t = Date.now();
+  b.send({ t: 'buzz', ts: t, rtt: 20 });                          // B が先に押した（結果が出る前）
+  const late = await joinPlayer(id, 'Late');
+  host.send({ t: 'add_eligible', pid: late.pid, delay: 0 });
+  const op = await late.wait('open');
+  assert.deepEqual([op.q, op.eligible.includes(late.pid)], [5, true]);
+  assert.equal(a.has('open'), false, 'ほかの人には受付の出し直しが届かない');
+  late.send({ t: 'buzz', ts: t + 300, rtt: 20 });
+  const w = await host.wait('winner', 4000);
+  assert.equal(w.pid, b.pid, '先に押した B が勝つ');
+  assert.equal(w.ranking.length, 2);
+  host.send({ t: 'close' });
+});
+test('途中参戦: 受付が終わっている問題には加えられない／入室していない人は無視', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A');
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0 } });
+  await a.wait('open');
+  a.send({ t: 'buzz', ts: Date.now(), rtt: 20 });
+  await host.wait('winner', 4000);
+  const late = await joinPlayer(id, 'Late');
+  host.send({ t: 'add_eligible', pid: late.pid, delay: 0 });
+  host.send({ t: 'add_eligible', pid: 'nobody', delay: 0 });
+  await sleep(300);
+  assert.equal(late.has('open'), false);
+  host.send({ t: 'close' });
+});
+
+test('順位の表示: 勝者の通知に全員の順位とms差があり、連チャンの控えの押下でも全員に順位が配られる', async () => {
+  const { id, host } = await makeRoom();
+  const [a, b, c] = [await joinPlayer(id, 'A'), await joinPlayer(id, 'B'), await joinPlayer(id, 'C')];
+  host.send({ t: 'open', q: 1, chain: true, eligible: { [a.pid]: 0, [b.pid]: 0, [c.pid]: 0 } });
+  await a.wait('open');
+  const t = Date.now();
+  a.send({ t: 'buzz', ts: t - 400, rtt: 20 });
+  const w = await b.wait('winner', 4000);
+  assert.deepEqual(w.all.map(x => x.pid), [a.pid]);
+  assert.equal(w.all[0].ms, 0);
+  b.send({ t: 'buzz', ts: t - 280, rtt: 20 });
+  const r1 = await c.wait('ranking', 3000, x => x.all.length === 2);
+  assert.deepEqual(r1.all.map(x => [x.pid, Math.round(x.ms)]), [[a.pid, 0], [b.pid, 120]]);
+  c.send({ t: 'buzz', ts: t - 70, rtt: 20 });
+  const r2 = await host.wait('ranking', 3000, x => x.all.length === 3);
+  assert.deepEqual(r2.all.map(x => x.pid), [a.pid, b.pid, c.pid]);
+  assert.equal(Math.round(r2.all[2].ms), 330);
+  host.send({ t: 'close' });
+});

@@ -22,7 +22,6 @@
 <header class="gbar"><div class="in">
   <div class="gl">
     <span class="logo">QUIZ KNIGHTS</span>
-    <button class="chip room" onclick={host.copyUrl} title="参加用URLをコピー">{host.id}番「{host.roomName}」 ・ {host.online}人</button>
     {#if host.status !== 'ready'}<span class="chip red">再接続中…</span>{/if}
   </div>
   <div class="gc"><span class="qno">第{G.q}問</span>{#if showGenre}<span class="chip pur" transition:fade>ジャンル：{G.genre}</span>{/if}</div>
@@ -56,8 +55,6 @@
   .gc{display:flex;align-items:center;gap:10px}
   .gr{display:flex;gap:8px;justify-content:flex-end}
   .qno{font-family:var(--serif);font-size:1.7rem;font-weight:800;color:var(--gold);white-space:nowrap}
-  .chip.room{cursor:pointer;background:var(--s2);padding:4px 12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .chip.room:hover{border-color:var(--gold)}
   .menuwrap{position:relative}
   .menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--s1);border:1px solid var(--line2);border-radius:12px;padding:6px;min-width:230px;z-index:40;box-shadow:0 14px 34px #000d}
   .mi{display:flex;width:100%;gap:10px;align-items:center;padding:10px 12px;background:none;border:0;border-radius:8px;text-align:left;cursor:pointer}

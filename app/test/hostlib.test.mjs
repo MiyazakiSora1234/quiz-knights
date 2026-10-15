@@ -328,3 +328,12 @@ test('3チーム対戦: 途中参加は自分のチームの並びに入り、�
   assert.ok(startBlock([{ name: 'A', team: 'p', online: true }, { name: 'B', team: 'p', online: true }], 'pvp'));
   assert.equal(startBlock([{ name: 'A', team: 'p', online: true }, { name: 'B', team: 'c', online: true }], 'pvp'), '');
 });
+
+test('順位の表示: 1着は🥇、2着以降は1着からの遅れ(ms)。順位表がなければ何も出さない', async () => {
+  const { rankTags, rankTag } = await import('../src/lib/ranks.js');
+  const tags = rankTags([{ pid: 'a', ms: 0 }, { pid: 'b', ms: 120.4 }, { pid: 'c', ms: 999.6 }]);
+  assert.deepEqual([tags.a.t, tags.b.t, tags.c.t], ['🥇 1着', '2着 +120ms', '3着 +1000ms']);
+  assert.equal(tags.a.cls, 'rank1'); assert.equal(tags.b.cls, 'rank');
+  assert.deepEqual(rankTags(undefined), {});
+  assert.equal(rankTag(null, 0), null);
+});
