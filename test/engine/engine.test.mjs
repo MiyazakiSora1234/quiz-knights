@@ -137,8 +137,8 @@ test('魔法戦士: 通常攻撃が敵全体', async () => {
   h.b.start({ players: [P('A', 'mw'), P('B', 'monk', 'p'), P('C', 'warrior', 'e'), P('D', 'tank', 'e')], mode: 'pvp' });
   // 敵全体への攻撃 → 敵チームのタンク D が C を庇うか聞かれる
   await h.correct('A', '通常攻撃', '庇わない');
-  assert.equal(h.u('C').hp, 5);
-  assert.equal(h.u('D').hp, 6);
+  assert.equal(h.u('C').hp, 6);        // 攻撃力1 → 敵全体に1ダメージ
+  assert.equal(h.u('D').hp, 7);
   assert.equal(h.u('B').hp, 6);
   assert.equal(h.u('D').guards, 1);
 });
