@@ -125,13 +125,13 @@ test('[参加者] 早押し: 受付→押す→送信済み。押せるのは受
   try {
     const { p, ws } = await joined(env, mods);
     ws.recv({ t: 'state', state: gstate() });
-    assert.equal(p.canBuzz, false); assert.equal(p.buzzLabel, '待機中'); assert.equal(p.bannerKind, '');
+    assert.equal(p.canBuzz, false); assert.equal(p.buzzLabel, ''); assert.equal(p.bannerKind, '');
     p.buzz(); assert.equal(ws.of('buzz').length, 0, '受付前は押せない');
     ws.recv({ t: 'open', q: 1, chain: false, eligible: ['me'] });
     assert.equal(p.canBuzz, true); assert.equal(p.buzzLabel, '押す！'); assert.equal(p.bannerKind, 'open');
     p.buzz({ timeStamp: 1234 });
     assert.equal(ws.of('buzz').length, 1); assert.equal(typeof ws.of('buzz')[0].ts, 'number');
-    assert.equal(p.sent, true); assert.equal(p.canBuzz, false); assert.equal(p.buzzLabel, '送信済み');
+    assert.equal(p.sent, true); assert.equal(p.canBuzz, false); assert.equal(p.buzzLabel, '', '押したあとは文言なし');
     p.buzz(); assert.equal(ws.of('buzz').length, 1, '二重には送らない');
     ws.recv({ t: 'ack' });
     ws.recv({ t: 'winner', q: 1, pid: 'me', name: 'ぼく', ranking: [{ pid: 'me', name: 'ぼく', ms: 0 }] });
@@ -501,17 +501,18 @@ test('[進行役] 1つ進める: 戻した操作を進められる。画面の c
   } finally { env.restore(); }
 });
 
-test('[参加者] 早押しボタン: 回答権が決まったあと、連チャン以外では押せない（順位のためだけの押下はなくす）', async () => {
+test('[参加者] 早押しボタン: 回答権が決まったあとも、順位や控えのために「押す！」で押せる。押せないときは文言なしの非活性', async () => {
   const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
   try {
     const { p, ws } = await joined(env, mods);
     ws.recv({ t: 'state', state: gstate() });
+    assert.equal(p.buzzLabel, '', '受付前は文言なし'); assert.equal(p.canBuzz, false);
     ws.recv({ t: 'open', q: 1, chain: false, eligible: ['me'] });
     assert.equal(p.canBuzz, true); assert.equal(p.buzzLabel, '押す！');
     ws.recv({ t: 'winner', q: 1, pid: 'x', name: 'ライバル', ranking: [{ pid: 'x', name: 'ライバル', ms: 0 }] });
-    assert.equal(p.canBuzz, false, '他の人が回答権を取ったら、押せない（非活性）');
-    p.buzz(); assert.equal(ws.of('buzz').length, 0);
-    assert.equal(p.buzzLabel, '待機中');
+    assert.equal(p.canBuzz, true, '順位のためだけにも押せる'); assert.equal(p.buzzLabel, '押す！');
+    p.buzz(); assert.equal(ws.of('buzz').length, 1);
+    assert.equal(p.canBuzz, false); assert.equal(p.buzzLabel, '', '押したあと（他の人が回答権）は文言なしの非活性');
     p.destroy();
   } finally { env.restore(); }
 });
