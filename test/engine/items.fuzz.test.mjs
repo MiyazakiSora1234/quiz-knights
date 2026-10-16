@@ -51,7 +51,7 @@ async function fuzz(seed, { mode, n, foes = [], boss = 1, items = 2, steps = 60 
     checkInvariants(b.G, where(k, op));
     JSON.parse(JSON.stringify(b.G));
     const now = count(b.G);
-    if (op === 'answer' || op === 'skip') assert.ok(now <= prev, where(k, `持ち物が増えた ${prev}->${now}`));
+    if (op === 'answer' || op === 'skip') assert.ok(now <= prev + 1, where(k, `持ち物が増えすぎた ${prev}->${now}（増えるのは道具使いの補給の1個だけ）`));
     prev = now;
   }
   return { used, over: b.G.over };

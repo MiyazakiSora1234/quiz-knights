@@ -5,7 +5,7 @@
 //   a   … 行動する本人
 //   add(ラベル, 説明, 対象の質問[], 実行する関数, {disabled}) … 選択肢を1つ登録する
 // 対象の質問は P(ラベル, 条件) で書く。条件に合うユニットから1人ずつ選ばせる。
-import { JOB } from './data.js';
+import { JOB, ITEM_KEYS, ITEMS } from './data.js';
 
 const P = (label, f) => ({ label, f });
 const alive = u => u.alive;
@@ -86,6 +86,16 @@ const SPECIALS = {
       const t = await ctx.pickUnit('表！ 5ダメージを与える相手', foe(a), []);
       if (t) await ctx.dmgTo(a, [t], ctx.dm(a, 5)); else ctx.log('対象がいない');
     });
+  },
+  toolmaster(ctx, a, add) {
+    const full = (a.items?.length || 0) >= 6 || a.cpu || a.isBoss;
+    add('補給', 'アイテムをランダムに1つ補給する（持ち物が6個未満のとき）', [], async () => {
+      const total = ITEM_KEYS.reduce((s, k) => s + ITEMS[k].w, 0);
+      let r = ctx.rand() * total;
+      const k = ITEM_KEYS.find(x => (r -= ITEMS[x].w) < 0) ?? ITEM_KEYS[0];
+      (a.items ??= []).push(k); ctx.fxUnit(a.id, 'item');
+      ctx.log(`🎒 ${a.name} は ${ITEMS[k].ic} ${ITEMS[k].n} を補給した`, 'sys');
+    }, { disabled: full });
   },
   mimic(ctx, a, add) {
     const src = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
@@ -193,6 +203,14 @@ export function buildActions(ctx, a, asJob = null) {
   const job = asJob || a.job;
   if (job === 'mw') {
     add(`通常攻撃（敵全体に${ctx.dm(a, a.atk)}）`, '常に敵全体へ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, a.atk)); });
+  } else if (job === 'pickpocket') {
+    add(`通常攻撃（${ctx.dm(a, a.atk)}・盗む）`, '1人に攻撃し、ダメージを与えたら、その人のアイテムを1つ盗む', [P('攻撃対象', alive)], async ([t]) => {
+      const dealt = await ctx.dmgTo(a, [t], ctx.dm(a, a.atk));
+      if (dealt <= 0 || t === a || a.cpu || a.isBoss || !t.items?.length || (a.items?.length || 0) >= 20) return;
+      const k = t.items.splice(Math.floor(ctx.rand() * t.items.length), 1)[0];
+      (a.items ??= []).push(k); ctx.fxUnit(a.id, 'item');
+      ctx.log(`🧤 ${a.name} は ${t.name} から ${ITEMS[k].ic} ${ITEMS[k].n} を盗んだ！`, 'sys');
+    });
   } else {
     add(`通常攻撃（${ctx.dm(a, a.atk)}）`, '1人に攻撃（自分・味方も可）', [P('攻撃対象', alive)], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, a.atk)); });
   }

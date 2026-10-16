@@ -73,6 +73,9 @@ export function buildItemActions(ctx, a) {
   });
 }
 
+/** 開始時に配るアイテムの数。道具使いは、設定にかかわらず3つ持つ */
+export const startItemCount = (job, base) => (job === 'toolmaster' ? Math.max(3, base || 0) : base);
+
 /** アイテムをランダムに n 個配る（重みつき）。魔王とCPUには配らない。rand は 0以上1未満の乱数を返す関数 */
 export function dealItems(u, n, rand) {
   if (!(n > 0) || u.isBoss || u.cpu) return;

@@ -30,6 +30,8 @@ export const JOB = {
   bomb:     {n:'ばくだんいわ',atk:1, hp:5,  d:'死んだら爆発して、自分以外の全員（敵も味方も）に2ダメージ（爆発は1回だけ）', tag:'💥'},
   apprentice:{n:'見習い',      atk:1, hp:4,  d:'正解するたびに攻撃+1・最大体力+1（攻撃は最大5まで）'},
   playboy:  {n:'遊び人',      atk:1, hp:4,  d:'連答（同じ人が連続正解）したら「勇者」に転職（体力リセット）'},
+  toolmaster:{n:'道具使い',    atk:1, hp:5,  d:'開始時に、アイテムをランダムに3つ持っている。通常攻撃の代わりに：アイテムを1つ補給する（持ち物が6個未満のとき）'},
+  pickpocket:{n:'怪盗',        atk:2, hp:4,  d:'通常攻撃でダメージを与えたとき、その相手のアイテムを1つ盗む（バリアで防がれたときは盗めない）'},
   hero:     {n:'勇者',        atk:7, hp:7,  d:'通常攻撃の代わりに：自身を3回復し、他1人に4ダメージ'}
 };
 /** 参加者が選べる職業（勇者は遊び人の転職先なので除く） */
@@ -39,7 +41,7 @@ export const JOB_GROUPS = [
   { n: '基本', keys: ['warrior', 'monk', 'mage', 'sage'] },
   { n: '攻撃', keys: ['bm', 'berserker', 'mw', 'gambler', 'minelayer', 'poisoner', 'necro'] },
   { n: '守り・支援', keys: ['tank', 'cleric', 'bard', 'tactician', 'oracle'] },
-  { n: '特殊', keys: ['thief', 'mimic', 'ghost', 'jester', 'bomb', 'apprentice', 'playboy'] },
+  { n: '特殊', keys: ['thief', 'mimic', 'ghost', 'jester', 'bomb', 'apprentice', 'playboy', 'toolmaster', 'pickpocket'] },
 ];
 /** アイテム: n=名前 / ic=絵文字 / d=説明 / w=配られやすさ（大きいほど出やすい） */
 export const ITEMS = {

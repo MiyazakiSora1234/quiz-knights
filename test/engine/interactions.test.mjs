@@ -14,7 +14,7 @@ test('仕様表: 全職業の攻撃力・体力が決めた値のとおり', () 
     sage: [1, 5], monk: [1, 6], warrior: [3, 7], mage: [3, 5], bm: [5, 2], tank: [1, 8], berserker: [7, 7], mw: [2, 5],
     thief: [2, 4], playboy: [1, 4], hero: [7, 7], bomb: [1, 5], necro: [1, 5],
     apprentice: [1, 4], bard: [1, 5], tactician: [1, 5], cleric: [1, 6], mimic: [1, 5], poisoner: [1, 5],
-    oracle: [1, 5], minelayer: [2, 4], ghost: [2, 3], jester: [1, 4], gambler: [1, 5],
+    oracle: [1, 5], toolmaster: [1, 5], pickpocket: [2, 4], minelayer: [2, 4], ghost: [2, 3], jester: [1, 4], gambler: [1, 5],
   };
   for (const [k, [atk, hp]] of Object.entries(spec)) assert.deepEqual([JOB[k].atk, JOB[k].hp], [atk, hp], k);
   assert.deepEqual(new Set(Object.keys(spec)), new Set(Object.keys(JOB)), '仕様表にない職業がある');

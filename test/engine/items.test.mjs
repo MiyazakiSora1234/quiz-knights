@@ -288,3 +288,71 @@ test('[アイテム] 進行役は、参加者に好きなアイテムを付与�
   m.b.edit(boss.id, { items: ['bomb'] }); m.b.edit(cpu.id, { items: ['bomb'] });
   assert.equal(m.b.G.units.find(u => u.isBoss).items, undefined); assert.equal(m.b.G.units.find(u => u.cpu).items, undefined);
 });
+
+/* ===== 道具使い・怪盗 ===== */
+import { harness as hn, P as PP, checkInvariants as ci } from './harness.mjs';
+
+test('[道具使い] 開始時に、設定にかかわらずアイテムを3つ持つ。途中参戦でも3つ。ほかの職業は設定どおり', () => {
+  for (const items of [0, 1, 2, 5]) {
+    const h = hn();
+    h.b.start({ players: [PP('T', 'toolmaster', 'p'), PP('W', 'warrior', 'p'), PP('X', 'monk', 'e')], mode: 'pvp', items });
+    assert.equal(h.u('T').items.length, Math.max(3, items), `items=${items}`);
+    assert.equal(h.u('W').items?.length ?? 0, items);
+  }
+  const h = hn();
+  h.b.start({ players: [PP('W', 'warrior', 'p'), PP('X', 'monk', 'e')], mode: 'pvp', items: 1 });
+  h.b.join({ name: 'T2', job: 'toolmaster', team: 'p', pid: 't2' });
+  assert.equal(h.u('T2').items.length, 3);
+});
+test('[道具使い] 補給: アイテムを1つ増やす。6個以上ではその行動は選べない。魔王・CPUは使えない', async () => {
+  const h = hn();
+  h.b.start({ players: [PP('T', 'toolmaster', 'p'), PP('X', 'monk', 'e')], mode: 'pvp', items: 0 });
+  const before = h.u('T').items.length;
+  await h.correct('T', '補給');
+  assert.equal(h.u('T').items.length, before + 1);
+  h.u('T').items = ['pebble', 'pebble', 'pebble', 'pebble', 'pebble', 'pebble'];
+  h.script.push('補給'); h.b.select(h.u('T').id);
+  assert.equal(await h.b.correct(), false, '6個では選べない'); h.script.length = 0;
+  ci(h.b.G, '補給');
+});
+test('[怪盗] 通常攻撃でダメージを与えたら、相手のアイテムを1つ盗む。盗んだ分だけ相手が減る', async () => {
+  const h = hn();
+  h.b.start({ players: [PP('S', 'pickpocket', 'p'), PP('V', 'monk', 'e')], mode: 'pvp', items: 0 });
+  h.u('V').items = ['bomb', 'potion'];
+  await h.correct('S', '通常攻撃', 'V');
+  assert.equal(h.u('V').items.length, 1); assert.equal(h.u('S').items.length, 1);
+  assert.ok(['bomb', 'potion'].includes(h.u('S').items[0]));
+  assert.ok(h.b.G.log.some(l => /盗んだ/.test(l.m)));
+  await h.correct('S', '通常攻撃', 'V');
+  assert.equal(h.u('V').items.length, 0); assert.equal(h.u('S').items.length, 2);
+  await h.correct('S', '通常攻撃', 'V');                   // 持っていない相手からは盗めない
+  assert.equal(h.u('S').items.length, 2);
+  ci(h.b.G, '怪盗');
+});
+test('[怪盗] バリアで防がれたら盗めない。0ダメージ・自分への攻撃・取り消しでも壊れない', async () => {
+  const h = hn();
+  h.b.start({ players: [PP('S', 'pickpocket', 'p'), PP('V', 'monk', 'e')], mode: 'pvp', items: 0 });
+  h.u('V').items = ['bomb']; h.u('V').barrier = 1;
+  await h.correct('S', '通常攻撃', 'V');
+  assert.equal(h.u('V').items.length, 1, 'バリアで防がれたので、盗めない');
+  await h.correct('S', '通常攻撃', 'S');                   // 自分への攻撃
+  assert.equal(h.u('S').items?.length ?? 0, 0);
+  h.b.undo(); h.b.undo();
+  assert.deepEqual(h.u('V').items, ['bomb']);
+});
+test('[怪盗・道具使い] 乱戦（盗む・補給が混ざった戦闘）でも整合性が保たれる', async () => {
+  let stole = 0, supplied = 0;
+  for (let s = 1; s <= 60; s++) {
+    const r = rng(s + 999);
+    const h = hn({ random: rng(s), askFn: async (t, o) => { const ok = o.filter(x => !x.disabled && x.value !== '__back__'); return ok[Math.floor(r() * ok.length)].value; } });
+    h.b.start({ players: [PP('S', 'pickpocket', 'p'), PP('T', 'toolmaster', 'p'), PP('V', 'monk', 'e'), PP('W', 'warrior', 'e')], mode: 'pvp', items: 2 });
+    for (let i = 0; i < 25 && !h.b.G.over; i++) {
+      const alive = h.b.G.units.filter(u => u.alive);
+      h.b.select(alive[Math.floor(r() * alive.length)].id);
+      if (r() < 0.7) await h.b.correct(); else await h.b.wrong();
+      ci(h.b.G, `seed=${s} i=${i}`);
+    }
+    stole += h.b.G.log.filter(l => /盗んだ/.test(l.m)).length; supplied += h.b.G.log.filter(l => /補給した/.test(l.m)).length;
+  }
+  assert.ok(stole > 0 && supplied > 0, `盗む ${stole} 回・補給 ${supplied} 回が起きている`);
+});

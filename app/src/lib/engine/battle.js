@@ -3,7 +3,7 @@
 import { CANCEL, JOB, BOSS, ITEMS, GENRES, LEVELS, squadFoeScale, isSquadFoes, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
-import { buildItemActions, dealItems } from './items.js';
+import { buildItemActions, dealItems, startItemCount } from './items.js';
 import { evaluate } from './ai.js';
 
 /** チームの並び順（A=p / B=e / C=c） */
@@ -387,7 +387,7 @@ export function createBattle(ui) {
         if (bid) { u.name = p.name.trim(); u.human = true; humanBosses.push(u); }       // 参加者が操作する魔王
         if (pvp) u.side = squad ? 'p' : (TEAM_ORDER[p.team] != null ? p.team : 'p');
         G.units.push(u);
-        dealItems(u, items, ctx.rand);
+        dealItems(u, startItemCount(u.job, items), ctx.rand);
         if (p.pid) G.pids[p.pid] = u.id;
       }
       // 参加者が操作する魔王の体力は、ほかの参加者の攻撃合計から決まる（難易度の影響は受けない）
@@ -447,7 +447,7 @@ export function createBattle(ui) {
       const sc = (u.isBoss ? G.cfg.bossHpScale : G.cfg.hpScale) || 1;
       if (sc !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * sc)); u.hp = u.maxHp; }
       if (pid) G.pids[pid] = u.id;
-      dealItems(u, G.cfg.items, ctx.rand);
+      dealItems(u, startItemCount(u.job, G.cfg.items), ctx.rand);
       redoStack = [];
       log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);

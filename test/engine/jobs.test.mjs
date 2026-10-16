@@ -38,7 +38,7 @@ const P = (name, job, team = 'p') => ({ name, job, team });
 test('全職業にアイコン用のキーと説明がある／選べる職業に勇者は含まれない', () => {
   for (const k of SELECTABLE) { assert.ok(JOB[k], k); assert.ok(JOB[k].d.length > 5, k); }
   assert.ok(!SELECTABLE.includes('hero'));
-  assert.equal(SELECTABLE.length, 23);
+  assert.equal(SELECTABLE.length, 25);
 });
 
 test('タンクのHPは8', () => { assert.equal(JOB.tank.hp, 8); });
