@@ -82,7 +82,7 @@ export const BERSERKER_DELAY_MS = 700;
 /** 試合の長さをそろえるための、全員の体力の倍率（人数が多いほど1人あたりの倍率は小さい）。CPU戦は約30問、ユーザー対戦も約30問が目安 */
 export const recommendedHpScale = (mode, n) => {
   const k = Math.max(1, n || 1);
-  return mode === 'pvp' ? Math.min(5.5, Math.max(1.2, 11.6 / k)) : Math.min(12, Math.max(2, 24 / k));
+  return mode === 'pvp' ? Math.min(5.5, Math.max(1.2, 10.4 / k)) : Math.min(12, Math.max(2, 22.8 / k));
 };
 
 export const LEVELS = {
