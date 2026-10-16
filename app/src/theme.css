@@ -97,7 +97,7 @@ select.input{padding-right:8px}
 
 /* アイコン（SVG）: 本体は文字色、アクセントは金 */
 .ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;fill:currentColor;overflow:visible}
-.ic .a{fill:var(--gold)}.ic .as{fill:none;stroke:var(--gold)}
+.ic .a{fill:var(--a,var(--gold))}.ic .as{fill:none;stroke:var(--a,var(--gold))}
 
 /* 部屋番号などの丸いバッジ（サイズは --sz で変える） */
 .num{--sz:44px;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:calc(var(--sz) * .42);background:#120f0c;border:2px solid var(--gold);color:var(--gold);flex:none}

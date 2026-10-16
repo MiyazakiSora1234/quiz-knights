@@ -24,7 +24,7 @@ const I = {
   tactician: '<circle cx="32" cy="26" r="23"/><circle class="a" cx="32" cy="26" r="11.500"/><path d="M32 4v7M32 41v7M10 26h7M47 26h7M16 10l5 5M48 10l-5 5M16 42l5-5M48 42l-5-5" stroke="#17110c" stroke-width="2.600" stroke-linecap="round" opacity=".6" fill="none"/><path d="M27 49h10l2 13H25z"/><path d="M26 54h12M25.500 58h13" stroke="#17110c" stroke-width="2" opacity=".55" fill="none"/><circle fill="#17110c" cx="32" cy="26" r="3.500"/>',
   cleric: '<path d="M9 28C2 24 1 15 3 8c5 3 9 6 12 11zM55 28c7-4 8-13 6-20-5 3-9 6-12 11z"/><path d="M32 9l17 6v16c0 12-8 20-17 24C23 51 15 43 15 31V15z"/><path fill="#17110c" d="M29.500 19h5v9h8v5h-8v11h-5V33h-8v-5h8z"/><ellipse class="as" cx="32" cy="5" rx="10" ry="3.500" stroke-width="2.800"/><path class="a" d="M54 44l1.600 4.200 4.200 1.600-4.200 1.600L54 55.600l-1.600-4.200-4.200-1.600 4.200-1.600z"/>',
   mimic: '<path d="M5 30C5 15 16 7 32 7s27 8 27 23z"/><rect x="5" y="34" width="54" height="24" rx="4"/><path fill="#17110c" d="M5 28h54v8H5z"/><path d="M8 28l4.500 8 4.500-8 4.500 8 4.500-8 4.500 8 4.500-8 4.500 8 4.500-8 4.500 8 4.500-8 4.500 8 4.500-8z"/><path class="a" d="M25 36c1 9 13 9 14 0z"/><circle class="a" cx="19" cy="18" r="3.800"/><circle class="a" cx="45" cy="18" r="3.800"/><circle fill="#17110c" cx="19" cy="18" r="1.400"/><circle fill="#17110c" cx="45" cy="18" r="1.400"/><rect class="a" x="27" y="45" width="10" height="9" rx="2"/><rect fill="#17110c" x="31" y="48" width="2" height="4"/><path d="M14 7v21M50 7v21" stroke="#17110c" stroke-width="2" opacity=".35" fill="none"/>',
-  poisoner: '<path d="M24 5h16v6h-3v14l15 23c4 6 0 12-7 12H19c-7 0-11-6-7-12l15-23V11h-3z"/><path class="a" d="M15 45h34l5 8c1.500 2.500 0 5-3 5H13c-3 0-4.500-2.500-3-5z"/><rect class="a" x="26" y="1" width="12" height="5.500" rx="1.600"/><path fill="#17110c" d="M32 45c-3.500 0-5.500 2.200-5.500 5 0 1.800 1 3 2.200 3.700V56h6.600v-2.300c1.200-.7 2.200-1.900 2.200-3.700 0-2.800-2-5-5.500-5z"/><circle fill="#e3b84f" cx="30" cy="50" r="1.500"/><circle fill="#e3b84f" cx="34" cy="50" r="1.500"/><circle fill="#17110c" cx="25" cy="38" r="2.400"/><circle fill="#17110c" cx="38.500" cy="33" r="2"/>',
+  poisoner: '<path d="M24 5h16v6h-3v14l15 23c4 6 0 12-7 12H19c-7 0-11-6-7-12l15-23V11h-3z"/><path class="a" d="M15 45h34l5 8c1.500 2.500 0 5-3 5H13c-3 0-4.500-2.500-3-5z"/><rect class="a" x="26" y="1" width="12" height="5.500" rx="1.600"/><path fill="#17110c" d="M32 45c-3.500 0-5.500 2.200-5.500 5 0 1.800 1 3 2.200 3.700V56h6.600v-2.300c1.200-.7 2.200-1.900 2.200-3.700 0-2.800-2-5-5.500-5z"/><circle class="a" cx="30" cy="50" r="1.500"/><circle class="a" cx="34" cy="50" r="1.500"/><circle fill="#17110c" cx="25" cy="38" r="2.400"/><circle fill="#17110c" cx="38.500" cy="33" r="2"/>',
   oracle: '<circle cx="32" cy="27" r="23"/><circle fill="#17110c" opacity=".72" cx="32" cy="27" r="18"/><path class="a" d="M32 15l2.800 6.500 7 .6-5.300 4.600 1.600 6.800-6.100-3.700-6.100 3.700 1.600-6.800-5.300-4.600 7-.6z"/><path class="as" d="M17 21a16 16 0 019-8" stroke-width="3.200" stroke-linecap="round"/><path d="M15 62h34l-7-14H22z"/><path class="a" d="M20 50h24l1.600 3.600H18.400z"/>',
   minelayer: '<g stroke="currentColor" stroke-width="5" stroke-linecap="round"><path d="M32 8v9M12 14l6 7M52 14l-6 7M3 36h8M53 36h8"/></g><ellipse cx="32" cy="46" rx="27" ry="11"/><path d="M9 44C9 27 19 17 32 17s23 10 23 27z"/><circle class="a" cx="32" cy="32" r="8.500"/><path d="M32 26v12M26 32h12" stroke="#17110c" stroke-width="3" stroke-linecap="round"/><path fill="#17110c" opacity=".55" d="M10 47c10 6 34 6 44 0v2c-10 7-34 7-44 0z"/><path class="a" d="M32 0l1.800 4 4 1.800-4 1.800L32 11.600l-1.800-4-4-1.800 4-1.800z"/>',
   ghost: '<path d="M9 58V28C9 14 19 4 32 4s23 10 23 24v30l-7.600-6-7.200 6-7.200-6-7.600 6-7.400-6z"/><ellipse fill="#17110c" cx="24" cy="28" rx="5.500" ry="6.500"/><ellipse fill="#17110c" cx="40" cy="28" rx="5.500" ry="6.500"/><circle class="a" cx="25.500" cy="26" r="1.800"/><circle class="a" cx="41.500" cy="26" r="1.800"/><ellipse fill="#17110c" cx="32" cy="43" rx="4.500" ry="6"/><path class="a" d="M54 8l1.800 4.500 4.500 1.800-4.500 1.800L54 20.600l-1.800-4.500-4.500-1.800 4.500-1.800zM8 14l1.200 3 3 1.200-3 1.200L8 22.400l-1.200-3-3-1.200 3-1.200z"/>',
@@ -32,9 +32,18 @@ const I = {
   gambler: '<g transform="rotate(15 42 32)"><rect class="a" x="27" y="8" width="30" height="45" rx="4.500"/><path fill="#17110c" d="M42 20l7.500 10-7.500 10-7.500-10z"/></g><g transform="rotate(-14 24 34)"><rect x="8" y="9" width="30" height="45" rx="4.500"/><path fill="#17110c" d="M23 16C16 24 12 27 12 33a6 6 0 0011 3c-.5 4-2 7-4 10h8c-2-3-3.500-6-4-10a6 6 0 0011-3c0-6-4-9-11-17z"/></g>'
 };
 
+/** 職業ごとのアクセント色（アイコンの「金」の部分の色）。系統ごとの色合いで、ひと目で見分けがつくようにする */
+const ACCENT = {
+  warrior: '#ff8a5c', monk: '#ffe08a', mage: '#b58cff', sage: '#6fc0ff',
+  bm: '#ff5a5a', berserker: '#ff6a3d', mw: '#5fd8ff', gambler: '#ff6a7a', minelayer: '#ffb347', poisoner: '#7be08a', necro: '#8ff0c0',
+  tank: '#7fb8f0', cleric: '#fff0a8', bard: '#ff9ad5', tactician: '#ff9a4a', oracle: '#8fd8ff',
+  thief: '#5fe8c8', mimic: '#d58cff', ghost: '#a8c8ff', jester: '#ff7bc0', bomb: '#ff7a2a', apprentice: '#9be87a', playboy: '#ff7a9a', hero: '#ffe08a',
+  boss1: '#ff6060', boss2: '#c58cff', boss3: '#ff6aa0', boss4: '#7be08a', boss5: '#8fd8ff', boss6: '#ff8a3a',
+};
 I.boss = I.boss1;
 export const ICON_KEYS = Object.keys(I);
 export function icon(key) {
   const g = I[key] || I.warrior;
-  return '<svg class="ic" viewBox="3 3 58 58" fill="currentColor" aria-hidden="true">' + g + '</svg>';
+  const c = ACCENT[I[key] ? key : 'warrior'] ?? ACCENT.boss1;
+  return `<svg class="ic" viewBox="3 3 58 58" fill="currentColor" style="--a:${c}" aria-hidden="true">` + g + '</svg>';
 }
