@@ -2,17 +2,40 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
 jobs:
-  deploy:
+  # テストは毎回。失敗したらデプロイしない
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
       - run: npm test
       - run: npm run build
+
+  # デプロイは、Cloudflare の鍵（Settings → Secrets and variables → Actions）が登録されているときだけ
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: 鍵の確認
+        id: keys
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID が未登録のため、デプロイをスキップしました"; fi
+      - uses: actions/checkout@v4
+        if: steps.keys.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.keys.outputs.ok == 'true'
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+        if: steps.keys.outputs.ok == 'true'
+      - run: npm run build
+        if: steps.keys.outputs.ok == 'true'
       - run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        if: steps.keys.outputs.ok == 'true'
