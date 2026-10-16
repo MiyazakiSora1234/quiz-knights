@@ -80,7 +80,7 @@
   .back{position:fixed;inset:0;background:#000b;z-index:90;display:flex;align-items:center;justify-content:center;padding:12px}
   .dialog{width:100%;max-width:600px;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--s1);border:1px solid var(--gold);border-radius:16px}
   .head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
-  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tabs{display:flex;gap:6px;min-width:0}
   .tabs button{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 18px;font-weight:700;cursor:pointer;color:var(--mut)}
   .tabs button.on{background:var(--gold);color:#2a1c06;border-color:var(--gold)}
   .body{overflow:auto;padding:12px 16px 14px;flex:1;min-height:0}
@@ -98,5 +98,5 @@
   h4{font-size:.9rem;color:var(--gold);margin:0 0 6px}
   .hint{color:var(--mut);font-size:.8rem;margin:6px 0 0}
   .row{display:flex;align-items:center;gap:10px}.stp{flex:none;width:220px}.u{color:var(--mut)}
-  @media(max-width:560px){.tabs button{padding:6px 14px}}
+  @media(max-width:560px){.tabs{gap:4px}.tabs button{padding:6px 11px;font-size:.88rem}.head{padding:10px}}
 </style>
