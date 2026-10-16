@@ -70,7 +70,8 @@ export function createContext({ ui, getG, emit }) {
   const dm = (a, n) => {
     const lv = LEVELS[getG().cfg?.level] ?? LEVELS.normal;
     const adj = (a && (a.isBoss || a.cpu)) ? lv.dmg : 0;
-    return n > 0 ? Math.max(1, n + bonusOf(a) + adj) : n + bonusOf(a);
+    const bm = lv.hidden ? 1 : ((a && a.isBoss && !a.human && BOSS[a.bossId] && BOSS[a.bossId].dmgMul) || 1);      // 魔王ごとの与ダメージの倍率（バランス調整用）
+    return n > 0 ? Math.max(1, Math.round((n + bonusOf(a)) * bm) + adj) : n + bonusOf(a);
   };
 
   /* ---------- 回復・休み ---------- */

@@ -35,10 +35,10 @@ function harness() {
 }
 const P = (name, job, team = 'p') => ({ name, job, team });
 
-test('CPU戦: 魔王HPは攻撃合計×倍率（魔王1=×1.5）', () => {
+test('CPU戦: 魔王HPは攻撃合計×倍率（魔王1=×1.05）', () => {
   const h = harness();
-  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], mode: 'cpu', boss: 1 }); // 3+1=4 → 6
-  assert.equal(h.u('魔王1').maxHp, 6);
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], mode: 'cpu', boss: 1 }); // 3+1=4 → 4.2 → 5
+  assert.equal(h.u('魔王1').maxHp, 5);
   assert.equal(h.b.G.units.length, 3);
 });
 
@@ -228,8 +228,8 @@ test('ばくだんいわ: 死ぬと自分以外の全員（敵も味方も）に
 
 test('魔王1: 残りHP半分以下で与ダメージ+2', async () => {
   const h = harness();
-  h.b.start({ players: [P('A', 'warrior'), P('B', 'warrior')], boss: 1 }); // HP 9
-  h.u('魔王1').hp = 4;
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'warrior')], boss: 1 });
+  h.u('魔王1').maxHp = 9; h.u('魔王1').hp = 4;      // 半分以下（9の半分は4.5）
   await h.correct('魔王1', '技1', 'A');
   assert.equal(h.u('A').hp, 7 - 5);
 });
@@ -275,19 +275,19 @@ test('魔王2: 第1形態の技1 は2人に1ダメージ＋休み', async () => 
   assert.equal(h.u('C').restNow, false);
 });
 
-test('魔王3: 技1は与ダメ分回復、技2は直前の正解者、HP1で正解すると5回復', async () => {
+test('魔王3: 技1は与ダメの半分（切り上げ）回復、技2は直前の正解者、HP1で正解すると5回復', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior'), P('B', 'warrior')], boss: 3 });
   const boss = h.u('魔王3');
   boss.hp = 3;
   await h.correct('魔王3', '技1', 'A', 'B');
-  assert.equal(boss.hp, 5);
+  assert.equal(boss.hp, 4);
   await h.correct('A', '何もしない');
   await h.correct('魔王3', '技2');
   assert.equal(h.u('A').hp, 7 - 1 - 4);
   boss.hp = 1;
   await h.correct('魔王3', '技1', 'A', 'B');
-  assert.equal(boss.hp, Math.min(boss.maxHp, 1 + 5 + 2));
+  assert.equal(boss.hp, Math.min(boss.maxHp, 1 + 5 + 1));
 });
 
 test('魔王4: 技1は毒（2問のまま）、技2は敵全体に1', async () => {

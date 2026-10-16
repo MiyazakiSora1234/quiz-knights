@@ -341,7 +341,7 @@ export function createBattle(ui) {
     get canUndo() { return undoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
-    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'base' }) {
+    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'base', hpScale = 1, bossHpScale = null }) {
       // 難易度を指定しない場合は「基準」（調整なし）。進行役の画面は「普通」から始まる
       if (!LEVELS[level]) level = 'base';
       // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
@@ -349,7 +349,7 @@ export function createBattle(ui) {
       const squad = mode === 'cpu' && (foes.length > 0 || hasBossPlayer);
       if (squad) mode = 'pvp';
       G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
-            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level } };
+            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level, hpScale, bossHpScale: bossHpScale ?? hpScale } };
       const pvp = mode === 'pvp';
       const humanBosses = [];
       for (const p of players) {
@@ -389,6 +389,11 @@ export function createBattle(ui) {
         G.units.push(b);
         log(`バトル開始！ ${b.name} (HP ${b.hp}) ／ プレイヤー攻撃合計 ${S}`, 'sys');
       }
+      // 全員の体力を同じ倍率で増やす（試合を長くするための調整。与えるダメージ・回復量は変えない）
+      for (const u of G.units) {
+        const k = u.isBoss ? G.cfg.bossHpScale : hpScale;
+        if (k !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * k)); u.hp = u.maxHp; }
+      }
       if (pvp) checkEnd();                       // 相手が誰もいない構成なら、始まってすぐ決着
       log('── 第1問 ──', 'sys');
       undoStack = []; busy = false;
@@ -415,6 +420,8 @@ export function createBattle(ui) {
         const b = G.units.findIndex(x => x.isBoss);
         G.units.splice(b < 0 ? G.units.length : b, 0, u);
       }
+      const sc = (u.isBoss ? G.cfg.bossHpScale : G.cfg.hpScale) || 1;
+      if (sc !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * sc)); u.hp = u.maxHp; }
       if (pid) G.pids[pid] = u.id;
       log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);

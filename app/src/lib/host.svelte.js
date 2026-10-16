@@ -1,5 +1,5 @@
 // 進行役の状態: 部屋の接続・名簿・バトル（engine）・早押しの受付と配信
-import { createBattle, CANCEL, SELECTABLE } from './engine.js';
+import { createBattle, CANCEL, SELECTABLE, recommendedHpScale } from './engine.js';
 import { Conn } from './net.js';
 import { ask, toast, confirmAsk } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
@@ -209,7 +209,7 @@ export class HostStore {
     if (this.startBlock) { toast(this.startBlock); return; }
     this.battle.start({
       players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
-      mode: this.mode, foes: this.mode === 'cpu' ? [...this.foes] : [], boss: this.boss, bossPenalty: false, cpuAuto: true, level: this.level,
+      mode: this.mode, foes: this.mode === 'cpu' ? [...this.foes] : [], boss: this.boss, hpScale: recommendedHpScale(this.mode, this.playersNamed.length), bossPenalty: false, cpuAuto: true, level: this.level,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];
   }

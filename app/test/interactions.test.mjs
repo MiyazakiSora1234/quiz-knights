@@ -256,16 +256,16 @@ test('魔王2: 仲間になった者が死んだら魔王側のまま。賢者�
   assert.equal(revive.disabled, true);
 });
 
-test('魔王2: 各形態のHPは「プレイヤー攻撃合計×0.4」で、死ぬたびに次の形態へ', async () => {
+test('魔王2: 各形態のHPは「プレイヤー攻撃合計×0.48」で、死ぬたびに次の形態へ', async () => {
   const h = harness();
-  h.b.start({ players: [P('A', 'warrior'), P('B', 'bm'), P('C', 'mw')], boss: 2 });    // 3+5+2=10 → 4
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'bm'), P('C', 'mw')], boss: 2 });    // 3+5+2=10 → 4.8 → 5
   const boss = h.u('魔王2');
-  assert.equal(boss.maxHp, 4);
+  assert.equal(boss.maxHp, 5);
   for (const form of [1, 2]) {
     boss.hp = 1;
     await h.correct('A', '通常攻撃', '魔王2');
     assert.equal(boss.form, form);
-    assert.equal(boss.hp, 4);
+    assert.equal(boss.hp, 5);
     assert.equal(boss.alive, true);
   }
   boss.hp = 1;
@@ -298,7 +298,7 @@ test('魔王3: 直前の正解者が死んでいる／味方側のときは技2�
 test('魔王3: HP1で正解すると5回復（プレイヤー側では起きない）', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], boss: 3 });
-  const b = h.u('魔王3'); b.hp = 1;
+  const b = h.u('魔王3'); b.maxHp = 20; b.hp = 1;
   await h.correct('魔王3', '技1', 'A', 'B');
   assert.ok(b.hp >= 6);
 });

@@ -120,9 +120,9 @@ const BOSS_SKILLS = {
     }
   },
   3(ctx, a, add) {
-    add('技1', '2人に1ダメージ。その後、与えたダメージ分回復', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
+    add('技1', '2人に1ダメージ。その後、与えたダメージの半分（切り上げ）回復', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
       const dealt = await ctx.dmgTo(a, [x, y], 1);
-      if (dealt > 0) ctx.heal(a, dealt);
+      if (dealt > 0) ctx.heal(a, Math.ceil(dealt / 2));
     });
     const prev = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
     add('技2', `直前に正解した相手に4ダメージ${prev ? `（${prev.name}）` : '（該当者なし）'}`, [], async () => {
@@ -148,6 +148,7 @@ const BOSS_SKILLS = {
     for (const x of copied) add(`模倣：${x.label}`, x.desc, x.prompts, x.run, { disabled: x.disabled });
     if (copyable && prev.job === 'thief') add('模倣：ジャンル選択', '次の問題のジャンルを選ぶ', [], async () => { await ctx.pickGenre(); });
     if (!copied.length && !(copyable && prev.job === 'thief')) add('模倣', '直前に正解した敵の技をコピー（コピーできる技なし）', [], async () => {}, { disabled: true });
+    add('鏡撃', '敵1人に2ダメージ（いつでも使える）', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 2)); });
     add(`反射${ok ? `（${prev.name}）` : ''}`, '直前に正解した敵に2ダメージ', [], async () => {
       const t = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
       if (t && t.alive && t.side !== a.side) await ctx.dmgTo(a, [t], ctx.dm(a, 2)); else ctx.log('直前の正解者がいないため不発');

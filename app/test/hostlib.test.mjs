@@ -527,3 +527,19 @@ test('CPUの先読み: 計画のあとで魔王が地雷で変身しても、古
   assert.equal(toasts.length, 0, 'エラーで処理が取り消されていない: ' + toasts.join());
   assert.equal(b.G.q, 2);
 });
+
+test('試合の長さの調整: 全員の体力の倍率は人数に反比例し、範囲に収まる。エンジンは体力の倍率を全員（魔王も途中参戦も）にかける', async () => {
+  const { recommendedHpScale } = await import('../src/lib/engine.js');
+  for (const mode of ['cpu', 'pvp']) {
+    let prev = Infinity;
+    for (let n = 1; n <= 16; n++) { const k = recommendedHpScale(mode, n); assert.ok(k <= prev && k >= 1.2 && k <= 12); prev = k; }
+  }
+  assert.ok(recommendedHpScale('cpu', 4) > recommendedHpScale('pvp', 4));
+  const b = createBattle({ ask: async () => 0, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', foes: ['boss1', 'warrior'], hpScale: 3 });
+  const hp = n => b.G.units.find(u => u.name === n).maxHp;
+  assert.deepEqual([hp('A'), hp('B'), hp('CPU戦士')], [21, 18, 21]);
+  assert.equal(b.G.units.find(u => u.isBoss).maxHp, Math.round(Math.ceil((3 + 1) * 1.05) * 3));
+  b.join({ name: 'C', job: 'tank', pid: 'c' });
+  assert.equal(hp('C'), 24);
+});
