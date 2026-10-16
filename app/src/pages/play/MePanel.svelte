@@ -1,6 +1,7 @@
 <script>
   import { icon } from '../../lib/icons.js';
   import { ITEMS } from '../../lib/engine.js';
+  import { toast } from '../../lib/stores/ui.svelte.js';
 
   let { me, items = [] } = $props();   // 自分のユニット。観戦中は null
   const ratio = $derived(me ? me.hp / me.maxHp : 1);
@@ -14,7 +15,7 @@
       <div class="nm">{me.name} <span class="sub">{me.jobName}</span></div>
       <div class="bar {level}"><i style="width:{Math.max(0, ratio * 100)}%"></i></div>
       <div class="st">HP <b>{Math.max(0, me.hp)}</b> / {me.maxHp}{me.restNow ? '　💤 今回は休み' : ''}{me.job === 'tank' ? `　🛡 守り×${me.guards}` : ''}{me.alive ? '' : me.ghost ? '　👻 幽霊（あと1回だけ答えられる）' : '　💀 戦闘不能'}</div>
-      {#if items.length}<div class="its" aria-label="持ち物">🎒 {#each items as k}<span class="it" title={ITEMS[k]?.d}>{ITEMS[k]?.ic} {ITEMS[k]?.n}</span>{/each}</div>{/if}
+      {#if items.length}<div class="its" aria-label="持ち物">🎒 {#each items as k}<button type="button" class="it" title={ITEMS[k]?.d} onclick={() => toast(`${ITEMS[k]?.ic} ${ITEMS[k]?.n}：${ITEMS[k]?.d}`, 4000)}>{ITEMS[k]?.ic} {ITEMS[k]?.n}</button>{/each}</div>{/if}
     </div>
   {:else}
     <div class="sub">観戦中です（進行役が席に割り当てるとプレイヤーになります）</div>
@@ -29,5 +30,5 @@
   .bar{margin:6px 0}
   .st{font-size:.9rem;font-variant-numeric:tabular-nums}
   .its{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px;font-size:.78rem;color:var(--mut)}
-  .it{background:#b8923a22;border:1px solid var(--gold-d);border-radius:999px;padding:1px 8px;color:var(--tx);white-space:nowrap}
+  .it{background:#b8923a22;border:1px solid var(--gold-d);border-radius:999px;padding:1px 8px;color:var(--tx);white-space:nowrap;cursor:pointer;font:inherit;font-size:.78rem}
 </style>

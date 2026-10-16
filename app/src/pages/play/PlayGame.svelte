@@ -62,7 +62,7 @@
   const allyTags = u => {
     const list = p.allyItems?.[u.id];
     if (!list) return null;
-    return [...(u.st ?? []).filter(t => !t.t.startsWith('🎒')), ...list.map(k => ({ t: `${ITEMS[k]?.ic ?? '🎒'} ${ITEMS[k]?.n ?? k}`, cls: '' }))];
+    return [...(u.st ?? []).filter(t => !t.t.startsWith('🎒')), ...list.map(k => ({ t: `${ITEMS[k]?.ic ?? '🎒'} ${ITEMS[k]?.n ?? k}`, cls: '', d: ITEMS[k]?.d ?? '' }))];
   };
   const tagsOf = u => [
     ...(u.restNow ? [{ t: '💤 休み', cls: 'warn' }] : []),

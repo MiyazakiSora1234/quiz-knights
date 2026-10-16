@@ -1,6 +1,7 @@
 <script>
   import { icon } from '../lib/icons.js';
   import { jobName } from '../lib/engine.js';
+  import { toast } from '../lib/stores/ui.svelte.js';
 
   let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false, fxs = [] } = $props();
   const label = $derived(jobLabel ?? jobName(u));
@@ -72,7 +73,7 @@
     <div class="hp">HP <b>{Math.max(0, u.hp)}</b> / {u.maxHp}{u.alive ? '' : ' 💀'}</div>
     {#if bubble}<div class="bubble" title={bubble}>{bubble}</div>{/if}
     {#if tags.length}
-      <div class="tags">{#each tags as t}<span class="tag {t.cls ?? ''}">{t.t}</span>{/each}</div>
+      <div class="tags">{#each tags as t}{#if t.d}<span class="tag tip {t.cls ?? ''}" role="button" tabindex="0" title={t.d} onclick={(e) => { e.stopPropagation(); toast(`${t.t}：${t.d}`, 4000); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toast(`${t.t}：${t.d}`, 4000); } }}>{t.t}</span>{:else}<span class="tag {t.cls ?? ''}">{t.t}</span>{/if}{/each}</div>
     {/if}
   </div>
   {#each fx as f (f.id)}
@@ -106,6 +107,7 @@
 </button>
 
 <style>
+  .tag.tip{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   /* 攻撃を受けた: 赤くフラッシュ・斬撃・内側が揺れる／回復: 緑の光と、立ちのぼる✚ */
   .fx{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
   .fx .flash{position:absolute;inset:0;animation:flash .55s ease-out forwards}
