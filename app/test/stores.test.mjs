@@ -466,3 +466,22 @@ test('[双方向] 進行役が名簿で変えた職業・チームは本人の�
     p.destroy(); h.destroy();
   } finally { env.restore(); }
 });
+
+test('[持ち物] 進行役は、本人と同じ陣営の仲間にだけ名前を教える。相手チームには教えない。参加者は仲間の持ち物を受け取って保持する', async () => {
+  const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
+  try {
+    const { h, ws } = await hostReady(env, mods, { players: [...lobbyPlayers(), { pid: 'p2', name: 'P2', flavor: '', job: 'monk', team: 'e', delay: 0, online: true, rtt: 5 }] });
+    h.mode = 'pvp'; h.start(); await tick(30);
+    const last = pid => ws.of('priv').filter(m => m.to === pid).at(-1);
+    const uid = pid => h.G.pids[pid];
+    assert.deepEqual(Object.keys(last('p0').allies), [String(uid('p1'))], 'p0 の仲間は p1 だけ');
+    assert.deepEqual(Object.keys(last('p2').allies), [], '相手チームの持ち物は含まない');
+    assert.deepEqual(last('p0').allies[uid('p1')], h.G.units.find(u => u.id === uid('p1')).items);
+    h.destroy();
+    const { p, ws: pws } = await joined(env, mods);
+    pws.recv({ t: 'priv', items: ['bomb'], allies: { 2: ['potion'] } });
+    assert.deepEqual(p.allyItems, { 2: ['potion'] });
+    pws.recv({ t: 'ended' }); assert.deepEqual(p.allyItems, {});
+    p.destroy();
+  } finally { env.restore(); }
+});

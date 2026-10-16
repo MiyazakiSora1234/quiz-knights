@@ -1089,3 +1089,15 @@ test('進行役が参加者の職業・チーム・名前を変える: 本人に
   assert.equal(a.has('profile_set'), false);
   host.send({ t: 'close' });
 });
+
+test('持ち物の配信: 仲間の持ち物（ユニットid → アイテム）も本人にだけ届く。壊れた値は捨てる', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'priv', to: a.pid, items: ['bomb'], allies: { 2: ['potion', 7], 3: 'x', 4: [] } });
+  const got = await a.wait('priv');
+  assert.deepEqual(got.items, ['bomb']);
+  assert.deepEqual(got.allies, { 2: ['potion'], 4: [] });
+  await sleep(150);
+  assert.equal(b.has('priv'), false);
+  host.send({ t: 'close' });
+});

@@ -73,7 +73,7 @@
           {/each}
           <div class="hint">職業をタップすると、くわしい説明が開きます。</div>
         {:else if tab === 'items'}
-          <div class="box"><b>アイテムとは</b><ul><li>バトル開始時に、参加者へランダムで配られます。</li><li>正解したときの行動メニューに「🎒」で並びます。使っても通常の行動は残ります。</li><li>持っている個数だけが、全員に見えます。</li></ul></div>
+          <div class="box"><b>アイテムとは</b><ul><li>バトル開始時に、参加者へランダムで配られます。</li><li>正解したときの行動メニューに「🎒」で並びます。使っても通常の行動は残ります。</li><li>仲間の持ち物は名前まで、相手の持ち物は個数だけが見えます。</li></ul></div>
           <div class="grid2">
             {#each Object.values(ITEMS) as it}<div class="item"><span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span></div>{/each}
           </div>

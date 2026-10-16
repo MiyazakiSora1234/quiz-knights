@@ -8,6 +8,7 @@
   import Confetti from '../../components/Confetti.svelte';
   import BuzzButton from './BuzzButton.svelte';
   import { sfx, vib } from '../../lib/sound.svelte.js';
+  import { ITEMS } from '../../lib/engine.js';
 
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
@@ -57,10 +58,16 @@
   });
 
   /** 各ユニットのカードに出す印（休み・タンクの守り・サーバーが付けた状態） */
+  /** 仲間の持ち物は名前まで見える（自分と相手は個数のまま）。仲間の持ち物の情報があれば、個数の印の代わりに出す */
+  const allyTags = u => {
+    const list = p.allyItems?.[u.id];
+    if (!list) return null;
+    return [...(u.st ?? []).filter(t => !t.t.startsWith('🎒')), ...list.map(k => ({ t: `${ITEMS[k]?.ic ?? '🎒'} ${ITEMS[k]?.n ?? k}`, cls: '' }))];
+  };
   const tagsOf = u => [
     ...(u.restNow ? [{ t: '💤 休み', cls: 'warn' }] : []),
     ...(u.job === 'tank' ? [{ t: `🛡×${u.guards}`, cls: 'warn' }] : []),
-    ...(u.st ?? []),
+    ...(allyTags(u) ?? (u.st ?? [])),
     ...(rankTagOf(u) ? [rankTagOf(u)] : []),
   ];
   /** この問題で押した順位（1着・2着 +〇ms）。pid から自分のユニットに結び付ける */

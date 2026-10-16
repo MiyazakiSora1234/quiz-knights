@@ -298,9 +298,12 @@ export class HostStore {
     const G = this.battle.G;
     if (!G || !this.conn) return;
     this.conn.send({ t: 'state', state: publicState(G) });
-    for (const [pid, uid] of Object.entries(G.pids)) {          // 持ち物は本人にだけ教える
+    for (const [pid, uid] of Object.entries(G.pids)) {          // 持ち物は、本人と、同じ陣営の仲間にだけ教える（相手には個数だけ）
       const u = G.units.find(x => x.id === uid);
-      if (u?.items) this.conn.send({ t: 'priv', to: pid, items: u.items });
+      if (!u?.items) continue;
+      const allies = {};
+      for (const x of G.units) if (x.id !== u.id && x.side === u.side && x.items?.length) allies[x.id] = x.items;
+      this.conn.send({ t: 'priv', to: pid, items: u.items, allies });
     }
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {
       this.#openedFor = G.q;

@@ -251,7 +251,10 @@ export class Room extends DurableObject {
       }
       case 'priv': {                                      // 本人だけに見せる情報（持ち物など）。その人の端末にだけ送る
         if (!Array.isArray(m.items)) return;
-        for (const s of this.playerWs(m.to)) send(s, { t: 'priv', items: m.items.filter(x => typeof x === 'string').slice(0, 40) });
+        const clean = a => a.filter(x => typeof x === 'string').slice(0, 40);
+        const allies = {};                                    // 仲間の持ち物 { ユニットid: [アイテム] }
+        if (m.allies && typeof m.allies === 'object') for (const [k, v] of Object.entries(m.allies).slice(0, 40)) if (Array.isArray(v)) allies[k] = clean(v);
+        for (const s of this.playerWs(m.to)) send(s, { t: 'priv', items: clean(m.items), allies });
         return;
       }
       case 'ask_close': this.toPlayers({ t: 'ask_close', qid: m.qid }); return;
