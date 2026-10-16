@@ -1,6 +1,6 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, GENRES, LEVELS, ITEMS, ITEM_KEYS, jobName, nm, bossHp, bossIdOf } from './data.js';
+import { CANCEL, JOB, BOSS, GENRES, LEVELS, ITEMS, squadFoeScale, isSquadFoes, ITEM_KEYS, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
 import { buildItemActions } from './items.js';
@@ -405,17 +405,17 @@ export function createBattle(ui) {
         for (const b of humanBosses) { b.S = S0; b.maxHp = b.hp = bossHp(S0, b.bossId); }
       }
       if (squad) {
-        const count = {}, bossCount = {};
+        const count = {}, bossCount = {}, fs = isSquadFoes(foes) ? squadFoeScale(foes.length) : 1;
         const S = G.units.reduce((s, u) => s + (u.isBoss ? 0 : u.atk), 0);
         for (const j of foes) {
           const bm = typeof j === 'string' && /^boss[0-9]+$/.test(j) ? +j.slice(4) : 0;
-          if (bm && BOSS[bm]) { G.units.push(mkBoss(bm, S * LEVELS[level].hp)); continue; }   // 'boss3' = 魔王3
+          if (bm && BOSS[bm]) { G.units.push(mkBoss(bm, S * LEVELS[level].hp * fs)); continue; }   // 'boss3' = 魔王3
           const key = JOB[j] && j !== 'hero' ? j : 'warrior';
           count[key] = (count[key] || 0) + 1;
           const total = foes.filter(x => x === j).length;
           const u = mkPlayer(`CPU${JOB[key].n}${total > 1 ? count[key] : ''}`, key);
           u.side = 'e'; u.cpu = true;
-          u.maxHp = u.hp = Math.max(1, Math.ceil(u.maxHp * LEVELS[level].hp));      // 難易度でCPUの体力が変わる
+          u.maxHp = u.hp = Math.max(1, Math.ceil(u.maxHp * LEVELS[level].hp * fs));      // 難易度でCPUの体力が変わる
           G.units.push(u);
         }
       }

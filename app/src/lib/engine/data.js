@@ -80,10 +80,16 @@ export const BERSERKER_DELAY_MS = 700;
 
 /** 難易度（CPUの強さ。魔王も職業のCPUも含む）: hp=CPUの体力の倍率 / dmg=CPUの与えるダメージの加減 */
 /** 試合の長さをそろえるための、全員の体力の倍率（人数が多いほど1人あたりの倍率は小さい）。CPU戦は約30問、ユーザー対戦も約30問が目安 */
-export const recommendedHpScale = (mode, n) => {
+export const recommendedHpScale = (mode, n, foes = []) => {
   const k = Math.max(1, n || 1);
+  if (mode === 'cpu' && isSquadFoes(foes)) return Math.min(12, Math.max(1.2, 31 / (k + foes.length)));      // 職業のCPUが相手: 敵味方の人数の合計で決まる
   return mode === 'pvp' ? Math.min(5.5, Math.max(1.2, 10.4 / k)) : Math.min(12, Math.max(2, 22.8 / k));
 };
+
+/** 職業のCPU（魔王以外）が相手のとき、敵の数に応じた体力の倍率（敵が多いほど1体は脆くする。数を増やしても勝てる見込みが極端に下がらないように） */
+export const squadFoeScale = nf => (nf > 0 ? 1.1 / nf : 1);
+/** 敵が魔王だけではない（職業のCPUがいる）構成か */
+export const isSquadFoes = foes => (foes || []).some(j => !(typeof j === 'string' && /^boss[0-9]+$/.test(j)));
 
 export const LEVELS = {
   base:   { n: '基準', hp: 1,   dmg: 0,  d: '調整なしの基本の強さ（テスト・内部用）', hidden: true },

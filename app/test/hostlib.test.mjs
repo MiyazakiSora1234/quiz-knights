@@ -344,8 +344,9 @@ test('難易度: 職業のCPUも体力が変わる（難易度ごとの倍率）
   const hp = (b, n) => b.G.units.find(u => u.name === n).maxHp;
   const { LEVELS } = await import('../src/lib/engine.js');
   for (const [n, base] of [['CPU戦士', 7], ['CPUタンク', 8]]) {
-    assert.equal(hp(mk('base'), n), base);
-    for (const k of ['weak', 'normal', 'strong', 'extreme']) assert.equal(hp(mk(k), n), Math.max(1, Math.ceil(base * LEVELS[k].hp)), k);
+    const fs = 1.1 / 2;      // 職業のCPUが2体いるときの、敵の数による倍率
+    assert.equal(hp(mk('base'), n), Math.ceil(base * fs));
+    for (const k of ['weak', 'normal', 'strong', 'extreme']) assert.equal(hp(mk(k), n), Math.max(1, Math.ceil(base * LEVELS[k].hp * fs)), k);
   }
   assert.equal(hp(mk('strong'), 'A'), 7);
 });
@@ -535,11 +536,13 @@ test('試合の長さの調整: 全員の体力の倍率は人数に反比例し
     for (let n = 1; n <= 16; n++) { const k = recommendedHpScale(mode, n); assert.ok(k <= prev && k >= 1.2 && k <= 12); prev = k; }
   }
   assert.ok(recommendedHpScale('cpu', 4) > recommendedHpScale('pvp', 4));
+  for (let n = 1; n <= 12; n++) for (const foes of [['warrior'], ['warrior', 'monk', 'tank'], ['boss1', 'mage']]) { const k = recommendedHpScale('cpu', n, foes); assert.ok(k >= 1.2 && k <= 12); }
+  assert.equal(recommendedHpScale('cpu', 4, ['boss3']), recommendedHpScale('cpu', 4), '魔王だけなら従来どおり');
   const b = createBattle({ ask: async () => 0, toast() {}, changed() {} });
   b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', foes: ['boss1', 'warrior'], hpScale: 3 });
   const hp = n => b.G.units.find(u => u.name === n).maxHp;
-  assert.deepEqual([hp('A'), hp('B'), hp('CPU戦士')], [21, 18, 21]);
-  assert.equal(b.G.units.find(u => u.isBoss).maxHp, Math.round(Math.ceil((3 + 1) * 1.05) * 3));
+  assert.deepEqual([hp('A'), hp('B'), hp('CPU戦士')], [21, 18, Math.ceil(7 * 0.55) * 3]);       // 敵が2体なので、敵の体力は0.55倍
+  assert.equal(b.G.units.find(u => u.isBoss).maxHp, Math.round(Math.ceil((3 + 1) * 0.55 * 1.05) * 3));
   b.join({ name: 'C', job: 'tank', pid: 'c' });
   assert.equal(hp('C'), 24);
 });
