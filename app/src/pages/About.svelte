@@ -72,4 +72,5 @@
   figure img{display:block;width:100%;height:auto}
   figcaption{padding:8px 12px;color:var(--mut);font-size:.84rem;text-align:center}
   .cta{text-align:center;margin-top:34px}
+  a.btn{text-decoration:none}
 </style>
