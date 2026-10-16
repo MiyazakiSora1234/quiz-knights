@@ -8,7 +8,8 @@
     "worker": "wrangler dev",
     "test": "node --test \"app/test/*.test.mjs\"",
     "deploy": "npm run build && wrangler deploy",
-    "preview": "npm run build && wrangler dev"
+    "preview": "npm run build && wrangler dev",
+    "test:update-golden": "node scripts/update-golden.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
