@@ -1024,3 +1024,33 @@ for (const [level, ok] of [['weak', true], ['strong', true], ['normal', true], [
     host.send({ t: 'close' });
   });
 }
+
+test('進行役をやめる: 部屋から出ずに、そのまま参加者になる（人数が減らず、入室の通知も出ない）', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'P');
+  await p.wait('members', 3000, x => x.players.length === 1);
+  const chatBefore = p.q.filter(m => m.t === 'chat').length;
+  host.send({ t: 'release', name: '元進行役' });
+  const d = await host.wait('demoted');
+  assert.ok(d.pid); assert.equal(d.name, '元進行役');
+  const m = await p.wait('members', 3000, x => x.players.length === 2 && !x.hasHost);
+  assert.ok(m.players.some(x => x.pid === d.pid && x.name === '元進行役'));
+  // 同じ pid で入り直しても、新しい参加者にはならない
+  const again = await joinPlayer(id, '元進行役', { pid: d.pid });
+  assert.equal(again.pid, d.pid);
+  await sleep(200);
+  assert.equal((await api())[id - 1].count, 2);
+  assert.equal(p.q.filter(x => x.t === 'chat').length, chatBefore, '入室の通知は増えない');
+  again.send({ t: 'claim_host' });
+  assert.ok((await again.wait('host_granted')).hostKey);
+});
+test('進行役を譲る: 譲った人は、そのまま参加者として部屋に残る', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'P');
+  host.send({ t: 'transfer', pid: p.pid, name: '前の進行役' });
+  const d = await host.wait('demoted');
+  await p.wait('host_granted');
+  assert.ok(d.pid);
+  await sleep(200);
+  assert.equal((await api())[id - 1].count, 1, '譲られた人は進行役になり、譲った人が参加者になる');
+});

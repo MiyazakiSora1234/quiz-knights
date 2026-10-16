@@ -246,8 +246,8 @@ export class Room extends DurableObject {
       case 'set_delay': return this.setDelay(m.pid, m.delay);
       case 'set_foes': return this.setFoes(m.foes);
       case 'set_level': return this.setLevel(m.level);
-      case 'transfer': return this.transferHost(m.pid);
-      case 'release': return this.releaseHost();
+      case 'transfer': return this.transferHost(m.pid, m.name);
+      case 'release': return this.releaseHost(m.name);
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
       case 'endgame':
         this.state = null; this.round = new BuzzRound();
@@ -377,22 +377,30 @@ export class Room extends DurableObject {
     this.lobby();
   }
   /** いまの進行役が、参加者の1人に進行役を譲る */
-  async transferHost(pid) {
+  /** 進行役をおりた接続を、そのまま参加者にする（部屋から出入りさせない）。新しい参加者の pid を返す */
+  async demote(ws, name) {
+    const pid = rnd(8);
+    this.R.players[pid] = { pid, name: String(name || '進行役').trim().slice(0, 12) || '進行役', flavor: '', job: 'warrior', team: 'p', delay: 0 };
+    await this.save();
+    send(ws, { t: 'demoted', pid, name: this.R.players[pid].name });
+    ws.serializeAttachment({ role: 'player', pid });
+  }
+  async transferHost(pid, name) {
     if (!this.R.players[pid] || !this.isOnline(pid)) return this.toHost({ t: 'notice', msg: 'その人はオンラインではありません' });
     const old = this.hostWs();
     await this.grantHost(pid);
     this.endBattleState();
-    if (old) { send(old, { t: 'demoted' }); old.serializeAttachment({}); }
+    if (old) await this.demote(old, name);
     this.lobby();
   }
   /** 進行役をやめる。部屋は残り、誰かがあとから進行役になれる */
-  async releaseHost() {
+  async releaseHost(name) {
     const old = this.hostWs();
     this.R.hostKey = null; this.R.hostGone = null;
     await this.save();
     await this.ctx.storage.deleteAlarm();
     this.endBattleState();
-    if (old) { send(old, { t: 'demoted' }); old.serializeAttachment({}); }
+    if (old) await this.demote(old, name);
     this.lobby();
   }
   /** 進行役が替わるとバトルの状態は引き継げないので、参加者の画面をロビーに戻す */

@@ -446,3 +446,24 @@ test('CPUの頭脳: 先読みは画面の状態に影響しない（先読み中
   const total = b.G.units.filter(u => !u.cpu && !u.isBoss).reduce((s, u) => s + (7 - u.hp), 0);
   assert.ok(total > 0 && total <= 8, '1体ぶんの行動のダメージだけ');
 });
+
+test('コマンド選択: 対象の選択で「行動を選びなおす」を選ぶと、行動の選択に戻れる。予告の通知が行動の前に出る', async () => {
+  const seq = [];
+  const notices = [];
+  const b = createBattle({
+    ask: async (t, o) => {
+      seq.push(t);
+      if (t.endsWith('の行動')) return seq.filter(x => x.endsWith('の行動')).length === 1 ? 1 : 0;     // 1回目は技、戻ったあとは通常攻撃
+      const back = o.find(x => x.value === '__back__');
+      if (seq.filter(x => x.endsWith('の行動')).length === 1 && back) return back.value;              // 1回目の対象選択で戻る
+      return o.find(x => !x.disabled && x.value !== '__back__').value;
+    },
+    toast() {}, changed: g => g && notices.push(g.notice), random: () => 0.5,
+  });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }], mode: 'cpu', foes: ['boss1'] });
+  b.select(b.G.units.find(u => u.name === 'A').id);
+  assert.equal(await b.correct(), true);
+  assert.equal(seq.filter(x => x.endsWith('の行動')).length, 2, '戻って、もう一度行動を選んだ');
+  assert.ok(b.G.log.some(l => l.m.includes('魔王1 に')), '通常攻撃が当たった');
+  assert.ok(b.G.notice && b.G.notice.text.includes('A の'), '行動の予告が出ている');
+});

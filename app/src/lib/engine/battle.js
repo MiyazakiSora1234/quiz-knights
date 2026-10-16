@@ -55,16 +55,6 @@ export function createBattle(ui) {
     if (events.length) { log('☠ 毒のダメージ', 'sys'); await applyEvents(events); }
   }
 
-  /** 先読みで決めた計画を実行する。計画がなければ（行動できる手がない）何もしない */
-  async function runPlan(a, plan) {
-    if (!plan) return { label: '何もしない', desc: '', names: [] };
-    const act = buildActions(ctx, a)[plan.ai];
-    const targets = plan.ids.map(id => G.units.find(u => u.id === id)).filter(Boolean);
-    if (!act || targets.length !== plan.ids.length) return chooseAndRunAction(a);      // 状況が変わっていたら、従来の自動選択に戻す
-    await act.run(targets);
-    return { label: act.label, desc: act.desc, names: targets.map(t => t.name) };
-  }
-
   /** CPU（魔王・CPUの職業ユニット）のうち1体が、1問ごとに自動で1回行動する（誰が動くか・行動・対象は自動で決まる） */
   /* ---------- CPUの頭脳（先読み） ---------- */
   /** 盤面の良さ（side から見て）: 味方の体力が多く、敵の体力が少ないほど高い。敵の全滅・味方の全滅は決定的 */
@@ -149,20 +139,10 @@ export function createBattle(ui) {
       ctx.setAuto(cur);
       try {
         if (!(await stepOnMine(cur))) { did = await runPlan(cur, plan); await afterAction(cur); }
-        else did = { label: '地雷を踏んで行動できない', names: [] };
+        else { did = { label: '地雷を踏んで行動できない', desc: '', names: [] }; announce(cur, did.label, '', []); await wait(800); }
       } finally { ctx.setAuto(null); }
-      // 通知: 1行目「誰の何」、2行目「どうなるか（対象）」。ラベルに説明（かっこ）が付いていなければ説明文を足す
-      let text = '', detail = '';
-      if (did) {
-        const short = did.label.replace(/（.*?）/g, '');
-        text = `${cur.name} の ${did.label.startsWith('地雷') ? did.label : short}`;
-        const inner = (/（(.*?)）/.exec(did.label) || [])[1];
-        detail = [inner || did.desc, did.names.length ? `対象：${did.names.join('・')}` : '', did.fizzled ? '（対象がいないため不発）' : ''].filter(Boolean).join('　');
-      }
       G.acting = null;
-      if (text) { G.noticeSeq = (G.noticeSeq || 0) + 1; G.notice = { id: G.noticeSeq, text, detail, side: cur.side }; }
       emit();
-      if (ui.pause) await ui.pause(1400);
       checkEnd();
     }
   }
@@ -207,23 +187,56 @@ export function createBattle(ui) {
   }
 
   /** 行動を選ばせて実行する。選択肢の対象を1つずつ聞き、足りなければ不発 */
+  /** 画面に「誰が何をするか」を出す（行動の前に知らせてから、効果を適用する） */
+  function announce(a, label, desc, names, fizzled = false) {
+    const short = label.replace(/（.*?）/g, '');
+    const inner = (/（(.*?)）/.exec(label) || [])[1];
+    const text = `${a.name} の ${label.startsWith('地雷') ? label : short}`;
+    const detail = [inner || desc, names.length ? `対象：${names.join('・')}` : '', fizzled ? '（対象がいないため不発）' : ''].filter(Boolean).join('　');
+    G.noticeSeq = (G.noticeSeq || 0) + 1;
+    G.notice = { id: G.noticeSeq, text, detail, side: a.side };
+    emit();
+  }
+  const wait = ms => (ui.pause ? ui.pause(ms) : null);
+  /** 行動の実行: 予告 → 少し間を置く → 効果 → 効果を見せる間。誰の行動でも同じ流れにする */
+  async function perform(a, act, targets) {
+    announce(a, act.label, act.desc, targets.map(t => t.name));
+    await wait(650);
+    await act.run(targets);
+    await wait(750);
+    return { label: act.label, desc: act.desc, names: targets.map(t => t.name) };
+  }
+
+  /** 行動を選ばせて実行する。選択肢の対象を1つずつ聞き、足りなければ不発。対象の選択から「戻る」で行動を選び直せる */
   async function chooseAndRunAction(a) {
-    const acts = buildActions(ctx, a);
-    const noSpecial = acts.every(x => x.disabled);
-    const options = [
-      ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, []))) })),
-      { label: '何もしない', value: -1, cls: 'ghost' },
-    ];
-    const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : '行動を選んでください' });
-    if (c < 0) return { label: '何もしない', desc: '', names: [] };
-    const act = acts[c], picked = [];
-    for (const p of act.prompts) {
-      const t = await ctx.pickUnit(p.label, p.f, picked);
-      if (!t) { log('対象がいないため不発'); return { label: act.label, desc: act.desc, names: [], fizzled: true }; }
-      picked.push(t);
+    for (;;) {
+      const acts = buildActions(ctx, a);
+      const noSpecial = acts.every(x => x.disabled);
+      const options = [
+        ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, []))) })),
+        { label: '何もしない', value: -1, cls: 'ghost' },
+      ];
+      const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : '行動を選んでください' });
+      if (c < 0) return { label: '何もしない', desc: '', names: [] };
+      const act = acts[c], picked = [];
+      let back = false;
+      for (const p of act.prompts) {
+        const t = await ctx.pickUnit(p.label, p.f, picked, { back: true });
+        if (t === ctx.BACK) { back = true; break; }
+        if (!t) { log('対象がいないため不発'); announce(a, act.label, act.desc, [], true); return { label: act.label, desc: act.desc, names: [], fizzled: true }; }
+        picked.push(t);
+      }
+      if (back) continue;
+      return perform(a, act, picked);
     }
-    await act.run(picked);
-    return { label: act.label, desc: act.desc, names: picked.map(t => t.name) };
+  }
+  /** 先読みで決めた計画を実行する。計画がなければ何もしない */
+  async function runPlan(a, plan) {
+    if (!plan) return { label: '何もしない', desc: '', names: [] };
+    const act = buildActions(ctx, a)[plan.ai];
+    const targets = plan.ids.map(id => G.units.find(u => u.id === id)).filter(Boolean);
+    if (!act || targets.length !== plan.ids.length) return chooseAndRunAction(a);      // 状況が変わっていたら、従来の自動選択に戻す
+    return perform(a, act, targets);
   }
 
   /** 行動のあとの後始末（盗賊のジャンル選択・見習いの成長・幽霊の成仏） */

@@ -30,8 +30,10 @@ export function harness({ askFn = null, random = null } = {}) {
   const asked = [];
   let step = 0;
   const ui = {
-    async ask(title, opts) {
-      asked.push({ title, opts });
+    async ask(title, opts0) {
+      // 対象選択の「戻る」は、台本・自動選択のテストでは選ばない（選ぶと行動の選び直しに戻って終わらなくなる）
+      const opts = opts0.filter(o => o.value !== '__back__');
+      asked.push({ title, opts: opts0 });
       const i = step++;
       if (askFn) return askFn(title, opts, i);
       const s = script.shift();

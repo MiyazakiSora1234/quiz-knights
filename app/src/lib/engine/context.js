@@ -110,11 +110,17 @@ export function createContext({ ui, getG, emit }) {
     ...extra,
   });
   /** 条件 f に合うユニットから1人選ばせる。候補がいなければ null */
-  async function pickUnit(label, f, picked) {
+  /** 対象の選択で「戻る」を選んだときの値（行動の選び直しに戻る） */
+  const BACK = '__back__';
+  /** 条件 f に合うユニットから1人選ばせる。候補がいなければ null。opts.back なら「行動を選びなおす」も出す（人が選ぶときだけ） */
+  async function pickUnit(label, f, picked, opts = {}) {
     const G = getG();
     const cands = G.units.filter(u => f(u, picked));
     if (!cands.length) return null;
-    const id = await ask(label, cands.map(u => unitOption(u)), { sub: '対象を選んでください' });
+    const options = cands.map(u => unitOption(u));
+    if (opts.back && !auto && !sim) options.push({ label: '← 行動を選びなおす', value: BACK, cls: 'ghost' });
+    const id = await ask(label, options, { sub: '対象を選んでください' });
+    if (id === BACK) return BACK;
     return G.units.find(u => u.id === id);
   }
   async function pickGenre() {
@@ -225,6 +231,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    BACK, ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }
