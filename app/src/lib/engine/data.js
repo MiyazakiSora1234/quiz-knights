@@ -156,7 +156,7 @@ export const bossHp = (S, id) => Math.max(1, Math.ceil(BOSS[id].hp(S)));
 /** 魔王1は、残りHPが半分以下になると与えるダメージが+2 */
 export const bonusOf = a => (a && a.isBoss && a.bossId === 1 && a.hp * 2 <= a.maxHp) ? 2 : 0;
 /** 職業（'warrior'・'boss2' など）の説明。クリックしたときに出す */
-export const jobDescOf = key => { const b = bossIdOf(key); return b ? `${BOSS[b].intro}　${BOSS[b].d}` : (JOB[key]?.d ?? ''); };
+export const jobDescOf = key => { const b = bossIdOf(key); return b ? `${BOSS[b].intro}　${BOSS[b].skills.map(s => `${s.n}＝${s.d}`).join('／')}` : (JOB[key]?.d ?? ''); };
 /** ユニットの職業の説明（魔王は紹介と技） */
 export const jobDesc = u => (u.isBoss ? jobDescOf('boss' + (u.bossId || 1)) : (JOB[u.job]?.d ?? ''));
 /** 画面のアイコン・色分け用: 魔王は 'boss' */

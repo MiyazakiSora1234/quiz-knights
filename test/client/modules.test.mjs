@@ -146,7 +146,7 @@ test('[裁定] 見出し・質問・答えがそろい、質問は重複せず�
 
 test('[データ] 職業の説明: 全職業・全魔王に説明があり、ユニットからも引ける（クリックで出す文）', () => {
   for (const k of [...SELECTABLE, 'hero']) { assert.equal(jobDescOf(k), JOB[k].d); assert.ok(jobDescOf(k).length >= 6, k); }
-  for (const k of PLAYABLE_BOSS_KEYS) assert.ok(jobDescOf(k).includes(BOSS[bossIdOf(k)].intro), k);
+  for (const k of PLAYABLE_BOSS_KEYS) { const b = BOSS[bossIdOf(k)]; assert.ok(jobDescOf(k).includes(b.intro), k); for (const sk of b.skills) assert.ok(jobDescOf(k).includes(sk.d), `${k} の技 ${sk.n} が説明に出る`); }
   assert.equal(jobDescOf('???'), '');
   assert.equal(jobDesc({ job: 'monk', isBoss: false }), JOB.monk.d);
   assert.ok(jobDesc({ isBoss: true, bossId: 3, job: 'boss' }).includes(BOSS[3].intro));
