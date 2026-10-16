@@ -92,11 +92,16 @@ export class HostStore {
       case 'replaced':
         this.status = 'replaced'; this.conn.close();
         return;
-      case 'lobby': if (m.boss && m.boss !== this.boss) this.#setFirstBoss(m.boss); return this.#onLobby(m.players);
+      case 'lobby': this.#applyShared(m); return this.#onLobby(m.players);
       case 'winner': return this.#onWinner(m);
       case 'nobody': return this.#chainExhausted();
       case 'ranking': this.ranks = rankTags(m.all); return;
     }
+  }
+  /** サーバーにある共有の設定（戦う相手・難易度）を、この画面に反映する */
+  #applyShared(m) {
+    if (Array.isArray(m.foes) && JSON.stringify(m.foes) !== JSON.stringify(this.foes)) this.foes = [...m.foes];
+    if (m.level && m.level !== this.level) this.level = m.level;
   }
   #onLobby(players) {
     if (this.#lobbyInit) this.#announceChanges(players);
@@ -257,23 +262,9 @@ export class HostStore {
   saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
   /** 参加者のディレイ（ms）を進行役が決める */
   setDelay(pid, ms) { this.conn?.send({ t: 'set_delay', pid, delay: ms }); }
-  /** 魔王を選ぶ（参加者も選べるので、サーバー経由で全員に反映される） */
-  pickBoss(id) { this.#setFirstBoss(id); this.conn?.send({ t: 'settings', boss: id }); }
-  /** 部屋で選ばれた魔王を、相手の先頭の魔王にする（魔王がいなければ追加する） */
-  #setFirstBoss(id) {
-    this.boss = id;
-    const i = this.foes.findIndex(f => /^boss\d+$/.test(f));
-    if (this.foes.includes('boss' + id)) return;
-    if (i >= 0) this.foes[i] = 'boss' + id; else this.foes.unshift('boss' + id);
-  }
-  /** 魔王を相手に加える／外す（複数の魔王や、魔王と職業の混成もできる） */
-  toggleBoss(id) {
-    const key = 'boss' + id, i = this.foes.indexOf(key);
-    if (i >= 0) { if (this.foes.length > 1) this.foes.splice(i, 1); }
-    else if (this.foes.length < 6) this.foes.push(key);
-    const first = this.foes.find(f => /^boss\d+$/.test(f));
-    if (first) { this.boss = +first.slice(4); this.conn?.send({ t: 'settings', boss: this.boss }); }
-  }
+  /** 戦う相手を決める（参加者も変えられるので、サーバー経由で全員に反映される） */
+  setFoes(list) { this.foes = [...list]; this.conn?.send({ t: 'set_foes', foes: this.foes }); }
+  setLevel(v) { this.level = v; this.conn?.send({ t: 'set_level', level: v }); }
   /** 進行役を、いま入室している参加者に譲る */
   async transfer(p) {
     if (!(await confirmAsk(`${p.name} さんに進行役を譲りますか？`, '進行中のバトルは終了し、あなたは参加者になります。', '譲る', false))) return;

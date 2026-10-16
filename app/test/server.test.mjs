@@ -993,3 +993,34 @@ test('クイズ設定: 職業のディレイ（バーサーカー700）と個人
   a.send({ t: 'chat', text: '確認' });
   host.send({ t: 'close' });
 });
+
+/* ---------- 戦う相手・難易度の共有（進行役も参加者も変えられる） ---------- */
+for (const [who, foes, want] of [
+  ['player', ['boss3'], ['boss3']], ['player', ['boss1', 'boss1'], ['boss1', 'boss1']], ['player', ['warrior', 'monk', 'mage'], ['warrior', 'monk', 'mage']],
+  ['player', ['boss2', 'tank'], ['boss2', 'tank']], ['host', ['boss6', 'bomb', 'bomb'], ['boss6', 'bomb', 'bomb']], ['host', [], []],
+  ['player', ['boss9', 'warrior'], ['warrior']], ['player', ['BOSS1', 'x', 'warrior'], ['warrior']], ['player', ['a'.repeat(30), 'monk'], ['monk']],
+  ['player', Array(20).fill('warrior'), Array(12).fill('warrior')], ['player', 'boss1', null], ['player', null, null],
+]) {
+  test(`戦う相手の共有: ${who} が ${JSON.stringify(foes)?.slice(0, 40)} を選ぶ`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A'), q = await joinPlayer(id, 'B');
+    if (who === 'player') p.send({ t: 'set_foes', foes }); else host.send({ t: 'set_foes', foes });
+    if (want === null) { await sleep(200); assert.ok(host.q.filter(m => m.t === 'lobby').every(m => JSON.stringify(m.foes ?? ['boss1']) === '["boss1"]')); }
+    else {
+      const lob = await host.wait('lobby', 3000, x => JSON.stringify(x.foes) === JSON.stringify(want));
+      assert.deepEqual(lob.foes, want);
+      assert.deepEqual((await q.wait('members', 3000, x => JSON.stringify(x.foes) === JSON.stringify(want))).foes, want);
+    }
+    host.send({ t: 'close' });
+  });
+}
+for (const [level, ok] of [['weak', true], ['strong', true], ['normal', true], ['extreme', false], ['', false], [null, false]]) {
+  test(`難易度の共有: ${JSON.stringify(level)} → ${ok ? '反映' : '無視'}`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A');
+    p.send({ t: 'set_level', level });
+    if (ok && level !== 'normal') assert.equal((await host.wait('lobby', 3000, x => x.level === level)).level, level);
+    else { await sleep(200); assert.ok(host.q.filter(m => m.t === 'lobby').every(m => (m.level ?? 'normal') === 'normal')); }
+    host.send({ t: 'close' });
+  });
+}

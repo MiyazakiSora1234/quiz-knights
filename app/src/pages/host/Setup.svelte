@@ -5,7 +5,7 @@
   import { panel, confirmAsk } from '../../lib/ui.svelte.js';
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
-  import FoePicker from './FoePicker.svelte';
+  import FoePicker from '../../components/FoePicker.svelte';
   import { LEVELS } from '../../lib/engine.js';
 
   // バトルの準備画面: 左に招待URLと参加者の名簿、右にモード・魔王・開始ボタン
@@ -54,19 +54,7 @@
         <div class="seg"><button class:sel={host.mode === 'cpu'} onclick={() => (host.mode = 'cpu')}>CPU戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
         <div class="sub desc">{pvp ? '参加者を2〜3チームに分けて戦います。最後に1チームだけ残れば決着です。' : '全員で協力して、魔王や職業のCPUと戦います。CPUは1問ごとに自動で行動します。'}</div>
       </div>
-      <div class="panel">
-        <h3>早押しのルール</h3>
-        <div class="seg"><button class:sel={host.buzzRule === 'next'} onclick={() => (host.buzzRule = 'next')}>誤答で次の問題へ</button><button class:sel={host.buzzRule === 'retry'} onclick={() => (host.buzzRule = 'retry')}>誤答者を除いて再受付</button><button class:sel={host.buzzRule === 'chain'} onclick={() => (host.buzzRule = 'chain')}>連チャン</button></div>
-        <div class="sub desc">{host.buzzRule === 'chain' ? '1着の人が誤答したら、2着、3着…と、押した順に回答権が移ります。控えとして、回答権が決まったあとも押せます（全員が誤答すると終了）。' : host.buzzRule === 'retry' ? '誰かが誤答しても問題は終わらず、その人を除いてもう一度早押しを受け付けます（全員が誤答すると終了）。' : '誰かが誤答したら、その問題は終わりです。'}</div>
-      </div>
-      {#if !pvp}
-        <div class="panel">
-          <h3>難易度</h3>
-          <div class="seg">{#each Object.entries(LEVELS) as [k, l]}<button class:sel={host.level === k} onclick={() => (host.level = k)}>{l.n}</button>{/each}</div>
-          <div class="sub desc">{LEVELS[host.level].d}</div>
-        </div>
-      {/if}
-      {#if host.mode === 'cpu'}<FoePicker {host} />{/if}
+      {#if host.mode === 'cpu'}<FoePicker who={host} />{/if}
 
     </aside>
   </div>

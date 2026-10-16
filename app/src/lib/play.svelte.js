@@ -23,7 +23,8 @@ export class PlayStore {
   answered = $state(null);        // 最後に送ったチャット回答 {q,text}
   ranks = $state({});             // この問題の早押しの順位 pid → 表示用のタグ
   req = $state(null);             // 自分が選ぶ場面（行動・対象など）{qid,title,sub,options}
-  boss = $state(1);               // 部屋で選ばれている魔王（誰でも変えられる）
+  foes = $state(['boss1']);       // 部屋で選ばれている戦う相手（魔王・職業のCPU。誰でも変えられる）
+  level = $state('normal');       // 難易度（誰でも変えられる）
   delay = $state(Math.max(0, parseInt(store.get(KEY.delay) ?? '0', 10) || 0));   // 自分の早押しディレイ（ms）。クイズ設定で変える
   chat = $state([]);              // 部屋のチャットと入退室のお知らせ
   hasHost = $state(true);         // 進行役がいるか（いなければ誰でもなれる）
@@ -116,7 +117,7 @@ export class PlayStore {
     switch (m.t) {
       case 'error': return this.#onError(m);
       case 'joined': return this.#onJoined(m);
-      case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; if (m.boss) this.boss = m.boss; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
+      case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; if (Array.isArray(m.foes)) this.foes = [...m.foes]; if (m.level) this.level = m.level; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
       case 'ask': this.req = m; if (typeof navigator.vibrate === 'function') vib(40); sfx.open(); return;
       case 'answer_ack': this.answered = { q: m.q, text: m.text }; return;
       case 'ask_close': if (this.req?.qid === m.qid) this.req = null; return;
@@ -187,7 +188,8 @@ export class PlayStore {
     store.set(KEY.delay, String(this.delay));
     this.conn?.send({ t: 'profile', delay: this.delay });
   }
-  pickBoss(id) { this.boss = id; this.conn.send({ t: 'set_boss', boss: id }); }
+  setFoes(list) { this.foes = [...list]; this.conn.send({ t: 'set_foes', foes: this.foes }); }
+  setLevel(v) { this.level = v; this.conn.send({ t: 'set_level', level: v }); }
   sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   /** 部屋の中で名前・ひとことを変える */
   saveProfile(name, flavor) {

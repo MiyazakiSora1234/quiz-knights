@@ -58,10 +58,10 @@ export class Room extends DurableObject {
       pid: p.pid, name: p.name, flavor: p.flavor, job: p.job, team: p.team, delay: p.delay || 0,
       online: this.isOnline(p.pid, except), rtt: this.rtts.get(p.pid) ?? null,
     }));
-    const boss = this.R.boss ?? 1;
-    const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players, boss });
+    const boss = this.R.boss ?? 1, foes = this.R.foes ?? ['boss1'], level = this.R.level ?? 'normal';
+    const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players, boss, foes, level });
     const hasHost = !!this.R.hostKey;
-    this.toPlayers({ t: 'members', roomName: this.R.name, boss, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team, delay }) => ({ pid, name, flavor, online, job, team, delay })) }, except);
+    this.toPlayers({ t: 'members', roomName: this.R.name, boss, foes, level, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team, delay }) => ({ pid, name, flavor, online, job, team, delay })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -244,6 +244,8 @@ export class Room extends DurableObject {
       }
       case 'ask_close': this.toPlayers({ t: 'ask_close', qid: m.qid }); return;
       case 'set_delay': return this.setDelay(m.pid, m.delay);
+      case 'set_foes': return this.setFoes(m.foes);
+      case 'set_level': return this.setLevel(m.level);
       case 'transfer': return this.transferHost(m.pid);
       case 'release': return this.releaseHost();
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
@@ -281,7 +283,9 @@ export class Room extends DurableObject {
         ws.serializeAttachment({});
         return this.lobby(ws);
       case 'settings': if (!this.R.hostKey) return this.updateSettings(m); return;   // 進行役がいない間は誰でも変えられる
-      case 'set_boss': return this.setBoss(m.boss);                                      // 魔王の選択は参加者も変えられる
+      case 'set_boss': return this.setBoss(m.boss);
+      case 'set_foes': return this.setFoes(m.foes);                                       // 戦う相手も、参加者が変えられる
+      case 'set_level': return this.setLevel(m.level);                                      // 魔王の選択は参加者も変えられる
       case 'answer': this.toHost({ t: 'answer', pid, qid: m.qid, i: m.i }); return;
       case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
@@ -312,6 +316,21 @@ export class Room extends DurableObject {
     const p = this.R.players[pid];
     if (!p) return;
     p.delay = this.cleanDelay(delay);
+    await this.save();
+    this.lobby();
+  }
+  /** 戦う相手（魔王 'boss1'〜'boss6' と職業のキー。最大12体）。進行役も参加者も変えられる */
+  async setFoes(list) {
+    if (!Array.isArray(list)) return;
+    const ok = list.filter(f => typeof f === 'string' && new RegExp(`^(boss[1-${BOSS_COUNT}]|[a-z]{2,12})$`).test(f)).slice(0, 12);
+    if (JSON.stringify(ok) === JSON.stringify(this.R.foes ?? ['boss1'])) return;
+    this.R.foes = ok;
+    await this.save();
+    this.lobby();
+  }
+  async setLevel(v) {
+    if (!['weak', 'normal', 'strong'].includes(v) || v === (this.R.level ?? 'normal')) return;
+    this.R.level = v;
     await this.save();
     this.lobby();
   }
