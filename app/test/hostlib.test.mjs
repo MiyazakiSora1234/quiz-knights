@@ -348,3 +348,101 @@ test('難易度: 職業のCPUも体力が変わる（弱い=7割・強い=1.4倍
   }
   assert.equal(hp(mk('strong'), 'A'), 7);
 });
+
+/* ================= 参加者が魔王として戦う ================= */
+import { bossIdOf, PLAYABLE_BOSS_KEYS, BOSS, JOB } from '../src/lib/engine.js';
+const mkb = () => createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} });
+
+test('魔王として戦う: 魔王の職業キーの判定', () => {
+  assert.deepEqual(PLAYABLE_BOSS_KEYS, ['boss1', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6']);
+  for (const [k, want] of [['boss1', 1], ['boss6', 6], ['boss7', 0], ['boss0', 0], ['boss', 0], ['warrior', 0], [undefined, 0], ['xboss1', 0], ['boss1x', 0]]) assert.equal(bossIdOf(k), want, String(k));
+});
+for (const id of [1, 2, 3, 4, 5, 6]) {
+  test(`魔王として戦う: 魔王${id} を選んだ参加者は、操作する魔王になる（体力は他の参加者の攻撃合計、自動では動かない、誤答は2ダメージ）`, async () => {
+    const b = mkb();
+    b.start({ players: [{ name: 'ボス役', job: 'boss' + id, pid: 'x' }, { name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', foes: ['warrior'], cpuAuto: true });
+    const u = b.G.units.find(x => x.name === 'ボス役');
+    assert.equal(u.isBoss, true); assert.equal(u.human, true); assert.equal(u.side, 'p');
+    assert.equal(u.maxHp, Math.max(1, Math.ceil(BOSS[id].hp(JOB.warrior.atk + JOB.monk.atk))));
+    assert.equal(b.G.pids.x, u.id);
+    u.hp = u.maxHp = 20;                                               // CPUの攻撃で倒れないように体力を増やす
+    const hp = u.hp;
+    await b.skip();                                                    // CPU（戦士）は動くが、参加者の魔王は自動では動かない
+    assert.ok(!b.G.log.some(l => l.m.includes('🤖 ボス役')));
+    assert.ok(b.G.log.some(l => l.m.includes('CPU戦士')));
+    b.select(u.id); assert.equal(await b.correct(), true);             // 魔王の技が使える（自分で選ぶ）
+    const hp2 = b.G.units.find(x => x.name === 'ボス役').hp;
+    b.select(u.id); await b.wrong();
+    const after = b.G.units.find(x => x.name === 'ボス役').hp;
+    assert.ok(after <= hp2 - 2, '誤答で2ダメージ（魔王の誤答免除は、参加者が操作する魔王には効かない）');
+    checkInvariantsBoss(b);
+  });
+}
+function checkInvariantsBoss(b) {
+  const ids = b.G.units.map(u => u.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(b.G.units.every(u => u.hp >= 0 && u.hp <= u.maxHp));
+}
+test('魔王として戦う: ユーザー対戦では選んだチームに入り、途中参加でも魔王を選べる。決着はチーム全滅', async () => {
+  const b = mkb();
+  b.start({ players: [{ name: 'A', job: 'warrior', team: 'p', pid: 'a' }, { name: 'M', job: 'boss2', team: 'e', pid: 'm' }], mode: 'pvp' });
+  assert.equal(b.G.units.find(u => u.name === 'M').side, 'e');
+  assert.equal(b.join({ name: 'N', job: 'boss4', team: 'c', pid: 'n' }), true);
+  const n = b.G.units.find(u => u.name === 'N');
+  assert.deepEqual([n.isBoss, n.human, n.side], [true, true, 'c']);
+  assert.equal(n.maxHp, Math.ceil(BOSS[4].hp(JOB.warrior.atk)));
+  for (const x of ['A', 'M']) { const u = b.G.units.find(z => z.name === x); u.alive = false; u.hp = 0; }
+  await b.skip();
+  assert.equal(b.G.over, 'teamc');
+});
+test('魔王として戦う: 魔王だけを選んだ参加者がいて、相手の指定がなくても、チーム戦のルールで始まる', () => {
+  const b = mkb();
+  b.start({ players: [{ name: 'M', job: 'boss1', pid: 'm' }, { name: 'A', job: 'warrior', pid: 'a' }], mode: 'cpu', foes: [] });
+  assert.equal(b.G.mode, 'pvp'); assert.equal(b.G.cpu, true);
+});
+
+/* ================= CPUの頭脳（先読み） ================= */
+const aiBattle = (players, foes, extra = {}) => { const b = createBattle({ ask: async (t, o) => { const g = t.startsWith('🛡') ? o.find(x => x.cls === 'ghost') : null; if (g) return g.value; return (o.find(x => !x.disabled && x.cls !== 'ghost') ?? o[0]).value; }, toast() {}, changed() {}, random: () => 0.5 }); b.start({ players, mode: 'cpu', foes, cpuAuto: true, ...extra }); return b; };
+test('CPUの頭脳: 倒せる相手がいれば、倒せる技で倒す（魔王1の技1=3ダメージで、体力2の人を狙う）', async () => {
+  const b = aiBattle([{ name: 'A', job: 'warrior' }, { name: 'B', job: 'monk' }, { name: 'C', job: 'tank' }], ['boss1']);
+  b.G.units.find(u => u.name === 'B').hp = 2;
+  await b.skip();
+  assert.equal(b.G.units.find(u => u.name === 'B').alive, false);
+  assert.ok(b.G.units.filter(u => u.alive && !u.isBoss).length === 2, '倒したのはBだけ');
+});
+test('CPUの頭脳: 体力が減った自分を回復できるなら、僧侶は回復する（攻撃より回復が得な場面）', async () => {
+  const b = aiBattle([{ name: 'A', job: 'warrior' }], ['monk']);
+  const m = b.G.units.find(u => u.cpu); m.hp = 1;
+  const a = b.G.units.find(u => u.name === 'A'); a.hp = 7;
+  await b.skip();
+  assert.ok(b.G.units.find(u => u.cpu).hp >= 4, '回復して体力が戻った');
+  assert.equal(b.G.units.find(u => u.name === 'A').hp, 7);
+});
+test('CPUの頭脳: 味方も巻き込む捨て身より、ふつうの攻撃を選ぶ。決着がつくなら迷わず倒す', async () => {
+  const b = aiBattle([{ name: 'A', job: 'warrior' }, { name: 'B', job: 'monk' }], ['warrior']);
+  await b.skip();
+  const cpu = b.G.units.find(u => u.cpu);
+  assert.equal(cpu.hp, cpu.maxHp, 'CPU戦士は自分を傷つける捨て身を使わない');
+  const c = aiBattle([{ name: 'A', job: 'monk' }], ['warrior']);
+  c.G.units.find(u => u.name === 'A').hp = 3;
+  await c.skip();
+  assert.equal(c.G.over, 'teame', '最後の1人を倒して決着');
+});
+test('CPUの頭脳: 複数のCPUのうち、いちばん効く1体だけが動く。動かないCPUは何もしない', async () => {
+  const b = aiBattle([{ name: 'A', job: 'warrior' }, { name: 'B', job: 'monk' }], ['bm', 'sage', 'bomb']);
+  const before = JSON.stringify(b.G.units.filter(u => u.cpu).map(u => u.hp));
+  await b.skip();
+  const acted = b.G.log.filter(l => l.m.includes('🤖')).length;
+  assert.equal(acted, 1);
+  assert.ok(b.G.log.some(l => l.m.includes('バトルマスター') && l.m.includes('🤖')), '必殺（8ダメージ）で倒せるバトルマスターが動く');
+});
+test('CPUの頭脳: 先読みは画面の状態に影響しない（先読み中は更新が出ず、状態も元のまま）', async () => {
+  const seen = [];
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed: g => seen.push(g), random: () => 0.5 });
+  b.start({ players: [{ name: 'A', job: 'warrior' }, { name: 'B', job: 'monk' }], mode: 'cpu', foes: ['boss1', 'warrior'], cpuAuto: true });
+  await b.skip();
+  await Promise.resolve();
+  for (const g of seen) for (const u of g.units) assert.ok(u.hp >= 0 && u.hp <= u.maxHp);
+  const total = b.G.units.filter(u => !u.cpu && !u.isBoss).reduce((s, u) => s + (7 - u.hp), 0);
+  assert.ok(total > 0 && total <= 8, '1体ぶんの行動のダメージだけ');
+});

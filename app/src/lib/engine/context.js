@@ -12,8 +12,12 @@ export function createContext({ ui, getG, emit }) {
   // CPU（魔王・CPUの職業ユニット）の行動中は、選択を自動で決める。ただし「誰が選ぶか」を指定した選択（タンクの庇いなど）は人に聞く
   let auto = null;
   const setAuto = u => { auto = u; };
+  // 先読み（シミュレーション）中は、すべての選択を自動で決める。人には聞かない。庇いは使わない前提で評価する
+  let sim = false;
+  const setSim = v => { sim = v; };
   const ask = (title, options, opts = {}) => {
-    if (auto && opts.actor == null) return Promise.resolve(autoPick(title, options, auto));
+    if (sim && title.startsWith('🛡')) return Promise.resolve(null);
+    if ((auto && opts.actor == null) || (sim && auto)) return Promise.resolve(autoPick(title, options, auto));
     return ui.ask(title, options, { actor, ...opts });
   };
   const pickOf = list => list[Math.floor(rand() * list.length)];
@@ -221,6 +225,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    ask, setActor, setAuto, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }

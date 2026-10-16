@@ -1,8 +1,8 @@
 // 進行役の準備画面で使う純粋なロジック（名簿の同期・開始条件・ジャンルの解析）。画面に依存しないのでテストできる
-import { SELECTABLE } from './engine.js';
+import { SELECTABLE, bossIdOf } from './engine.js';
 
 /** 職業名が不正なときは戦士にする（サーバーから届く値の安全対策） */
-export const validJob = j => (SELECTABLE.includes(j) ? j : 'warrior');
+export const validJob = j => (SELECTABLE.includes(j) || bossIdOf(j) ? j : 'warrior');
 
 /**
  * サーバーの参加者一覧(lobby)を名簿(roster)に反映する。roster は配列そのものを書き換える。

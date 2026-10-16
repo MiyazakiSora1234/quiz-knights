@@ -216,7 +216,7 @@ export class HostStore {
   }
   select(id) {
     const G = this.battle.G; if (!G) return;
-    if (Object.values(G.pids ?? {}).includes(id)) return;   // 参加者は早押しで決まる。進行役は選べない
+    return;   // 回答者は早押しで決まり、CPUは自動で動く。進行役がユニットを選んで回答者にすることはない
     if (G.sel === id) { this.battle.select(null); this.reopen(); return; }
     if (this.battle.select(id)) this.conn.send({ t: 'lock' });
   }

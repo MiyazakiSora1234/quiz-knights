@@ -329,7 +329,7 @@ export class Room extends DurableObject {
     this.lobby();
   }
   async setLevel(v) {
-    if (!['weak', 'normal', 'strong'].includes(v) || v === (this.R.level ?? 'normal')) return;
+    if (!['weak', 'normal', 'strong', 'extreme'].includes(v) || v === (this.R.level ?? 'normal')) return;
     this.R.level = v;
     await this.save();
     this.lobby();

@@ -71,7 +71,7 @@ export function checkInvariants(G, ctx = '') {
     if (u.maxHp < 1) fail(`${u.name} の最大HPが1未満`);
     if (u.atk < 0) fail(`${u.name} の攻撃力が負`);
     if (u.side !== 'p' && u.side !== 'e' && u.side !== 'c') fail(`${u.name} の陣営が不正`);
-    if (u.isBoss && u.side !== 'e') fail('魔王が敵陣営でない');
+    if (u.isBoss && !u.human && u.side !== 'e') fail('魔王が敵陣営でない');
     if (u.alive) {
       if (!(u.hp >= 1 && u.hp <= u.maxHp)) fail(`${u.name} は生存だが HP=${u.hp}/${u.maxHp}`);
       if (u.ghost) fail(`${u.name} が生存かつ幽霊`);

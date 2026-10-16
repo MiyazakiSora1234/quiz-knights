@@ -1014,7 +1014,7 @@ for (const [who, foes, want] of [
     host.send({ t: 'close' });
   });
 }
-for (const [level, ok] of [['weak', true], ['strong', true], ['normal', true], ['extreme', false], ['', false], [null, false]]) {
+for (const [level, ok] of [['weak', true], ['strong', true], ['normal', true], ['extreme', true], ['ultra', false], ['', false], [null, false]]) {
   test(`難易度の共有: ${JSON.stringify(level)} → ${ok ? '反映' : '無視'}`, async () => {
     const { id, host } = await makeRoom();
     const p = await joinPlayer(id, 'A');

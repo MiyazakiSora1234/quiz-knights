@@ -1,6 +1,6 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, GENRES, LEVELS, jobName, nm, bossHp } from './data.js';
+import { CANCEL, JOB, BOSS, GENRES, LEVELS, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
 
@@ -8,11 +8,11 @@ import { buildActions } from './jobs.js';
 const TEAM_ORDER = { p: 0, e: 1, c: 2 };
 
 export function createBattle(ui) {
-  let G = null, undoStack = [], busy = false, pending = false;
+  let G = null, undoStack = [], busy = false, pending = false, simulating = false;
 
   /** 変化を画面へ知らせる（同じ瞬間の変化は1回にまとめる） */
   const emit = () => {
-    if (pending) return;
+    if (pending || simulating) return;       // 先読み中の状態は画面に出さない
     pending = true;
     queueMicrotask(() => { pending = false; ui.changed(G ? JSON.parse(JSON.stringify(G)) : null); });
   };
@@ -55,9 +55,88 @@ export function createBattle(ui) {
     if (events.length) { log('☠ 毒のダメージ', 'sys'); await applyEvents(events); }
   }
 
-  /** CPU（魔王・CPUの職業ユニット）は、1問ごとに自動で1回行動する（行動も対象も自動で決まる） */
+  /** 先読みで決めた計画を実行する。計画がなければ（行動できる手がない）何もしない */
+  async function runPlan(a, plan) {
+    if (!plan) return { label: '何もしない', desc: '', names: [] };
+    const act = buildActions(ctx, a)[plan.ai];
+    const targets = plan.ids.map(id => G.units.find(u => u.id === id)).filter(Boolean);
+    if (!act || targets.length !== plan.ids.length) return chooseAndRunAction(a);      // 状況が変わっていたら、従来の自動選択に戻す
+    await act.run(targets);
+    return { label: act.label, desc: act.desc, names: targets.map(t => t.name) };
+  }
+
+  /** CPU（魔王・CPUの職業ユニット）のうち1体が、1問ごとに自動で1回行動する（誰が動くか・行動・対象は自動で決まる） */
+  /* ---------- CPUの頭脳（先読み） ---------- */
+  /** 盤面の良さ（side から見て）: 味方の体力が多く、敵の体力が少ないほど高い。敵の全滅・味方の全滅は決定的 */
+  function evaluate(g, side) {
+    let v = 0;
+    const foes = g.units.filter(u => u.alive && u.side !== side), mine = g.units.filter(u => u.alive && u.side === side);
+    if (!foes.length) v += 500;
+    if (!mine.length) v -= 500;
+    for (const u of g.units) {
+      const sign = u.side === side ? 1 : -1;
+      if (!u.alive) { v -= sign * 5; continue; }       // 倒した敵は大きな得点、倒された味方は大きな失点（倒せる手を最優先する）
+      v += sign * (u.hp + 2 + (u.isBoss ? 3 : 0) + u.atk * 0.4);
+      if (sign < 0) {                                            // 敵への状態異常は得点
+        if (u.poison > 0) v += 1.5;
+        if (u.restNext) v += 2;
+        if (u.mine) v += 1;
+        if (u.barrier > 0) v -= 1.5;
+      } else if (u.barrier > 0) v += 1.5;
+    }
+    return v;
+  }
+  /** すべての行動 × 対象の組み合わせ（行動の番号と対象のid）を挙げる */
+  function enumeratePlans(a) {
+    const acts = buildActions(ctx, a);
+    const plans = [];
+    acts.forEach((act, ai) => {
+      if (act.disabled) return;
+      const walk = (k, picked) => {
+        if (k === act.prompts.length) { plans.push({ ai, ids: picked.map(u => u.id) }); return; }
+        for (const u of G.units.filter(x => act.prompts[k].f(x, picked))) walk(k + 1, [...picked, u]);
+      };
+      walk(0, []);
+    });
+    return plans;
+  }
+  /** a の最良の計画を先読みで探す: 各計画を状態の複製で試し、盤面の良さが最大のものを選ぶ（同点・僅差はランダム） */
+  async function bestPlan(a) {
+    const plans = enumeratePlans(a);
+    if (!plans.length) return null;
+    const real = G, snap = JSON.stringify({ ...G, log: [] });
+    let best = null;
+    simulating = true;
+    try {
+      for (const pl of plans) {
+        G = JSON.parse(snap);
+        const a2 = G.units.find(u => u.id === a.id);
+        ctx.setSim(true); ctx.setAuto(a2);
+        try {
+          const act = buildActions(ctx, a2)[pl.ai];
+          await act.run(pl.ids.map(id => G.units.find(u => u.id === id)));
+          checkEnd();
+        } catch { G = real; continue; } finally { ctx.setSim(false); ctx.setAuto(null); }
+        const score = evaluate(G, a.side) + ctx.rand() * 0.6;      // わずかな揺らぎ（同じ手ばかりにならないように）
+        if (!best || score > best.score) best = { ...pl, score };
+      }
+    } finally { G = real; simulating = false; ctx.setSim(false); }
+    return best;
+  }
+
+  /** CPU（魔王・CPUの職業ユニット）のうち1体が、1問ごとに自動で1回行動する。先読みで「いちばん効く動き」をするCPUと、その行動・対象を選ぶ */
   async function cpuTurn() {
-    const cpus = G.units.filter(u => (u.isBoss || u.cpu) && u.alive && !u.restNow);
+    const all = G.units.filter(u => (u.isBoss || u.cpu) && !u.human && u.alive && !u.restNow);   // 参加者が操作する魔王は自動で動かない
+    let cpus = [], plan = null;
+    if (all.length) {
+      let top = null;
+      for (const u of all) {
+        const pl = await bestPlan(u);
+        if (pl && (!top || pl.score > top.pl.score)) top = { u, pl };
+      }
+      if (top) { cpus = [top.u]; plan = top.pl; }
+      else cpus = [all[Math.min(all.length - 1, Math.floor(ctx.rand() * all.length))]];
+    }
     for (const u of cpus) {
       if (G.over) return;
       const cur = G.units.find(x => x.id === u.id);
@@ -69,12 +148,19 @@ export function createBattle(ui) {
       let did = null;
       ctx.setAuto(cur);
       try {
-        if (!(await stepOnMine(cur))) { did = await chooseAndRunAction(cur); await afterAction(cur); }
+        if (!(await stepOnMine(cur))) { did = await runPlan(cur, plan); await afterAction(cur); }
         else did = { label: '地雷を踏んで行動できない', names: [] };
       } finally { ctx.setAuto(null); }
-      const text = did ? `${cur.name} の${did.label.startsWith('地雷') ? '' : ' '}${did.label}${did.names.length ? ' → ' + did.names.join('・') : ''}${did.fizzled ? '（不発）' : ''}` : '';
+      // 通知: 1行目「誰の何」、2行目「どうなるか（対象）」。ラベルに説明（かっこ）が付いていなければ説明文を足す
+      let text = '', detail = '';
+      if (did) {
+        const short = did.label.replace(/（.*?）/g, '');
+        text = `${cur.name} の ${did.label.startsWith('地雷') ? did.label : short}`;
+        const inner = (/（(.*?)）/.exec(did.label) || [])[1];
+        detail = [inner || did.desc, did.names.length ? `対象：${did.names.join('・')}` : '', did.fizzled ? '（対象がいないため不発）' : ''].filter(Boolean).join('　');
+      }
       G.acting = null;
-      if (text) { G.noticeSeq = (G.noticeSeq || 0) + 1; G.notice = { id: G.noticeSeq, text, side: cur.side }; }
+      if (text) { G.noticeSeq = (G.noticeSeq || 0) + 1; G.notice = { id: G.noticeSeq, text, detail, side: cur.side }; }
       emit();
       if (ui.pause) await ui.pause(1400);
       checkEnd();
@@ -129,15 +215,15 @@ export function createBattle(ui) {
       { label: '何もしない', value: -1, cls: 'ghost' },
     ];
     const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : '行動を選んでください' });
-    if (c < 0) return { label: '何もしない', names: [] };
+    if (c < 0) return { label: '何もしない', desc: '', names: [] };
     const act = acts[c], picked = [];
     for (const p of act.prompts) {
       const t = await ctx.pickUnit(p.label, p.f, picked);
-      if (!t) { log('対象がいないため不発'); return { label: act.label, names: [], fizzled: true }; }
+      if (!t) { log('対象がいないため不発'); return { label: act.label, desc: act.desc, names: [], fizzled: true }; }
       picked.push(t);
     }
     await act.run(picked);
-    return { label: act.label, names: picked.map(t => t.name) };
+    return { label: act.label, desc: act.desc, names: picked.map(t => t.name) };
   }
 
   /** 行動のあとの後始末（盗賊のジャンル選択・見習いの成長・幽霊の成仏） */
@@ -179,7 +265,7 @@ export function createBattle(ui) {
   /** 誤答の罰（役職に関係なく2ダメージ。幽霊・魔王の設定・軍師の加護・道化師は例外） */
   async function wrongPenalty(a) {
     if (a.ghost) { a.ghost = false; a.ghostUsed = true; log(`👻 ${a.name} は成仏した`, 'sys'); return; }
-    if (a.isBoss && !G.cfg.bossPenalty) { log('魔王は誤答ペナルティなし'); return; }
+    if (a.isBoss && !a.human && !G.cfg.bossPenalty) { log('魔王は誤答ペナルティなし'); return; }
     if (a.noWrong) { a.noWrong = false; log(`📜 ${a.name} は作戦で誤答ダメージを受けない`, 'sys'); return; }
     if (a.job === 'jester' && G.units.some(u => u.alive && u !== a)) { await jesterPush(a); return; }
     await applyEvents([{ src: null, to: a, amt: 2 }]);
@@ -237,20 +323,29 @@ export function createBattle(ui) {
     start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'normal' }) {
       if (!LEVELS[level]) level = 'normal';
       // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
-      const squad = mode === 'cpu' && foes.length > 0;
+      const hasBossPlayer = players.some(p => bossIdOf(p.job));      // 魔王を選んだ参加者がいるときも、チーム戦のルールで進める
+      const squad = mode === 'cpu' && (foes.length > 0 || hasBossPlayer);
       if (squad) mode = 'pvp';
       G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
             genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level } };
       const pvp = mode === 'pvp';
+      const humanBosses = [];
       for (const p of players) {
-        const u = mkPlayer(p.name.trim(), p.job);
+        const bid = bossIdOf(p.job);
+        const u = bid ? mkBoss(bid, 1) : mkPlayer(p.name.trim(), p.job);
+        if (bid) { u.name = p.name.trim(); u.human = true; humanBosses.push(u); }       // 参加者が操作する魔王
         if (pvp) u.side = squad ? 'p' : (TEAM_ORDER[p.team] != null ? p.team : 'p');
         G.units.push(u);
         if (p.pid) G.pids[p.pid] = u.id;
       }
+      // 参加者が操作する魔王の体力は、ほかの参加者の攻撃合計から決まる（難易度の影響は受けない）
+      if (humanBosses.length) {
+        const S0 = G.units.reduce((t, u) => t + (u.isBoss ? 0 : u.atk), 0);
+        for (const b of humanBosses) { b.S = S0; b.maxHp = b.hp = bossHp(S0, b.bossId); }
+      }
       if (squad) {
-        const count = {};
-        const S = G.units.reduce((s, u) => s + u.atk, 0);          // 魔王の体力はプレイヤーの攻撃合計から決まる
+        const count = {}, bossCount = {};
+        const S = G.units.reduce((s, u) => s + (u.isBoss ? 0 : u.atk), 0);
         for (const j of foes) {
           const bm = typeof j === 'string' && /^boss[0-9]+$/.test(j) ? +j.slice(4) : 0;
           if (bm && BOSS[bm]) { G.units.push(mkBoss(bm, S * LEVELS[level].hp)); continue; }   // 'boss3' = 魔王3
@@ -272,6 +367,7 @@ export function createBattle(ui) {
         G.units.push(b);
         log(`バトル開始！ ${b.name} (HP ${b.hp}) ／ プレイヤー攻撃合計 ${S}`, 'sys');
       }
+      if (pvp) checkEnd();                       // 相手が誰もいない構成なら、始まってすぐ決着
       log('── 第1問 ──', 'sys');
       undoStack = []; busy = false;
       ui.persist && ui.persist(G);
@@ -280,7 +376,13 @@ export function createBattle(ui) {
     /** 戦闘中に新しい参加者を加える（途中参戦）。魔王のHPは変えない。加えられたら true */
     join({ name, job = 'warrior', team = 'p', pid }) {
       if (!G || G.over || busy || (pid && G.pids[pid] != null)) return false;
-      const u = mkPlayer(String(name).trim() || '名無し', JOB[job] && job !== 'hero' ? job : 'warrior');
+      const bid = bossIdOf(job);
+      let u;
+      if (bid) {
+        u = mkBoss(bid, 1);
+        const S0 = G.units.reduce((t, x) => t + (x.isBoss ? 0 : x.atk), 0);
+        u.name = String(name).trim() || '名無し'; u.human = true; u.S = S0; u.maxHp = u.hp = bossHp(S0, bid);
+      } else u = mkPlayer(String(name).trim() || '名無し', JOB[job] && job !== 'hero' ? job : 'warrior');
       if (G.mode === 'pvp') {
         u.side = !G.cpu && TEAM_ORDER[team] != null ? team : 'p';
         // 自分のチームの最後尾（そのチームがなければ、順番が前のチームのあと）に入れる
@@ -292,7 +394,7 @@ export function createBattle(ui) {
         G.units.splice(b < 0 ? G.units.length : b, 0, u);
       }
       if (pid) G.pids[pid] = u.id;
-      log(`${u.name} が途中参戦！（${JOB[u.job].n}）`, 'sys');
+      log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);
       emit();
       return true;

@@ -49,6 +49,7 @@ export const LEVELS = {
   weak:   { n: '弱い',  hp: 0.7, dmg: -1, d: 'CPUの体力が7割に。CPUの与えるダメージが1少なくなる' },
   normal: { n: '普通',  hp: 1,   dmg: 0,  d: '基準の強さ' },
   strong: { n: '強い',  hp: 1.4, dmg: 1,  d: 'CPUの体力が1.4倍に。CPUの与えるダメージが1多くなる' },
+  extreme:{ n: '最強', hp: 2,   dmg: 2,  d: 'CPUの体力が2倍。CPUの与えるダメージが2多くなる' },
 };
 
 /**
@@ -96,6 +97,10 @@ export const BOSS = {
      traits:['技2は反動で自分も傷つくので、使うほど弱っていく'],
      d:'体力：攻撃合計×1.2。技1＝敵1人に5ダメージ／技2＝敵全体に2ダメージ（自分も1ダメージ）。'}
 };
+
+/** 参加者が魔王を選んで戦えるときの「職業キー」は 'boss1'〜'boss6'。魔王の番号を返す（そうでなければ 0） */
+export const bossIdOf = job => { const m = /^boss([0-9]+)$/.exec(String(job)); return m && BOSS[+m[1]] ? +m[1] : 0; };
+export const PLAYABLE_BOSS_KEYS = Object.keys(BOSS).map(id => 'boss' + id);
 
 export const jobName = u => u.isBoss ? `${BOSS[u.bossId].n}${BOSS[u.bossId].forms.length > 1 ? '・' + BOSS[u.bossId].forms[u.form] : ''}` : JOB[u.job].n;
 export const nm = u => u.name + (u.isBoss ? '' : `(${JOB[u.job].n})`);

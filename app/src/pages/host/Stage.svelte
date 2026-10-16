@@ -25,7 +25,8 @@
     return out;
   });
   const isHuman = u => Object.values(G.pids ?? {}).includes(u.id);
-  const canPick = u => !isHuman(u) && (u.alive || u.ghost) && !u.restNow && !G.over && !host.busy;
+  // 回答者は早押しで決まり、CPUは自動で動く。進行役がカードを選んで回答者にすることはない
+  const canPick = () => false;
 </script>
 
 {#snippet card(u, seat)}

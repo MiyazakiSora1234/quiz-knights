@@ -3,18 +3,16 @@
   import { flip } from 'svelte/animate';
   import { tick } from 'svelte';
   import { icon } from '../../lib/icons.js';
-  import { JOB, SELECTABLE, BOSS } from '../../lib/engine.js';
-  import FoePicker from '../../components/FoePicker.svelte';
+  import { JOB, SELECTABLE, BOSS, PLAYABLE_BOSS_KEYS, bossIdOf } from '../../lib/engine.js';
   import { panel, confirmAsk } from '../../lib/ui.svelte.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
   let { p } = $props();   // PlayStore
-  let foeDlg = $state(false);
-  const foeName = f => (/^boss\d+$/.test(f) ? BOSS[+f.slice(4)]?.n : JOB[f]?.n) ?? f;
-  const foeIcon = f => (/^boss\d+$/.test(f) ? f : f);
   let dlg = $state(false), n = $state(''), f = $state(''), rn = $state(''), rp = $state('');
   let msg = $state(''), logEl = $state();
-  const jobKey = m => (SELECTABLE.includes(m.job) ? m.job : 'warrior');
+  const jobKey = m => (SELECTABLE.includes(m.job) || bossIdOf(m.job) ? m.job : 'warrior');
+  const jobN = k => (bossIdOf(k) ? BOSS[bossIdOf(k)].n : JOB[k].n);
+  const jobD = k => (bossIdOf(k) ? `${BOSS[bossIdOf(k)].intro}（魔王として戦います。体力は、ほかの参加者の攻撃力の合計で決まります）` : JOB[k].d);
 
   function openSettings() { n = p.name; f = p.flavor; rn = p.roomName; rp = ''; dlg = true; }
   function save() {
@@ -47,17 +45,10 @@
         <span class="av">{@html icon(jobKey(m))}</span>
         <div class="mi">
           <b><span class="dot {m.online ? 'on' : ''}"></span><span class="nm">{m.name}</span><span class="tm {m.team === 'e' ? 'b' : m.team === 'c' ? 'c' : 'a'}">{m.team === 'e' ? 'B' : m.team === 'c' ? 'C' : 'A'}</span></b>
-          <small>{JOB[jobKey(m)].n}{m.flavor ? ` ・ ${m.flavor}` : ''}</small>
+          <small>{jobN(jobKey(m))}{m.flavor ? ` ・ ${m.flavor}` : ''}</small>
         </div>
       </div>
     {/each}
-  </div>
-
-  <div class="foesum">
-    <span class="bl">戦う相手</span>
-    <span class="fl">{#each p.foes as f, k (k)}<span class="fi1" title={foeName(f)}>{@html icon(foeIcon(f))}</span>{:else}<span class="none">未選択</span>{/each}</span>
-    <span class="fn">{p.foes.map(foeName).join('・') || ''}</span>
-    <button class="btn sm" onclick={() => (foeDlg = true)}>相手を選ぶ</button>
   </div>
 
   <div class="bottom">
@@ -77,15 +68,6 @@
   </div>
 </div>
 
-{#if foeDlg}
-  <div class="back" role="presentation" onclick={(e) => e.target === e.currentTarget && (foeDlg = false)} transition:fade={{ duration: 120 }}>
-    <div class="dialog" in:fly={{ y: 14, duration: 180 }}>
-      <div class="dh2"><h3>戦う相手を選ぶ</h3><button class="btn sm" onclick={() => (foeDlg = false)}>閉じる</button></div>
-      <FoePicker who={p} title="戦う相手" />
-    </div>
-  </div>
-{/if}
-
 {#if dlg}
   <div class="back" role="presentation" onclick={(e) => e.target === e.currentTarget && (dlg = false)} transition:fade={{ duration: 120 }}>
     <div class="dialog panel" in:fly={{ y: 14, duration: 180 }}>
@@ -98,7 +80,13 @@
           <button class="job" class:sel={p.myJob === j} onclick={() => p.pickJob(j)}><span class="e">{@html icon(j)}</span><span><b>{JOB[j].n}</b><small>ATK{JOB[j].atk} / HP{JOB[j].hp}</small></span></button>
         {/each}
       </div>
-      <div class="jobdesc">{JOB[p.myJob].d}</div>
+      <div class="step">魔王として戦う</div>
+      <div class="jobs">
+        {#each PLAYABLE_BOSS_KEYS as k}
+          <button class="job boss" class:sel={p.myJob === k} onclick={() => p.pickJob(k)}><span class="e">{@html icon(k)}</span><span><b>{BOSS[bossIdOf(k)].n}</b><small>魔王</small></span></button>
+        {/each}
+      </div>
+      <div class="jobdesc">{jobD(p.myJob)}</div>
       <div class="step">チーム（ユーザー対戦のときだけ使われます）</div>
       <div class="seg wide teams"><button class="ta" class:sel={p.myTeam === 'p'} onclick={() => p.pickTeam('p')}>チームA</button><button class="tb" class:sel={p.myTeam === 'e'} onclick={() => p.pickTeam('e')}>チームB</button><button class="tc" class:sel={p.myTeam === 'c'} onclick={() => p.pickTeam('c')}>チームC</button></div>
       {#if !p.hasHost}
@@ -130,11 +118,6 @@
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
   .mi{min-width:0;flex:1}.mi b{display:flex;align-items:center;gap:6px;min-width:0}.mi .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi .dot{flex:none}
   .mi small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .foesum{flex:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;background:var(--s1);padding:8px 10px}
-  .bl{font-weight:700;color:var(--gold);font-size:.85rem}
-  .fl{display:flex;gap:3px;flex-wrap:wrap}.fi1{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#120f0c;border:1.5px solid var(--red-d);font-size:.95rem}
-  .fn{flex:1;min-width:0;color:var(--mut);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .dh2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   .bottom{flex:none;display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
   .chat{display:flex;flex-direction:column;gap:8px;min-width:0}
   .log{height:150px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:6px 10px;font-size:.88rem}
@@ -160,6 +143,7 @@
   .step{color:var(--mut);font-size:.86rem;margin-top:10px}
   .jobs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}
   .job{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:center}
+  .job.boss .e{border-radius:50%}
   .job.sel{background:#3a2f1a;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
   .e{font-size:1.6rem;flex:none}.job b{display:block;font-size:.92rem}.job small{color:var(--mut)}
   .jobdesc{color:var(--mut);font-size:.88rem;margin:4px 0 10px;padding:8px 10px;border-left:3px solid var(--gold);background:#0003;border-radius:0 8px 8px 0}

@@ -82,10 +82,9 @@ select.input{padding-right:8px}
 .unit .tag.warn{border-color:var(--gold);color:var(--gold)}.unit .tag.rank1{background:var(--gold);border-color:var(--gold);color:#2a1c06;font-weight:800}.unit .tag.rank{border-color:#7fd6e8;color:#7fd6e8}
 .unit .ribbon{position:absolute;top:0;left:0;right:0;z-index:2;background:var(--gold);color:#2a1c06;font-size:.72rem;font-weight:800;letter-spacing:.08em;padding:2px 0;line-height:1.3}
 .unit.sel .seat{color:#2a1c06}
-.unit.hit{animation:hit .5s}.unit.heal{animation:heal .6s}
 @keyframes hit{0%,100%{transform:none}20%{transform:translateX(-6px)}60%{transform:translateX(6px)}}
 @keyframes heal{50%{filter:drop-shadow(0 0 12px #4fb06c)}}
-.float{position:absolute;left:50%;top:28%;transform:translateX(-50%);font-weight:800;font-size:1.6rem;pointer-events:none;animation:fl 1.1s forwards;z-index:5;text-shadow:0 2px 4px #000}
+.float{position:absolute;left:50%;top:22%;transform:translateX(-50%);font-weight:900;font-size:2.1rem;-webkit-text-stroke:1px #000;pointer-events:none;animation:fl 1.1s forwards;z-index:5;text-shadow:0 2px 4px #000}
 .float.d{color:#ff7b86}.float.h{color:#8cf0a8}
 @keyframes fl{to{transform:translate(-50%,-38px);opacity:0}}
 
