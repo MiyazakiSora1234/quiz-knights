@@ -249,6 +249,11 @@ export class Room extends DurableObject {
         for (const s of this.playerWs(to)) send(s, { t: 'ask', qid, title, sub, options });
         return;
       }
+      case 'priv': {                                      // 本人だけに見せる情報（持ち物など）。その人の端末にだけ送る
+        if (!Array.isArray(m.items)) return;
+        for (const s of this.playerWs(m.to)) send(s, { t: 'priv', items: m.items.filter(x => typeof x === 'string').slice(0, 40) });
+        return;
+      }
       case 'ask_close': this.toPlayers({ t: 'ask_close', qid: m.qid }); return;
       case 'set_delay': return this.setDelay(m.pid, m.delay);
       case 'set_foes': return this.setFoes(m.foes);

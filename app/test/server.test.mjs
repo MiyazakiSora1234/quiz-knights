@@ -1056,3 +1056,19 @@ test('進行役を譲る: 譲った人は、そのまま参加者として部屋
   await sleep(200);
   assert.equal((await api())[id - 1].count, 1, '譲られた人は進行役になり、譲った人が参加者になる');
 });
+
+test('持ち物の配信: 進行役 → 本人だけに届き、ほかの参加者には届かない。壊れた値は無視される', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'priv', to: a.pid, items: ['potion', 'bomb', 5, null] });
+  const got = await a.wait('priv');
+  assert.deepEqual(got.items, ['potion', 'bomb']);
+  await sleep(150);
+  assert.equal(b.has('priv'), false);
+  host.send({ t: 'priv', to: a.pid, items: 'x' });          // 配列でなければ無視
+  await sleep(150);
+  b.send({ t: 'priv', to: a.pid, items: ['bomb'] });          // 参加者からは送れない
+  await sleep(150);
+  assert.equal(a.has('priv'), false, '無視された送信は届かない');
+  host.send({ t: 'close' });
+});

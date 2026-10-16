@@ -80,7 +80,7 @@
     </div>
   </div>
 
-  <div class="a-me"><MePanel me={p.me} /></div>
+  <div class="a-me"><MePanel me={p.me} items={p.myItems} /></div>
 
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>

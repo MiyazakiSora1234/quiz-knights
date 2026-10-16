@@ -22,6 +22,7 @@ export class PlayStore {
   members = $state([]);
   answered = $state(null);        // 最後に送ったチャット回答 {q,text}
   ranks = $state({});             // この問題の早押しの順位 pid → 表示用のタグ
+  myItems = $state([]);           // 自分の持ち物（アイテムのキー。本人にだけ届く）
   req = $state(null);             // 自分が選ぶ場面（行動・対象など）{qid,title,sub,options}
   foes = $state(['boss1']);       // 部屋で選ばれている戦う相手（魔王・職業のCPU。誰でも変えられる）
   level = $state('normal');       // 難易度（誰でも変えられる）
@@ -119,12 +120,13 @@ export class PlayStore {
       case 'joined': return this.#onJoined(m);
       case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; if (Array.isArray(m.foes)) this.foes = [...m.foes]; if (m.level) this.level = m.level; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
       case 'ask': this.req = m; if (typeof navigator.vibrate === 'function') vib(40); sfx.open(); return;
+      case 'priv': this.myItems = m.items ?? []; return;
       case 'answer_ack': this.answered = { q: m.q, text: m.text }; return;
       case 'ask_close': if (this.req?.qid === m.qid) this.req = null; return;
       case 'chat': this.chat = [...this.chat, m].slice(-100); return;
       case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
-      case 'ended': this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
+      case 'ended': this.myItems = []; this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
         this.ranks = {}; this.open = true; this.chain = !!m.chain; this.eligible = m.eligible; this.sent = false; this.winner = null;
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
