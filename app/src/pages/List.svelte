@@ -3,7 +3,7 @@
   import { fade, scale, fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { wsUrl } from '../lib/net.js';
-  import { toast, panel } from '../lib/ui.svelte.js';
+  import { panel } from '../lib/ui.svelte.js';
   import { store, session, KEY } from '../lib/storage.js';
 
   let rooms = $state(null);

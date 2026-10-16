@@ -1,6 +1,5 @@
 <script>
   import { icon } from '../../lib/icons.js';
-  import { JOB } from '../../lib/engine.js';
   import JobSelect from '../../components/JobSelect.svelte';
 
   /** 名簿の1行。p は名簿の要素（直接書き換える）。pvp のときはチームも選べる */

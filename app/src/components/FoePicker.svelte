@@ -1,7 +1,7 @@
 <script>
   import { slide } from 'svelte/transition';
   import { icon } from '../lib/icons.js';
-  import { JOB, SELECTABLE, BOSS, LEVELS } from '../lib/engine.js';
+  import { SELECTABLE, BOSS, LEVELS } from '../lib/engine.js';
   import OptionSelect from './OptionSelect.svelte';
   import JobSelect from './JobSelect.svelte';
   import PresetSelect from './PresetSelect.svelte';

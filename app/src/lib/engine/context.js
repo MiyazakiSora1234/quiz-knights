@@ -115,7 +115,6 @@ export function createContext({ ui, getG, emit }) {
     unit: { job: iconKey(u), side: isFoe(u) ? 'e' : 'p', alive: u.alive },
     ...extra,
   });
-  /** 条件 f に合うユニットから1人選ばせる。候補がいなければ null */
   /** 対象の選択で「戻る」を選んだときの値（行動の選び直しに戻る） */
   const BACK = '__back__';
   /** 条件 f に合うユニットから1人選ばせる。候補がいなければ null。opts.back なら「行動を選びなおす」も出す（人が選ぶときだけ） */

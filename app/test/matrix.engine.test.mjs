@@ -2,7 +2,7 @@
 // 1ケース = 1テスト。落ちたときに「どの組み合わせか」が名前でわかるようにしてある
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SELECTABLE, JOB, BOSS, LEVELS, createBattle, bossHp } from '../src/lib/engine.js';
+import { SELECTABLE, JOB, BOSS, LEVELS, bossHp } from '../src/lib/engine.js';
 import { harness, rng, checkInvariants, CANCEL } from './harness.mjs';
 
 const JOBS = SELECTABLE;

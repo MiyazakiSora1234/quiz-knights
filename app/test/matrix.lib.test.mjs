@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BuzzRound, clampRtt } from '../../src/server/buzz.js';
 import { TOLERANCE_MIN_MS, TOLERANCE_MAX_MS, TOLERANCE_MARGIN_MS, DEFAULT_RTT_MS, TS_MAX_PAST_MS, RTT_MAX_MS } from '../../src/server/config.js';
-import { SELECTABLE, JOB, createBattle } from '../src/lib/engine.js';
+import { SELECTABLE, JOB } from '../src/lib/engine.js';
 import { publicState, eligibleDelays } from '../src/lib/publish.js';
 import { syncRoster, startBlock, validJob } from '../src/lib/roster.js';
 import { harness, rng, checkInvariants } from './harness.mjs';

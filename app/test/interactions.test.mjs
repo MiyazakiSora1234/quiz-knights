@@ -1,8 +1,8 @@
 // 組み合わせ・端の条件を狙った個別テスト
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { JOB, SELECTABLE, BOSS, statusTags, createBattle } from '../src/lib/engine.js';
-import { harness, checkInvariants, CANCEL, P } from './harness.mjs';
+import { JOB, SELECTABLE, statusTags } from '../src/lib/engine.js';
+import { harness, checkInvariants, P } from './harness.mjs';
 
 const dead = (h, n) => { const u = h.u(n); u.hp = 0; u.alive = false; };
 const labels = h => h.asked.at(-1).opts.map(o => o.label);

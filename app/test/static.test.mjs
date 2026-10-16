@@ -121,3 +121,20 @@ test('[静的] 画面が使う CSS 変数は、テーマで定義されている
     for (const m of read(f).matchAll(/var\(--([\w-]+)/g)) assert.ok(defined.has(m[1]) || local.has(m[1]), `${rel(f)} が未定義の CSS 変数 --${m[1]} を使っている`);
   }
 });
+
+test('[静的] 使われていない import がない（Svelte・JS）', () => {
+  const bad = [];
+  for (const f of files) {
+    const s = read(f);
+    for (const m of s.matchAll(/import\s+([^;]*?)\s+from\s+['"][^'"]+['"]/gs)) {
+      const names = [];
+      const br = /\{([^}]*)\}/.exec(m[1]);
+      if (br) names.push(...br[1].split(',').map(x => x.trim().split(/\s+as\s+/).pop().trim()).filter(Boolean));
+      const rest = m[1].replace(/\{[^}]*\}/, '').replace(/,/g, ' ').replace(/\*\s*as\s+/, '').trim();
+      if (rest) names.push(rest);
+      const body = s.slice(0, m.index) + s.slice(m.index + m[0].length);
+      for (const n of names) if (!new RegExp(`(?<![\w$])${n.replace(/\$/g, '\$')}(?![\w$])`).test(body)) bad.push(`${rel(f)}: ${n}`);
+    }
+  }
+  assert.deepEqual(bad, [], '使われていない import');
+});

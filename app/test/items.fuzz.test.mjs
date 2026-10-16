@@ -1,7 +1,7 @@
 // アイテムの入念なテスト: ランダム戦闘（取り消し・キャンセル・途中参戦・離脱込み）、全職業×全アイテム、他の効果との組み合わせ
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBattle, SELECTABLE, ITEMS, ITEM_KEYS, BOSS, recommendedHpScale, statusTags } from '../src/lib/engine.js';
+import { createBattle, SELECTABLE, ITEM_KEYS, BOSS, recommendedHpScale, statusTags } from '../src/lib/engine.js';
 import { publicState, eligibleDelays } from '../src/lib/publish.js';
 import { rng, checkInvariants, CANCEL } from './harness.mjs';
 

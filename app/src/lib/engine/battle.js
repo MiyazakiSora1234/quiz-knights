@@ -1,9 +1,10 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, GENRES, LEVELS, ITEMS, squadFoeScale, isSquadFoes, ITEM_KEYS, jobName, nm, bossHp, bossIdOf } from './data.js';
+import { CANCEL, JOB, BOSS, GENRES, LEVELS, squadFoeScale, isSquadFoes, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
-import { buildItemActions } from './items.js';
+import { buildItemActions, dealItems } from './items.js';
+import { evaluate } from './ai.js';
 
 /** チームの並び順（A=p / B=e / C=c） */
 const TEAM_ORDER = { p: 0, e: 1, c: 2 };
@@ -31,14 +32,20 @@ export function createBattle(ui) {
     return baseUnit({ name: BOSS[id].n, job: 'boss', side: 'e', isBoss: true, bossId: id, form: 0, S, atk: 0, maxHp: hp, hp, guards: 0 });
   };
 
-  /** アイテムをランダムに n 個配る（重みつき）。魔王とCPUには配らない */
-  function dealItems(u, n) {
-    if (!(n > 0) || u.isBoss || u.cpu) return;
-    const total = ITEM_KEYS.reduce((s, k) => s + ITEMS[k].w, 0);
-    u.items = [];
-    for (let i = 0; i < n; i++) {
-      let r = ctx.rand() * total;
-      u.items.push(ITEM_KEYS.find(k => (r -= ITEMS[k].w) < 0) ?? ITEM_KEYS[0]);
+  /** 魔王の代わりに、相手チームとして CPU（魔王 'boss3' や職業）を加える。体力は難易度と敵の数で変わる */
+  function addFoes(foes, level) {
+    const count = {}, fs = isSquadFoes(foes) ? squadFoeScale(foes.length) : 1;
+    const S = G.units.reduce((s, u) => s + (u.isBoss ? 0 : u.atk), 0);
+    for (const j of foes) {
+      const bm = typeof j === 'string' && /^boss[0-9]+$/.test(j) ? +j.slice(4) : 0;
+      if (bm && BOSS[bm]) { G.units.push(mkBoss(bm, S * LEVELS[level].hp * fs)); continue; }   // 'boss3' = 魔王3
+      const key = JOB[j] && j !== 'hero' ? j : 'warrior';
+      count[key] = (count[key] || 0) + 1;
+      const total = foes.filter(x => x === j).length;
+      const u = mkPlayer(`CPU${JOB[key].n}${total > 1 ? count[key] : ''}`, key);
+      u.side = 'e'; u.cpu = true;
+      u.maxHp = u.hp = Math.max(1, Math.ceil(u.maxHp * LEVELS[level].hp * fs));      // 難易度でCPUの体力が変わる
+      G.units.push(u);
     }
   }
 
@@ -67,27 +74,7 @@ export function createBattle(ui) {
     if (events.length) { log('☠ 毒のダメージ', 'sys'); await applyEvents(events); }
   }
 
-  /** CPU（魔王・CPUの職業ユニット）のうち1体が、1問ごとに自動で1回行動する（誰が動くか・行動・対象は自動で決まる） */
   /* ---------- CPUの頭脳（先読み） ---------- */
-  /** 盤面の良さ（side から見て）: 味方の体力が多く、敵の体力が少ないほど高い。敵の全滅・味方の全滅は決定的 */
-  function evaluate(g, side) {
-    let v = 0;
-    const foes = g.units.filter(u => u.alive && u.side !== side), mine = g.units.filter(u => u.alive && u.side === side);
-    if (!foes.length) v += 500;
-    if (!mine.length) v -= 500;
-    for (const u of g.units) {
-      const sign = u.side === side ? 1 : -1;
-      if (!u.alive) { v -= sign * 5; continue; }       // 倒した敵は大きな得点、倒された味方は大きな失点（倒せる手を最優先する）
-      v += sign * (u.hp + 2 + (u.isBoss ? 3 : 0) + u.atk * 0.4);
-      if (sign < 0) {                                            // 敵への状態異常は得点
-        if (u.poison > 0) v += 1.5;
-        if (u.restNext) v += 2;
-        if (u.mine) v += 1;
-        if (u.barrier > 0) v -= 1.5;
-      } else if (u.barrier > 0) v += 1.5;
-    }
-    return v;
-  }
   /** すべての行動 × 対象の組み合わせ（行動の番号と対象のid）を挙げる */
   function enumeratePlans(a) {
     const acts = buildActions(ctx, a);
@@ -201,7 +188,6 @@ export function createBattle(ui) {
     if (a.isBoss && a.bossId === 3 && a.hp === 1) heal(a, 5);
   }
 
-  /** 行動を選ばせて実行する。選択肢の対象を1つずつ聞き、足りなければ不発 */
   /** 画面に「誰が何をするか」を出す（行動の前に知らせてから、効果を適用する） */
   function announce(a, label, desc, names, fizzled = false) {
     const short = label.replace(/（.*?）/g, '');
@@ -227,51 +213,53 @@ export function createBattle(ui) {
     for (;;) {
       const acts = buildActions(ctx, a);
       const items = buildItemActions(ctx, a);
-      const noSpecial = acts.every(x => x.disabled);
-      const blocked = x => x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, [])));
-      const options = [
-        ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: blocked(x) })),
-        ...items.map((x, i) => ({ label: x.label, sub: `アイテム：${x.desc}（使っても行動は残る）`, value: 'item:' + i, cls: 'item', disabled: blocked(x) })),
-        { label: '何もしない', value: -1, cls: 'ghost' },
-      ];
-      const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : (items.length ? '行動を選んでください（🎒 アイテムも使えます）' : '行動を選んでください') });
+      const c = await ask(`${nm(a)} の行動`, actionMenu(acts, items), { sub: acts.every(x => x.disabled) ? '使える行動がありません' : (items.length ? '行動を選んでください（🎒 アイテムも使えます）' : '行動を選んでください') });
       if (typeof c === 'string' && c.startsWith('item:')) {
         const it = items[+c.slice(5)];
         if (!it) continue;
-        const got = await pickTargets(it);
-        if (got === ctx.BACK) continue;
-        const wasAlive = a.alive;
-        const at = a.items.indexOf(it.key);
-        if (at >= 0) a.items.splice(at, 1);
-        log(`🎒 ${a.name} は ${it.label} を使った`, 'sys');
-        ctx.fxUnit(a.id, 'item');
-        await perform(a, { ...it, label: `${it.label}を使う`, desc: it.desc }, got);
-        if (G.over || (wasAlive && !a.alive)) return { label: it.label, desc: it.desc, names: got.map(t => t.name) };   // アイテムで決着した・自分が倒れた: 続きの行動はできない
-        continue;                                            // アイテムは行動を消費しない。メニューに戻る
+        const r = await useItem(a, it);
+        if (r.done) return r.result;                           // アイテムで決着した・自分が倒れた: 続きの行動はできない
+        continue;                                              // アイテムは行動を消費しない。メニューに戻る
       }
       if (c < 0) return { label: '何もしない', desc: '', names: [] };
-      const act = acts[c], picked = [];
-      let back = false;
-      for (const p of act.prompts) {
-        const t = await ctx.pickUnit(p.label, p.f, picked, { back: true });
-        if (t === ctx.BACK) { back = true; break; }
-        if (!t) { log('対象がいないため不発'); announce(a, act.label, act.desc, [], true); return { label: act.label, desc: act.desc, names: [], fizzled: true }; }
-        picked.push(t);
-      }
-      if (back) continue;
-      return perform(a, act, picked);
+      const act = acts[c], t = await pickTargets(act);
+      if (t.back) continue;
+      if (t.fizzled) { log('対象がいないため不発'); announce(a, act.label, act.desc, [], true); return { label: act.label, desc: act.desc, names: [], fizzled: true }; }
+      return perform(a, act, t.picked);
     }
   }
-  /** 対象を1つずつ選ばせる。戻るなら BACK、対象がいなければ空の配列 */
+  /** 行動メニューの選択肢（行動 → アイテム → 何もしない）。対象がいないものは選べない */
+  function actionMenu(acts, items) {
+    const blocked = x => x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, [])));
+    return [
+      ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: blocked(x) })),
+      ...items.map((x, i) => ({ label: x.label, sub: `アイテム：${x.desc}（使っても行動は残る）`, value: 'item:' + i, cls: 'item', disabled: blocked(x) })),
+      { label: '何もしない', value: -1, cls: 'ghost' },
+    ];
+  }
+  /** アイテムを使う（対象を選ぶ → 1個減らす → 予告して効果）。戻る/不発なら使わず done=false。使った結果で決着した・自分が倒れたら done=true */
+  async function useItem(a, it) {
+    const t = await pickTargets(it);
+    if (t.back || t.fizzled) return { done: false };
+    const wasAlive = a.alive;
+    const at = a.items.indexOf(it.key);
+    if (at >= 0) a.items.splice(at, 1);
+    log(`🎒 ${a.name} は ${it.label} を使った`, 'sys');
+    ctx.fxUnit(a.id, 'item');
+    await perform(a, { ...it, label: `${it.label}を使う`, desc: it.desc }, t.picked);
+    const over = G.over || (wasAlive && !a.alive);
+    return { done: !!over, result: { label: it.label, desc: it.desc, names: t.picked.map(x => x.name) } };
+  }
+  /** 対象を1つずつ選ばせる。戻る → { back }、対象がいない → { fizzled }、選び終えた → { picked } */
   async function pickTargets(act) {
     const picked = [];
     for (const p of act.prompts) {
       const t = await ctx.pickUnit(p.label, p.f, picked, { back: true });
-      if (t === ctx.BACK) return ctx.BACK;
-      if (!t) return ctx.BACK;
+      if (t === ctx.BACK) return { back: true };
+      if (!t) return { fizzled: true };
       picked.push(t);
     }
-    return picked;
+    return { picked };
   }
   /** 先読みで決めた計画を実行する。計画がなければ何もしない */
   async function runPlan(a, plan) {
@@ -310,7 +298,7 @@ export function createBattle(ui) {
   }
 
   /* ---------- 誤答 ---------- */
-  /** 道化師: 誤答の2ダメージを他の1人に押し付けられる */
+  /** 道化師: 誤答の2ダメージを味方の1人に押し付けられる */
   async function jesterPush(a) {
     const others = G.units.filter(u => u.alive && u !== a && u.side === a.side);      // 押し付けられるのは味方だけ（敵に押し付けると、わざと誤答するだけの攻撃になってしまう）
     const choice = await ask('🃏 道化師：誤答の2ダメージを味方の誰かに押し付ける？', [
@@ -399,7 +387,7 @@ export function createBattle(ui) {
         if (bid) { u.name = p.name.trim(); u.human = true; humanBosses.push(u); }       // 参加者が操作する魔王
         if (pvp) u.side = squad ? 'p' : (TEAM_ORDER[p.team] != null ? p.team : 'p');
         G.units.push(u);
-        dealItems(u, items);
+        dealItems(u, items, ctx.rand);
         if (p.pid) G.pids[p.pid] = u.id;
       }
       // 参加者が操作する魔王の体力は、ほかの参加者の攻撃合計から決まる（難易度の影響は受けない）
@@ -407,21 +395,7 @@ export function createBattle(ui) {
         const S0 = G.units.reduce((t, u) => t + (u.isBoss ? 0 : u.atk), 0);
         for (const b of humanBosses) { b.S = S0; b.maxHp = b.hp = bossHp(S0, b.bossId); }
       }
-      if (squad) {
-        const count = {}, bossCount = {}, fs = isSquadFoes(foes) ? squadFoeScale(foes.length) : 1;
-        const S = G.units.reduce((s, u) => s + (u.isBoss ? 0 : u.atk), 0);
-        for (const j of foes) {
-          const bm = typeof j === 'string' && /^boss[0-9]+$/.test(j) ? +j.slice(4) : 0;
-          if (bm && BOSS[bm]) { G.units.push(mkBoss(bm, S * LEVELS[level].hp * fs)); continue; }   // 'boss3' = 魔王3
-          const key = JOB[j] && j !== 'hero' ? j : 'warrior';
-          count[key] = (count[key] || 0) + 1;
-          const total = foes.filter(x => x === j).length;
-          const u = mkPlayer(`CPU${JOB[key].n}${total > 1 ? count[key] : ''}`, key);
-          u.side = 'e'; u.cpu = true;
-          u.maxHp = u.hp = Math.max(1, Math.ceil(u.maxHp * LEVELS[level].hp * fs));      // 難易度でCPUの体力が変わる
-          G.units.push(u);
-        }
-      }
+      if (squad) addFoes(foes, level);
       if (pvp) {
         G.units.sort((a, b) => TEAM_ORDER[a.side] - TEAM_ORDER[b.side]); // チームごとに席を連続させる（安定ソート）
         log(squad ? `バトル開始！ プレイヤー vs ${G.units.filter(u => u.cpu || u.isBoss).map(u => u.name).join('・')}` : '対戦開始！ チームA vs チームB', 'sys');
@@ -465,7 +439,7 @@ export function createBattle(ui) {
       const sc = (u.isBoss ? G.cfg.bossHpScale : G.cfg.hpScale) || 1;
       if (sc !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * sc)); u.hp = u.maxHp; }
       if (pid) G.pids[pid] = u.id;
-      dealItems(u, G.cfg.items);
+      dealItems(u, G.cfg.items, ctx.rand);
       redoStack = [];
       log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BuzzRound } from '../../src/server/buzz.js';
 import { TS_MAX_PAST_MS } from '../../src/server/config.js';
-import { createBattle, bossHp } from '../src/lib/engine.js';
+import { bossHp } from '../src/lib/engine.js';
 import { syncRoster } from '../src/lib/roster.js';
 import { publicState, eligibleDelays } from '../src/lib/publish.js';
 import { JOBS, JOB, LEVELS, LEVEL_KEYS, BOSS_IDS, pl, enabled, make, scriptedAsk, harness, rng, checkInvariants, CANCEL, UNIT_VARIANTS } from './gen.mjs';

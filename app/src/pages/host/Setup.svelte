@@ -1,12 +1,10 @@
 <script>
   import { flip } from 'svelte/animate';
   import { fly, slide } from 'svelte/transition';
-  import { BOSS } from '../../lib/engine.js';
   import { panel, confirmAsk } from '../../lib/ui.svelte.js';
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
   import FoePicker from '../../components/FoePicker.svelte';
-  import { LEVELS } from '../../lib/engine.js';
 
   // バトルの準備画面: 左に招待URLと参加者の名簿、右にモード・魔王・開始ボタン
   let { host } = $props();

@@ -32,7 +32,7 @@ export class HostStore {
   canUndo = $state(false);
   canRedo = $state(false);
   rank = $state('');
-  ranks = $state({});                // この問題の早押しの順位 pid → 表示用のタグ                 // 直近の早押しの順位
+  ranks = $state({});                // この問題の早押しの順位 pid → 表示用のタグ
   rtt = $state(null);
   saved = $state(null);              // 途中のバトル（再開できる）
   #openedFor = null;                 // 早押しを受け付け済みの問題番号
@@ -223,12 +223,6 @@ export class HostStore {
     this.battle.reset(); this.#openedFor = null; this.rank = '';
     store.remove(KEY.save(this.id));
     this.conn.send({ t: 'endgame' });
-  }
-  select(id) {
-    const G = this.battle.G; if (!G) return;
-    return;   // 回答者は早押しで決まり、CPUは自動で動く。進行役がユニットを選んで回答者にすることはない
-    if (G.sel === id) { this.battle.select(null); this.reopen(); return; }
-    if (this.battle.select(id)) this.conn.send({ t: 'lock' });
   }
   deselect() { this.battle.select(null); this.reopen(); }
   correct() { return this.battle.correct(); }

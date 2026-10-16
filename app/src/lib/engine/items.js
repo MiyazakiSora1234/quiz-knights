@@ -1,6 +1,6 @@
 // アイテムの効果の定義。正解したときの行動メニューに「🎒 アイテム」として並び、使うと1個減る（行動とは別に何個でも使える）
 //   buildItemActions(ctx, a) -> [{ key, label, desc, prompts, run, disabled }]（jobs.js の行動と同じ形）
-import { ITEMS } from './data.js';
+import { ITEMS, ITEM_KEYS } from './data.js';
 
 const P = (label, f) => ({ label, f });
 const alive = u => u.alive;
@@ -71,4 +71,15 @@ export function buildItemActions(ctx, a) {
     const it = ITEMS[key];
     return { key, label: `${it.ic} ${it.n}`, desc: it.d, ...EFFECTS[key](ctx, a) };
   });
+}
+
+/** アイテムをランダムに n 個配る（重みつき）。魔王とCPUには配らない。rand は 0以上1未満の乱数を返す関数 */
+export function dealItems(u, n, rand) {
+  if (!(n > 0) || u.isBoss || u.cpu) return;
+  const total = ITEM_KEYS.reduce((s, k) => s + ITEMS[k].w, 0);
+  u.items = [];
+  for (let i = 0; i < n; i++) {
+    let r = rand() * total;
+    u.items.push(ITEM_KEYS.find(k => (r -= ITEMS[k].w) < 0) ?? ITEM_KEYS[0]);
+  }
 }
