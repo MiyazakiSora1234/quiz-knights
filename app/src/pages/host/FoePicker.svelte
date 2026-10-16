@@ -8,6 +8,9 @@
   let { host } = $props();
   const MAX = 6;
   const isBoss = f => /^boss\d+$/.test(f);
+  // 魔王のくわしい説明は、最後に触った1体だけ下に出す（縦に長くならないように）
+  let focus = $state(+(host.foes.find(isBoss) ?? 'boss1').slice(4));
+  const toggle = id => { focus = id; host.toggleBoss(id); };
   const jobsIdx = $derived(host.foes.map((f, i) => [f, i]).filter(([f]) => !isBoss(f)));
   const PRESETS = [
     { n: '魔王1だけ', foes: ['boss1'] },
@@ -27,23 +30,23 @@
   </div>
 
   <div class="sec">魔王（押して加える・外す）</div>
-  {#each Object.entries(BOSS) as [id, b]}
-    {@const on = host.foes.includes('boss' + id)}
-    <div class="bopt" class:sel={on}>
-      <button class="head" onclick={() => host.toggleBoss(+id)} aria-pressed={on}>
-        <span class="bi">{@html icon('boss' + id)}</span>
-        <span class="bt"><b>{b.n}</b><small>{b.intro}</small></span>
-        <span class="ck">{on ? '✓' : '＋'}</span>
+  <div class="bgrid">
+    {#each Object.entries(BOSS) as [id, b]}
+      {@const on = host.foes.includes('boss' + id)}
+      <button class="bchip" class:sel={on} class:foc={focus === +id} onclick={() => toggle(+id)} onmouseenter={() => (focus = +id)} aria-pressed={on} title={b.intro}>
+        <span class="bi">{@html icon('boss' + id)}</span><b>{b.n}</b><span class="ck">{on ? '✓' : ''}</span>
       </button>
-      {#if on}
-        <div class="detail" transition:slide={{ duration: 140 }}>
-          <div class="row"><span class="k">体力</span><span>{b.hpText}</span></div>
-          {#each b.skills as s}<div class="row"><span class="k">{s.n}</span><span>{s.d}</span></div>{/each}
-          {#each b.traits as t}<div class="row"><span class="k tr">特性</span><span>{t}</span></div>{/each}
-        </div>
-      {/if}
+    {/each}
+  </div>
+  {#if BOSS[focus]}
+    {@const b = BOSS[focus]}
+    <div class="detail" transition:slide={{ duration: 120 }}>
+      <div class="dh"><span class="bi sm">{@html icon('boss' + focus)}</span><div><b>{b.n}</b><small>{b.intro}</small></div></div>
+      <div class="row"><span class="k">体力</span><span>{b.hpText}</span></div>
+      {#each b.skills as sk}<div class="row"><span class="k">{sk.n}</span><span>{sk.d}</span></div>{/each}
+      {#each b.traits as t}<div class="row"><span class="k tr">特性</span><span>{t}</span></div>{/each}
     </div>
-  {/each}
+  {/if}
 
   <div class="sec">CPUの職業</div>
   {#each jobsIdx as [f, i] (i)}
@@ -62,17 +65,19 @@
 <style>
   .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
   .sec{margin:12px 2px 6px;color:var(--gold);font-weight:700;font-size:.85rem}
-  .bopt{border:1px solid var(--line);border-radius:12px;background:var(--s2);margin-bottom:8px;transition:.1s}
-  .bopt:hover{border-color:var(--line2)}
-  .bopt.sel{border-color:var(--gold);background:#3a2f1a;box-shadow:0 0 0 1px var(--gold)}
-  .head{display:flex;gap:12px;text-align:left;width:100%;padding:10px 12px;background:none;border:0;cursor:pointer;align-items:center}
-  .bi{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#120f0c;border:2px solid var(--red-d);flex:none;font-size:1.7rem}
-  .bopt.sel .bi{border-color:var(--gold)}
-  .bt{flex:1;min-width:0}.bt b{display:block;font-size:1rem}.bt small{display:block;color:var(--mut);font-size:.78rem;line-height:1.4}
-  .ck{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#0004;color:var(--gold);font-weight:900}
-  .detail{padding:0 12px 12px;display:flex;flex-direction:column;gap:6px;font-size:.84rem}
-  .row{display:grid;grid-template-columns:5.6em 1fr;gap:8px;align-items:start;line-height:1.45}
-  .k{font-weight:700;color:var(--gold);font-size:.78rem;background:#0004;border-radius:6px;padding:1px 6px;text-align:center}.k.tr{color:#ff9aa2}
+  .bgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .bchip{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;background:var(--s2);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+  .bchip:hover,.bchip.foc{border-color:var(--line2)}
+  .bchip.sel{border-color:var(--gold);background:#3a2f1a;box-shadow:0 0 0 1px var(--gold)}
+  .bchip b{font-size:.85rem}
+  .bi{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:#120f0c;border:2px solid var(--red-d);flex:none;font-size:1.5rem}
+  .bi.sm{width:34px;height:34px;font-size:1.2rem}
+  .bchip.sel .bi{border-color:var(--gold)}
+  .ck{position:absolute;top:4px;right:6px;color:var(--gold);font-weight:900;font-size:.85rem}
+  .detail{margin:8px 0 4px;padding:10px 12px;background:#0003;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:6px;font-size:.83rem}
+  .dh{display:flex;gap:10px;align-items:center}.dh b{display:block}.dh small{color:var(--mut);font-size:.78rem;line-height:1.35}
+  .row{display:grid;grid-template-columns:5.2em 1fr;gap:8px;align-items:start;line-height:1.45}
+  .k{font-weight:700;color:var(--gold);font-size:.76rem;background:#0004;border-radius:6px;padding:1px 6px;text-align:center}.k.tr{color:#ff9aa2}
   .frow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .fi{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.3rem;background:#120f0c;border:2px solid var(--red-d)}
   .fsel{flex:1;min-width:0}
