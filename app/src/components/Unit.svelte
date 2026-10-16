@@ -12,17 +12,20 @@
   let anim = $state('');
   // svelte-ignore state_referenced_locally
   let prev = u.hp;
-  // 倒れた・復活した瞬間の演出
+  // svelte-ignore state_referenced_locally
+  let prevEdit = u.edit ?? 0;
+  // 体力の変化・倒れた・復活した瞬間の演出。進行役が職業や体力を手直ししたとき（u.edit が増える）は出さない
   $effect(() => {
-    const alive = u.alive;
-    if (alive === prevAlive) return;
-    prevAlive = alive;
-    const id = Math.random();
-    fx.push({ id, kind: alive ? 'revive' : 'ko' });
-    setTimeout(() => { fx = fx.filter(f => f.id !== id); }, 1400);
-  });
-  $effect(() => {
-    const hp = u.hp;
+    const hp = u.hp, alive = u.alive, ed = u.edit ?? 0;
+    const edited = ed !== prevEdit;
+    prevEdit = ed;
+    if (edited) { prev = hp; prevAlive = alive; return; }
+    if (alive !== prevAlive) {
+      prevAlive = alive;
+      const id = Math.random();
+      fx.push({ id, kind: alive ? 'revive' : 'ko' });
+      setTimeout(() => { fx = fx.filter(f => f.id !== id); }, 1400);
+    }
     if (hp === prev) return;
     const d = hp - prev; prev = hp;
     const id = Math.random();

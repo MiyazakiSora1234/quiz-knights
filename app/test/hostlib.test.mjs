@@ -467,3 +467,19 @@ test('コマンド選択: 対象の選択で「行動を選びなおす」を選
   assert.ok(b.G.log.some(l => l.m.includes('魔王1 に')), '通常攻撃が当たった');
   assert.ok(b.G.notice && b.G.notice.text.includes('A の'), '行動の予告が出ている');
 });
+
+test('手直し: 職業・体力を直すと、そのユニットの edit が増える（画面は攻撃・回復の演出を出さない）。戻すと値が元に戻り、publicState にも載る', async () => {
+  const { publicState } = await import('../src/lib/publish.js');
+  const b = createBattle({ ask: async () => 0, toast() {}, changed() {} });
+  b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'monk', pid: 'b' }], mode: 'cpu', foes: ['boss1'] });
+  const a = () => b.G.units.find(u => u.name === 'A');
+  assert.equal(a().edit ?? 0, 0);
+  b.edit(a().id, { job: 'mage' });
+  assert.equal(a().edit, 1);
+  assert.equal(publicState(b.G).units.find(u => u.name === 'A').edit, 1);
+  b.edit(a().id, { hp: 1 });
+  assert.equal(a().edit, 2);
+  b.undo();
+  assert.equal(a().edit, 1);
+  assert.equal(b.G.units.find(u => u.name === 'B').edit ?? 0, 0, 'ほかのユニットは変わらない');
+});

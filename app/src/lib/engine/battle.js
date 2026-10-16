@@ -450,6 +450,7 @@ export function createBattle(ui) {
       if (!G || busy) return false;
       const u = G.units.find(x => x.id === id); if (!u) return false;
       undoStack.push(JSON.stringify(G)); if (undoStack.length > 40) undoStack.shift();
+      u.edit = (u.edit || 0) + 1;                      // 画面に「手直し」だと伝える（攻撃・回復の演出を出さない。戻したときも手直しとして扱われる）
       if (typeof patch.name === 'string' && patch.name.trim()) u.name = patch.name.trim().slice(0, 12);
       if (!u.isBoss && patch.job && patch.job !== u.job && JOB[patch.job]) {          // 職業を変えると、その職業の基本の数値になる
         const j = JOB[patch.job];

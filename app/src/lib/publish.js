@@ -7,7 +7,7 @@ export function publicState(G) {
     mode: G.mode, cpu: !!G.cpu, q: G.q, acting: G.acting ?? null, notice: G.notice ?? null, over: G.over, pids: G.pids, sel: G.sel,
     genre: (G.genre && G.genreFor === G.q) ? `ジャンル：${G.genre}` : '',
     units: G.units.map(u => ({
-      id: u.id, name: u.name, job: u.job, jobName: jobName(u), bossId: u.bossId, side: u.side, hp: u.hp, maxHp: u.maxHp,
+      id: u.id, name: u.name, job: u.job, jobName: jobName(u), bossId: u.bossId, edit: u.edit || 0, side: u.side, hp: u.hp, maxHp: u.maxHp,
       alive: u.alive, ghost: !!u.ghost, restNow: u.restNow, guards: u.guards, isBoss: u.isBoss, atk: u.atk,
       st: statusTags(u, false, G.q),
     })),
