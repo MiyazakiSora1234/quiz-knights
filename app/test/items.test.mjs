@@ -61,19 +61,29 @@ test('[アイテム] 使うと1個減り、通常の行動は残る（メニュ�
   assert.ok(!menus[1].o.some(o => o.cls === 'item'), '使い切ったら出ない');
   assert.equal(b.G.q, 2);
 });
-test('[アイテム] 回復薬: 3回復 / エリクサー: 全回復', async () => {
+test('[アイテム] 回復薬: 2回復 / 薬草茶: 半分回復', async () => {
   let r = await useItem('potion', { setup: (G, A) => { A.hp = 2; }, target: 1 });
-  assert.equal(r.A.hp, 5);
-  r = await useItem('elixir', { setup: (G, A) => { A.hp = 1; } });
-  assert.equal(r.A.hp, r.A.maxHp);
+  assert.equal(r.A.hp, 4);
+  r = await useItem('tea', { setup: (G, A) => { A.hp = 1; } });
+  assert.equal(r.A.hp, 1 + Math.ceil(r.A.maxHp / 2));
 });
-test('[アイテム] 爆弾: 敵に3ダメージ / 毒薬: 毒 / 眠りの粉: 次の問題休み', async () => {
+test('[アイテム] 爆弾: 敵に2ダメージ / 毒薬: 毒 / 眠りの粉: 次の問題休み', async () => {
   let r = await useItem('bomb');
-  assert.equal(r.C.hp, r.C.maxHp - 3);
+  assert.equal(r.C.hp, r.C.maxHp - 2);
   r = await useItem('venom');
   assert.equal(r.C.poison, 2);
   r = await useItem('powder');
   assert.equal(r.C.restNow, true, '次の問題で休み');
+});
+test('[アイテム] 小さなアイテム: 包帯・癒しの水・石つぶて・炎の巻物・解毒草・目覚ましベル', async () => {
+  let r = await useItem('bandage', { setup: (G, A) => { A.hp = 1; } });
+  assert.equal(r.A.hp, 2);
+  r = await useItem('water', { setup: (G, A, B) => { A.hp = 1; B.hp = 1; } });
+  assert.deepEqual([r.A.hp, r.B.hp], [2, 2]);
+  r = await useItem('pebble'); assert.equal(r.C.hp, r.C.maxHp - 1);
+  r = await useItem('scroll'); assert.equal(r.C.hp, r.C.maxHp - 1);
+  r = await useItem('herb', { setup: (G, A) => { A.poison = 2; } }); assert.equal(r.A.poison, 0);
+  r = await useItem('alarm', { setup: (G, A) => { A.restNext = true; } }); assert.equal(r.A.restNow, false);
 });
 test('[アイテム] 護符・身代わり札・蘇生の羽', async () => {
   let r = await useItem('amulet', { target: 1 });

@@ -8,8 +8,14 @@ const foe = a => u => u.alive && u.side !== a.side;
 const ally = a => u => u.alive && u.side === a.side;
 
 const EFFECTS = {
-  potion(ctx, a) { return { prompts: [P('回復する人', alive)], run: async ([t]) => { ctx.heal(t, 3); } }; },
-  bomb(ctx, a) { return { prompts: [P('爆弾を投げる相手', foe(a))], run: async ([t]) => { await ctx.dmgTo(a, [t], 3); } }; },
+  bandage(ctx, a) { return { prompts: [], run: async () => { ctx.heal(a, 1); } }; },
+  potion(ctx, a) { return { prompts: [P('回復する人', alive)], run: async ([t]) => { ctx.heal(t, 2); } }; },
+  water(ctx, a) { return { prompts: [], run: async () => { for (const u of ctx.G.units.filter(ally(a))) ctx.heal(u, 1); } }; },
+  pebble(ctx, a) { return { prompts: [P('石を投げる相手', foe(a))], run: async ([t]) => { await ctx.dmgTo(a, [t], 1); } }; },
+  scroll(ctx, a) { return { prompts: [], run: async () => { await ctx.dmgTo(a, ctx.foesOf(a), 1); } }; },
+  herb(ctx, a) { return { prompts: [P('毒を消す味方', u => u.alive && u.side === a.side && u.poison > 0)], run: async ([t]) => { t.poison = 0; t.poisonSkip = false; ctx.log(`🌿 ${t.name} の毒が消えた`, 'heal'); } }; },
+  alarm(ctx, a) { return { prompts: [P('起こす味方', u => u.alive && u.side === a.side && u.restNext)], run: async ([t]) => { t.restNext = false; ctx.log(`🔔 ${t.name} の休みが取り消された`, 'heal'); } }; },
+  bomb(ctx, a) { return { prompts: [P('爆弾を投げる相手', foe(a))], run: async ([t]) => { await ctx.dmgTo(a, [t], 2); } }; },
   amulet(ctx, a) {
     return { prompts: [P('守る味方', ally(a))], run: async ([t]) => { t.barrier = 1; ctx.fxUnit(t.id, 'barrier'); ctx.log(`🔰 ${t.name} にバリアが付いた`, 'sys'); } };
   },
@@ -28,7 +34,7 @@ const EFFECTS = {
       t.alive = true; t.hp = 1; t.ghost = false; ctx.log(`${t.name} が体力1で蘇生した！`, 'heal');
     } };
   },
-  elixir(ctx, a) { return { prompts: [], run: async () => { ctx.heal(a, a.maxHp); } }; },
+  tea(ctx, a) { return { prompts: [], run: async () => { ctx.heal(a, Math.ceil(a.maxHp / 2)); } }; },
 };
 
 /** a が持っているアイテムの行動一覧（持っている順。同じ物を複数持っていても1個ずつ並ぶ） */
