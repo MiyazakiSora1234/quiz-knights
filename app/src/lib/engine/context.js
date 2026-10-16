@@ -15,6 +15,9 @@ export function createContext({ ui, getG, emit }) {
   // 先読み（シミュレーション）中は、すべての選択を自動で決める。人には聞かない。庇いは使わない前提で評価する
   let sim = false;
   const setSim = v => { sim = v; };
+  /** 画面に出す演出（コイントスなど）。全員の画面に同じ演出が出る。先読み中は出さない */
+  const event = e => { if (sim) return; const G = getG(); G.eventSeq = (G.eventSeq || 0) + 1; G.event = { id: G.eventSeq, ...e }; emit(); };
+  const wait = ms => (sim || !ui.pause ? null : ui.pause(ms));
   const ask = (title, options, opts = {}) => {
     if (sim && title.startsWith('🛡')) return Promise.resolve(null);
     if ((auto && opts.actor == null) || (sim && auto)) return Promise.resolve(autoPick(title, options, auto));
@@ -231,6 +234,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    BACK, ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    BACK, event, wait, ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }

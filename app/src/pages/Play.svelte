@@ -11,6 +11,7 @@
   import LogSheet from '../components/LogSheet.svelte';
   import QuizSettings from '../components/QuizSettings.svelte';
   import Notice from '../components/Notice.svelte';
+  import EventFx from '../components/EventFx.svelte';
 
   let { id } = $props();
   let menu = $state(false);
@@ -75,7 +76,7 @@
   {/if}
   <AskDialog {p} />
   <QuizSettings who={p} role="player" />
-  {#if p.gs}<Notice notice={p.gs.notice} />{/if}
+  {#if p.gs}<Notice notice={p.gs.notice} /><EventFx event={p.gs.event} />{/if}
   <LogSheet lines={(p.gs?.log ?? []).map(m => ({ m }))} />
 </div>
 

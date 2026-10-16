@@ -24,7 +24,7 @@
 </script>
 
 <button type="button" class="sel" bind:this={btn} onclick={toggle} onkeydown={(e) => e.key === 'Escape' && (open = false)} aria-haspopup="listbox" aria-expanded={open} aria-label={label}>
-  <span class="t"><b>{cur?.n ?? ''}</b>{#if cur?.d}<small>{cur.d}</small>{/if}</span>
+  <span class="lbl"><b>{cur?.n ?? ''}</b>{#if cur?.d}<small>{cur.d}</small>{/if}</span>
   <svg class="car" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
 </button>
 
@@ -43,7 +43,7 @@
 <style>
   .sel{display:flex;align-items:center;gap:8px;width:100%;min-width:0;background:var(--s1);border:1px solid var(--line2);border-radius:10px;padding:9px 12px;cursor:pointer;text-align:left}
   .sel:hover,.sel[aria-expanded="true"]{border-color:var(--gold)}
-  .t{flex:1;min-width:0;display:flex;flex-direction:column}.t b{font-weight:700}.t small{color:var(--mut);font-size:.74rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lbl{flex:1;min-width:0;display:flex;flex-direction:column}.lbl b{font-weight:700}.lbl small{color:var(--mut);font-size:.74rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .car{width:12px;height:8px;flex:none;color:var(--mut)}
   .back{position:fixed;inset:0;z-index:90}
   .list{position:fixed;z-index:91;overflow:auto;background:var(--s1);border:1px solid var(--gold);border-radius:12px;padding:4px;box-shadow:0 14px 34px #000d}
