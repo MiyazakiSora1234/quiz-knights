@@ -218,6 +218,7 @@ export class HostStore {
       mode: this.mode, foes: this.mode === 'cpu' ? [...this.foes] : [], boss: this.boss, hpScale: recommendedHpScale(this.mode, this.playersNamed.length, this.mode === 'cpu' ? this.foes : []), bossPenalty: false, cpuAuto: true, level: this.level, items: this.items,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];
+    setTimeout(() => this.battle.intro(), 700);        // 魔王の登場の演出（画面が出そろってから）
   }
   resume() { if (this.saved) { this.battle.load(this.saved); this.saved = null; this.#openedFor = null; } }
   discardSaved() { this.saved = null; store.remove(KEY.save(this.id)); }

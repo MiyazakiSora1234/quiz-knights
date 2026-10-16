@@ -416,6 +416,14 @@ export function createBattle(ui) {
       ui.persist && ui.persist(G);
       emit();
     },
+    /** 魔王の登場の演出を出す（バトル開始の少しあとに、進行役が呼ぶ）。敵の魔王がいなければ何もしない */
+    intro() {
+      if (!G || G.over) return false;
+      const bosses = G.units.filter(u => u.isBoss && u.alive && !u.human && u.side !== 'p');
+      if (!bosses.length) return false;
+      ctx.event({ kind: 'intro', bosses: bosses.slice(0, 3).map(b => ({ name: b.name, bossId: b.bossId, intro: BOSS[b.bossId].intro })) });
+      return true;
+    },
     /** 戦闘中に新しい参加者を加える（途中参戦）。魔王のHPは変えない。加えられたら true */
     join({ name, job = 'warrior', team = 'p', pid }) {
       if (!G || G.over || busy || (pid && G.pids[pid] != null)) return false;

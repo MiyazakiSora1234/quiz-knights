@@ -150,6 +150,8 @@
   .answering .ribbon{background:linear-gradient(180deg,#fff3c0,#e3b84f)!important;color:#2a1c06!important;font-size:.9rem!important;font-weight:900!important;letter-spacing:.12em}
   .dim{opacity:.55;filter:saturate(.7)}
   .acting{animation:act 0.9s ease-in-out infinite;z-index:5}
+  .foe.acting{animation:bossact .8s ease-in-out infinite;filter:drop-shadow(0 0 16px #e5545f)}
+  @keyframes bossact{0%,100%{transform:scale(1)}30%{transform:scale(1.09) translateY(-6px)}55%{transform:scale(1.03) translateY(2px) rotate(-1deg)}}
   @keyframes act{0%,100%{box-shadow:0 0 0 0 #ff4d5e00;transform:scale(1)}50%{box-shadow:0 0 34px 8px #ff4d5eaa;transform:scale(1.06)}}
   .bubble{margin-top:8px;max-width:100%;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.85rem;line-height:1.35;padding:4px 9px;border-radius:10px;text-align:center;overflow-wrap:anywhere;word-break:break-word;box-shadow:0 3px 10px #0008}
   .seat{position:absolute;top:3px;left:8px;z-index:3;font-size:.7rem;color:var(--mut);font-family:var(--display);font-weight:800;line-height:1.3}

@@ -1,9 +1,10 @@
 <script>
   import { fade } from 'svelte/transition';
+  import { icon } from '../lib/icons.js';
 
   // 戦闘中の演出イベント（コイントスなど）を、全員の画面の中央に出す。event = {id, kind:'coin', heads, who}
   let { event = null } = $props();
-  const DUR = { coin: 2600, answer: 1100, bomb: 1700, job: 2200, transform: 2200, special: 1500, genre: 1800, round: 1000 };
+  const DUR = { coin: 2600, answer: 1100, bomb: 1700, job: 2200, transform: 2200, intro: 3200, bossdown: 2600, special: 1500, genre: 1800, round: 1000 };
   let shown = $state(null), timer = null;
   // 開いた時点ですでにあるイベントは出さない（再読み込み・途中入室で古い演出が出ないように）
   // svelte-ignore state_referenced_locally
@@ -29,8 +30,16 @@
         <div class="boom"><i class="bf"></i><span class="bomb">💥</span><b>{shown.mine ? `${shown.who} は地雷を踏んだ！` : `${shown.who} が爆発！`}</b></div>
       {:else if shown.kind === 'job'}
         <div class="job"><i class="rays"></i><div class="jt">転職！</div><div class="jn">{shown.who}　{shown.from} → <em>{shown.to}</em></div></div>
+      {:else if shown.kind === 'intro'}
+        <div class="intro"><i class="vig"></i>
+          <div class="bs">{#each shown.bosses as b}<div class="bo"><span class="bi">{@html icon('boss' + b.bossId)}</span><b>{b.name}</b></div>{/each}</div>
+          <div class="it">が　現れた！</div>
+          {#if shown.bosses.length === 1}<div class="id">{shown.bosses[0].intro}</div>{/if}
+        </div>
+      {:else if shown.kind === 'bossdown'}
+        <div class="bd"><i class="flare"></i><span class="bi big">{@html icon('boss' + (shown.bossId || 1))}</span><div class="jt">討伐！</div><div class="jn">{shown.who} を倒した</div></div>
       {:else if shown.kind === 'transform'}
-        <div class="tf"><i class="pulse"></i><div class="jt">変身！</div><div class="jn">{shown.who} が <em>{shown.form}</em> に</div></div>
+        <div class="tf"><i class="pulse"></i>{#if shown.bossId}<span class="bi big tfi">{@html icon('boss' + shown.bossId)}</span>{/if}<div class="jt">変身！</div><div class="jn">{shown.who} が <em>{shown.form}</em> に</div></div>
       {:else if shown.kind === 'special'}
         <div class="sp"><i class="slashbig"></i><b>{shown.text}</b><span>{shown.who}</span></div>
       {:else if shown.kind === 'genre'}
@@ -80,6 +89,23 @@
   .slashbig{position:fixed;left:-10%;top:42%;width:120%;height:6px;background:linear-gradient(90deg,#0000,#fff,#0000);transform:rotate(-12deg);box-shadow:0 0 24px #ff6070;animation:sl .45s ease-out}
   .gn{display:flex;flex-direction:column;align-items:center;gap:4px;animation:stampin .35s ease-out}.gn span{color:#ccc;font-size:.95rem}.gn b{font-size:2.6rem;color:#ffe08a;text-shadow:0 0 22px #e3b84f}
   .rd{font-size:4.2rem;font-weight:900;color:#ffe08a;font-family:var(--serif);text-shadow:0 0 26px #e3b84f,0 4px 0 #6a4a0a;animation:rdin 1s ease-out forwards}
+  .intro{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:0 16px}
+  .intro .vig{position:fixed;inset:0;background:radial-gradient(circle,#0000 20%,#5a0610cc 100%);animation:bf 3s ease-in forwards}
+  .intro .bs{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+  .intro .bo{display:flex;flex-direction:column;align-items:center;gap:6px;animation:rise .9s cubic-bezier(.2,1.2,.4,1) both}
+  .intro .bo b{font-family:var(--serif);font-size:2.2rem;color:#ff9aa2;letter-spacing:.14em;text-shadow:0 0 24px #e5545f,0 3px 0 #4a0610}
+  .bi{display:grid;place-items:center;width:150px;height:150px;border-radius:50%;font-size:5.6rem;color:#f1e6cf;background:radial-gradient(circle,#4a1a20,#17090b);border:4px solid #e5545f;box-shadow:0 0 50px #e5545fcc,inset 0 0 30px #000;animation:bpulse 1.1s ease-in-out infinite}
+  .bi.big{width:170px;height:170px;font-size:6.4rem}
+  .intro .it{font-size:1.5rem;font-weight:900;color:#fff;letter-spacing:.2em;text-shadow:0 2px 10px #000;animation:rise 1.2s .4s both}
+  .intro .id{max-width:30em;color:#e8d9bd;font-size:.95rem;animation:rise 1.2s .8s both}
+  .bd,.tf{position:relative}
+  .bd{display:flex;flex-direction:column;align-items:center;gap:10px;animation:stampin .5s cubic-bezier(.2,1.4,.4,1)}
+  .bd .bi{border-color:#e3b84f;box-shadow:0 0 60px #e3b84f,inset 0 0 30px #000;animation:bfall 2.2s ease-in forwards}
+  .flare{position:fixed;left:50%;top:50%;width:160vmax;height:160vmax;margin:-80vmax;background:repeating-conic-gradient(#ffe08a44 0 6deg,#0000 6deg 16deg);animation:spin 3s linear;mask:radial-gradient(circle,#000 10%,#0000 60%)}
+  .tfi{border-color:#d5a8ff;box-shadow:0 0 60px #9a5cff,inset 0 0 30px #000;animation:bpulse .5s ease-in-out infinite}
+  @keyframes rise{from{opacity:0;transform:translateY(24px) scale(.9)}to{opacity:1;transform:none}}
+  @keyframes bpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  @keyframes bfall{0%{transform:scale(1);filter:none}40%{transform:scale(1.15) rotate(-4deg)}100%{transform:scale(.6) rotate(12deg);filter:grayscale(1) brightness(.5);opacity:.4}}
   @keyframes stampin{from{opacity:0;transform:scale(2.4)}to{opacity:1;transform:scale(1)}}
   @keyframes shk{0%,100%{transform:none}20%{transform:translate(-12px,4px)}40%{transform:translate(12px,-4px)}60%{transform:translate(-8px,2px)}80%{transform:translate(6px,0)}}
   @keyframes bf{0%{opacity:1}100%{opacity:0}}

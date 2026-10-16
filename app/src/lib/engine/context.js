@@ -183,7 +183,7 @@ export function createContext({ ui, getG, emit }) {
     k.form++;
     k.maxHp = k.hp = bossHp(k.S, k.bossId);
     log(`${k.name} は ${BOSS[k.bossId].forms[k.form]} に変身した！ (HP ${k.hp})`, 'sys');
-    event({ kind: 'transform', who: k.name, form: BOSS[k.bossId].forms[k.form] });
+    event({ kind: 'transform', who: k.name, bossId: k.bossId, form: BOSS[k.bossId].forms[k.form] });
     return true;
   }
 
@@ -193,6 +193,7 @@ export function createContext({ ui, getG, emit }) {
     const next = [];
     k.alive = false; k.hp = 0; k.poison = 0; k.barrier = 0; k.mine = null; k.noWrong = false;
     log(`${nm(k)} は倒れた…`, 'sys');
+    if (k.isBoss) event({ kind: 'bossdown', who: k.name, bossId: k.bossId });
     if (k.job === 'ghost' && !k.ghostUsed) {
       k.ghost = true; k.ghostUsed = true;
       log(`👻 ${k.name} は幽霊になった（あと1回だけ答えられる）`, 'sys'); fxUnit(k.id, 'ghost');

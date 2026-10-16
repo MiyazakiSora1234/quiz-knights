@@ -66,3 +66,30 @@ test('[魔王の技] 全魔王の技の一覧（画面の説明）に、新し�
   const all = Object.values(BOSS).flatMap(b => b.skills.map(s => s.n + s.d)).join('|');
   for (const w of ['敵全体に1ダメージ', '次の問題休みにする', '自分にバリア', '敵2人に毒', '封印', '敵2人に2ダメージ']) assert.ok(all.includes(w), w);
 });
+
+test('[魔王の演出] 登場（intro）: 敵の魔王がいるときだけ演出が出る。倒したら討伐の演出。変身には魔王の番号が付く', async () => {
+  const h = harness();
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], boss: 2 });
+  assert.equal(h.b.intro(), true);
+  const e = h.b.G.event;
+  assert.equal(e.kind, 'intro'); assert.deepEqual(e.bosses.map(b => b.bossId), [2]); assert.ok(e.bosses[0].intro);
+  // 変身
+  const boss = h.u('魔王2'); boss.hp = 1;
+  await h.correct('A', '通常攻撃', '魔王2');
+  assert.equal(h.b.G.event.kind === 'transform' || h.b.G.event.kind === 'round', true);
+  const tf = h.b.G.log.some(l => /変身/.test(l.m)); assert.ok(tf);
+  // 討伐
+  const g = harness();
+  g.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], boss: 1 });
+  g.u('魔王1').hp = 1;
+  await g.correct('A', '通常攻撃', '魔王1');
+  assert.equal(g.b.G.over, 'win');
+  assert.ok(g.b.G.eventSeq >= 2);
+  // 人が操作する魔王と、魔王のいない対戦では、登場の演出は出ない
+  const v = harness();
+  v.b.start({ players: [P('A', 'warrior', 'p'), P('B', 'monk', 'e')], mode: 'pvp' });
+  assert.equal(v.b.intro(), false);
+  const hb = harness();
+  hb.b.start({ players: [P('A', 'warrior', 'p'), P('M', 'boss3', 'e')], mode: 'pvp' });
+  assert.equal(hb.b.intro(), false);
+});
