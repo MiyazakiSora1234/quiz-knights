@@ -52,7 +52,7 @@
       <div class="panel">
         <h3>モード</h3>
         <div class="seg"><button class:sel={host.mode === 'cpu'} onclick={() => (host.mode = 'cpu')}>CPU戦</button><button class:sel={pvp} onclick={() => (host.mode = 'pvp')}>ユーザー対戦</button></div>
-        <div class="sub desc">{pvp ? '参加者を2〜3チームに分けて戦います。最後に1チームだけ残れば決着です。' : '全員で協力して、魔王や職業のCPUと戦います。CPUは1問ごとに自動で行動します。'}</div>
+        <div class="sub desc">{pvp ? '参加者を2〜3チームに分けて戦います。最後に1チームだけ残れば決着です。' : '全員で協力して、魔王や職業のCPUと戦います。'}</div>
       </div>
       {#if host.mode === 'cpu'}<FoePicker who={host} />{/if}
 

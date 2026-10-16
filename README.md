@@ -46,6 +46,8 @@ npm run deploy        # ビルドしてデプロイ
 
 - `npm test` — すべてのテスト（約4万件、1分弱）
 - **ゴールデンテスト**（`app/test/golden.test.mjs`）… 決まった乱数で戦闘を最後まで進め、結果を `app/test/golden/engine.json` と比べます。リファクタリングで挙動が変わると失敗します。意図して挙動を変えたときだけ `npm run test:update-golden` で保存し直します。
+- **画面の状態クラス**（`app/test/stores.test.mjs`）… 参加者の `PlayStore` と進行役の `HostStore` を、偽のサーバー・偽の保存領域で動かし、受け取ったメッセージでの状態の変化と、送るメッセージを確かめます（Vite でルーン付きの `.svelte.js` を読み込みます）。
+- **アイテム・裁定**（`items*.test.mjs`・`rulings.test.mjs`）… アイテムの効果・乱戦・全職業×全アイテムと、ルール画面の裁定がエンジンの動きと合っているかを確かめます。
 - **静的検査**（`app/test/static.test.mjs`）… すべての Svelte がコンパイルでき、import の行き先と名前が存在し、孤立したファイルがないことを確かめます。
 - **組み合わせテスト**（`matrix.*.test.mjs`）… 職業×職業、魔王×難易度×人数、ランダム戦闘などを1ケース1テストで流します。
 - **サーバーのテスト**（`server.test.mjs`）… `wrangler dev` を起動して、実際の部屋・早押し・チャットを検証します。

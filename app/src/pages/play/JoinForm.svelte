@@ -9,7 +9,7 @@
   <h2>部屋に参加</h2>
   <div class="roomlabel">{p.id}番「{p.roomName}」</div>
   <label class="field"><span>あなたの名前</span>
-    <input class="input" use:focusOnMount={{ when: !p.name || !p.info?.hasPw, select: true }} bind:value={p.name} maxlength="12" autocomplete="nickname" enterkeyhint="go">
+    <input class="input" use:focusOnMount={{ when: !p.name || !p.info?.hasPw, select: true }} bind:value={p.name} maxlength="12" placeholder="例：たろう" autocomplete="nickname" enterkeyhint="go">
   </label>
   <label class="field"><span>ひとこと（任意）</span><input class="input" bind:value={p.flavor} maxlength="20" placeholder="例：本日の意気込み"></label>
   {#if p.info?.hasPw}

@@ -92,7 +92,6 @@ export class PlayStore {
     if (!this.info || !this.info.used) { toast('その部屋は存在しません'); goList(); return; }
     this.roomName = this.info.name;
     this.phase = 'join';
-    if (!this.name.trim()) { this.name = `旅人${100 + Math.floor(Math.random() * 900)}`; store.set(KEY.name, this.name); }
     const pw = session.get(KEY.pw(this.id)); if (pw != null) { this.pw = pw; session.remove(KEY.pw(this.id)); }
     const known = session.get(this.pidKey);
     // 再接続、または部屋を作った直後だけ自動で入室する。初めての入室は taQu と同じく、参加ダイアログ（名前・ひとこと・パスワード）を出す
