@@ -456,7 +456,7 @@ test('コマンド選択: 対象の選択で「行動を選びなおす」を選
       if (t.endsWith('の行動')) return seq.filter(x => x.endsWith('の行動')).length === 1 ? 1 : 0;     // 1回目は技、戻ったあとは通常攻撃
       const back = o.find(x => x.value === '__back__');
       if (seq.filter(x => x.endsWith('の行動')).length === 1 && back) return back.value;              // 1回目の対象選択で戻る
-      return o.find(x => !x.disabled && x.value !== '__back__').value;
+      return (o.find(x => x.label === '魔王1') ?? o.find(x => !x.disabled && x.value !== '__back__')).value;
     },
     toast() {}, changed: g => g && notices.push(g.notice), random: () => 0.5,
   });
