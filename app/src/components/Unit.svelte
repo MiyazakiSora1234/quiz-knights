@@ -7,9 +7,20 @@
 
   let floats = $state([]);
   let fx = $state([]);          // 攻撃を受けた／回復したときの演出 [{id, kind}]
+  // svelte-ignore state_referenced_locally
+  let prevAlive = u.alive;
   let anim = $state('');
   // svelte-ignore state_referenced_locally
   let prev = u.hp;
+  // 倒れた・復活した瞬間の演出
+  $effect(() => {
+    const alive = u.alive;
+    if (alive === prevAlive) return;
+    prevAlive = alive;
+    const id = Math.random();
+    fx.push({ id, kind: alive ? 'revive' : 'ko' });
+    setTimeout(() => { fx = fx.filter(f => f.id !== id); }, 1400);
+  });
   $effect(() => {
     const hp = u.hp;
     if (hp === prev) return;
@@ -50,7 +61,11 @@
     {/if}
   </div>
   {#each fx as f (f.id)}
-    {#if f.kind === 'hit'}
+    {#if f.kind === 'ko'}
+      <div class="fx ko" aria-hidden="true"><i class="flash dark"></i><b class="stamp">戦闘不能</b></div>
+    {:else if f.kind === 'revive'}
+      <div class="fx heal" aria-hidden="true"><i class="flash"></i><b class="stamp up">復活！</b><b class="p p1">✦</b><b class="p p2">✚</b><b class="p p3">✦</b></div>
+    {:else if f.kind === 'hit'}
       <div class="fx hit" class:big={f.big} aria-hidden="true"><i class="flash"></i><svg viewBox="0 0 100 100" class="slash"><path d="M12 14L88 86" /><path d="M30 10L92 62" /><path d="M8 38L66 90" /></svg></div>
     {:else}
       <div class="fx heal" aria-hidden="true"><i class="flash"></i><b class="p p1">✚</b><b class="p p2">✚</b><b class="p p3">✦</b><b class="p p4">✚</b></div>
@@ -73,6 +88,10 @@
   .slash path:nth-child(2){animation-delay:.06s}.slash path:nth-child(3){animation-delay:.12s}
   .p{position:absolute;bottom:18%;color:#b8ffd0;font-size:1.1rem;text-shadow:0 0 8px #40ff80;opacity:0;animation:rise .8s ease-out forwards}
   .p1{left:22%}.p2{left:48%;animation-delay:.1s}.p3{left:70%;animation-delay:.2s}.p4{left:36%;animation-delay:.3s;font-size:.9rem}
+  .fx.ko .flash.dark{background:radial-gradient(circle,#000a,#000d);animation:flash 1.3s ease-out forwards}
+  .stamp{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) rotate(-8deg);font-size:1.5rem;font-weight:900;letter-spacing:.1em;color:#ff7b86;border:3px solid #ff7b86;border-radius:8px;padding:2px 10px;background:#0009;white-space:nowrap;animation:stamp 1.3s ease-out forwards}
+  .stamp.up{color:#b8ffd0;border-color:#6dff9a}
+  @keyframes stamp{0%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(2.2)}18%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}80%{opacity:1}100%{opacity:0}}
   .shake{animation:shake .45s}.glow{animation:glow .7s}
   @keyframes flash{0%{opacity:1}100%{opacity:0}}
   @keyframes cut{to{stroke-dashoffset:0}}
