@@ -240,11 +240,13 @@ export function createBattle(ui) {
         if (!it) continue;
         const got = await pickTargets(it);
         if (got === ctx.BACK) continue;
+        const wasAlive = a.alive;
         const at = a.items.indexOf(it.key);
         if (at >= 0) a.items.splice(at, 1);
         log(`🎒 ${a.name} は ${it.label} を使った`, 'sys');
         ctx.fxUnit(a.id, 'item');
         await perform(a, { ...it, label: `${it.label}を使う`, desc: it.desc }, got);
+        if (G.over || (wasAlive && !a.alive)) return { label: it.label, desc: it.desc, names: got.map(t => t.name) };   // アイテムで決着した・自分が倒れた: 続きの行動はできない
         continue;                                            // アイテムは行動を消費しない。メニューに戻る
       }
       if (c < 0) return { label: '何もしない', desc: '', names: [] };

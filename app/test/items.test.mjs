@@ -217,3 +217,16 @@ test('[アイテム] 手直し（edit）で職業を変えても、持ち物は�
   b.edit(b.G.units[0].id, { job: 'bm', hp: 1 });
   assert.deepEqual(b.G.units[0].items, before);
 });
+
+test('[アイテム] アイテムで自分が倒れたら、そのあとの行動メニューは出ない（決着していなくても）', async () => {
+  const { b, asks } = mk({ script: ['item:0', 0, 0], pick: (t, ok) => ok[0].value });
+  b.start({ players, mode: 'pvp' });
+  const [A, B, C] = b.G.units;
+  A.items = ['doll', 'bandage']; A.hp = 1;
+  b.select(A.id);
+  assert.ok(await b.correct());
+  assert.equal(A.alive, false);
+  assert.ok(!b.G.over, 'まだ味方も敵もいる');
+  assert.equal(asks.filter(a => a.t.endsWith('の行動')).length, 1, '倒れたあとは行動を聞かない');
+  assert.deepEqual(b.G.units[0].items, ['bandage'], '残りの持ち物はそのまま');
+});
