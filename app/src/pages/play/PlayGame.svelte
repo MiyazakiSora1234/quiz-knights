@@ -132,9 +132,9 @@
 
   .game{display:flex;flex-direction:column;min-height:calc(100dvh - 24px);gap:10px}
   .top{display:flex;justify-content:space-between;align-items:center;padding:2px 2px 8px;border-bottom:1px solid var(--line)}
-  .qn{font-family:var(--serif);font-size:1.5rem;font-weight:800;color:var(--gold)}
+  .qn{font-family:var(--serif);font-size:1.5rem;font-weight:800;color:var(--gold);white-space:nowrap}
   .chip.pur{margin-left:8px}
-  .net{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.8rem;margin-right:48px}
+  .net{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.78rem;margin-right:48px;white-space:nowrap}
 
   .ansbox{display:flex;flex-direction:column;gap:4px}
   .ans{display:flex;gap:8px}.ans .input{flex:1;min-width:0}
@@ -148,7 +148,12 @@
   .logbox{border-radius:12px;padding:10px 14px;box-shadow:inset 0 0 30px #8a6a3566;margin-bottom:8px}
   .chat-t{position:relative;flex:none}
   .badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:.7rem;font-weight:800;display:grid;place-items:center;padding:0 4px}
-  .topr{display:flex;align-items:center;gap:10px}
+  .topr{display:flex;align-items:center;gap:8px;min-width:0}
+  @media(max-width:520px){
+    .top{flex-wrap:wrap;gap:6px}
+    .topr .btn{padding:6px 10px;font-size:.8rem}
+    .net{margin-right:44px}
+  }
   .chatfloat{position:fixed;top:56px;right:10px;z-index:58;width:min(94vw,380px);display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--s1);border:1px solid var(--gold);border-radius:14px;box-shadow:0 14px 40px #000c}
   .cf-h{display:flex;justify-content:space-between;align-items:center;color:var(--gold)}
   .cl{height:min(40dvh,16em);overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:4px 10px;font-size:.84rem}
