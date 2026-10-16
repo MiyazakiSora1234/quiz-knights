@@ -28,7 +28,7 @@ async function run(cfg) {
   });
   const n = cfg.n;
   const players = Array.from({ length: n }, (_, i) => ({ name: 'P' + i, job: pick(SELECTABLE), team: cfg.mode === 'pvp' ? ['p', 'e', 'c'][i % (cfg.teams || 2)] : 'p', pid: 'x' + i }));
-  b.start({ players, mode: cfg.mode, foes: cfg.foes ?? [], boss: cfg.boss ?? 1, level: cfg.level ?? 'normal', cpuAuto: cfg.mode === 'cpu', hpScale: cfg.scaled ? recommendedHpScale(cfg.mode, n) : 1 });
+  b.start({ players, mode: cfg.mode, foes: cfg.foes ?? [], boss: cfg.boss ?? 1, level: cfg.level ?? 'normal', cpuAuto: cfg.mode === 'cpu', hpScale: cfg.scaled ? recommendedHpScale(cfg.mode, n, cfg.foes ?? []) : 1, items: cfg.items ?? 0 });
   let q = 0;
   while (!b.G.over && q < 80) {
     q++;
@@ -42,7 +42,7 @@ async function run(cfg) {
   const G = b.G;
   return {
     over: G.over, q: G.q,
-    units: G.units.map(u => `${u.name}|${u.job}|${u.side}|${u.hp}/${u.maxHp}|${u.alive ? 1 : 0}|${u.poison || 0}${u.barrier || 0}${u.restNow ? 'r' : ''}`),
+    units: G.units.map(u => `${u.name}|${u.job}|${u.side}|${u.hp}/${u.maxHp}|${u.alive ? 1 : 0}|${u.poison || 0}${u.barrier || 0}${u.restNow ? 'r' : ''}${u.items ? '|' + u.items.join(',') : ''}`),
     logTail: G.log.slice(0, 4).map(l => l.m),
     logLen: Math.min(G.log.length, 300),
     stats: Object.fromEntries(Object.entries(G.stats || {}).map(([k, v]) => [k, `${v.correct}/${v.wrong}`])),
@@ -55,8 +55,10 @@ for (const boss of [1, 2, 3, 4, 5, 6]) for (const level of ['base', 'weak', 'nor
 for (const n of [2, 3, 4, 6, 8]) for (const teams of [2, 3]) for (let k = 0; k < 4; k++) CASES.push({ seed: seed++, mode: 'pvp', n, teams, scaled: k % 2 === 0 });
 for (let k = 0; k < 24; k++) CASES.push({ seed: seed++, mode: 'cpu', n: 3 + (k % 4), foes: [['warrior', 'monk'], ['bm', 'berserker', 'mw'], ['boss1', 'warrior'], ['boss2', 'boss3'], ['tank', 'tank', 'cleric', 'bard']][k % 5], level: ['normal', 'strong'][k % 2], scaled: true });
 
+for (let k = 0; k < 36; k++) CASES.push({ seed: seed++, mode: k % 3 ? 'cpu' : 'pvp', n: 2 + (k % 6), teams: 2 + (k % 2), boss: 1 + (k % 6), level: 'normal', scaled: true, items: 1 + (k % 4), foes: k % 3 === 1 ? ['boss' + (1 + (k % 6))] : k % 3 === 2 ? undefined : ['warrior', 'monk'] });
+
 for (const cfg of CASES) {
-  const name = `[固定] ${cfg.mode} 種${cfg.seed} ${cfg.mode === 'cpu' ? (cfg.foes ? 'foes=' + cfg.foes.join('+') : `魔王${cfg.boss}`) + ' ' + cfg.level : `${cfg.teams}チーム`} ${cfg.n}人${cfg.scaled ? '(体力調整)' : ''}`;
+  const name = `[固定] ${cfg.mode} 種${cfg.seed} ${cfg.mode === 'cpu' ? (cfg.foes ? 'foes=' + cfg.foes.join('+') : `魔王${cfg.boss}`) + ' ' + cfg.level : `${cfg.teams}チーム`} ${cfg.n}人${cfg.scaled ? '(体力調整)' : ''}${cfg.items ? ` アイテム${cfg.items}` : ''}`;
   test(name, async () => {
     const got = await run(cfg);
     fresh[cfg.seed] = got;

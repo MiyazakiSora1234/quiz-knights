@@ -132,3 +132,14 @@ test('[保存] localStorage / sessionStorage が使えなくても落ちない�
     assert.equal(KEY.hostKey(7), 'qr_hk_7'); assert.equal(KEY.save(7), 'qr_save_7'); assert.equal(KEY.pw(7), 'qr_pw_7'); assert.equal(KEY.name, 'qr_name');
   } finally { globalThis.localStorage = saveL; globalThis.sessionStorage = saveS; }
 });
+
+/* ===== 裁定一覧（ルール画面） ===== */
+import { RULINGS } from '../src/lib/rulings.js';
+test('[裁定] 見出し・質問・答えがそろい、質問は重複せず、アイテムの項目がある', () => {
+  assert.ok(RULINGS.length >= 6);
+  const qs = RULINGS.flatMap(g => g.items.map(i => i[0]));
+  assert.equal(new Set(qs).size, qs.length, '質問の重複');
+  for (const g of RULINGS) { assert.ok(g.n && g.items.length); for (const [q, a] of g.items) { assert.ok(q.length >= 4 && q.endsWith('？'), q); assert.ok(a.length >= 10, q); } }
+  assert.ok(RULINGS.some(g => g.n === 'アイテム'));
+  assert.ok(qs.length >= 50, `${qs.length}件`);
+});

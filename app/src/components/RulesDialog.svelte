@@ -2,12 +2,16 @@
   import { fade, scale } from 'svelte/transition';
   import { panel } from '../lib/ui.svelte.js';
   import { icon } from '../lib/icons.js';
-  import { JOB, BOSS, JOB_GROUPS, LEVELS } from '../lib/engine.js';
+  import { JOB, BOSS, JOB_GROUPS, LEVELS, ITEMS } from '../lib/engine.js';
+  import { RULINGS } from '../lib/rulings.js';
 
   const close = () => (panel.rules = false);
   let tab = $state('play');
   let open = $state(null);   // 開いている職業
-  const TABS = [['play', '遊び方'], ['jobs', '職業'], ['boss', '魔王']];
+  const TABS = [['play', '遊び方'], ['jobs', '職業'], ['boss', '魔王'], ['items', 'アイテム'], ['rulings', '裁定']];
+  let query = $state('');     // 裁定の絞り込み
+  const hit = (q, a) => !query.trim() || (q + a).includes(query.trim());
+  const rulings = $derived(RULINGS.map(g => ({ ...g, items: g.items.filter(([q, a]) => hit(q, a)) })).filter(g => g.items.length));
   const STEPS = [
     ['問題を読む', '進行役が問題を読み上げます。わかったら早押しボタンを押し、いちばん早く押した人が回答権を取ります。'],
     ['答える', '回答権を取った人が答えます。進行役が「正解」か「誤答」を決めます。'],
@@ -68,6 +72,21 @@
             </div>
           {/each}
           <div class="hint">職業をタップすると、くわしい説明が開きます。</div>
+        {:else if tab === 'items'}
+          <div class="box"><b>アイテムとは</b><ul><li>バトル開始時に、参加者へランダムで配られます。</li><li>正解したときの行動メニューに「🎒」で並びます。使っても通常の行動は残ります。</li><li>持っている個数だけが、全員に見えます。</li></ul></div>
+          <div class="grid2">
+            {#each Object.values(ITEMS) as it}<div class="item"><span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span></div>{/each}
+          </div>
+        {:else if tab === 'rulings'}
+          <input class="find" type="search" placeholder="キーワードで探す（例：バリア、毒、タンク）" bind:value={query} aria-label="裁定を検索" />
+          {#each rulings as g}
+            <h4>{g.n}</h4>
+            {#each g.items as [q, a]}
+              <details class="rl" open={!!query.trim()}><summary>{q}</summary><p>{a}</p></details>
+            {/each}
+          {:else}
+            <div class="hint">見つかりませんでした。</div>
+          {/each}
         {:else}
           {#each Object.entries(BOSS) as [k, b]}
             <div class="boss">
@@ -111,5 +130,14 @@
   .bh{display:flex;gap:12px;align-items:center;margin-bottom:2px}.bh b{display:block;font-size:1.02rem}.bh small{color:var(--mut)}
   .row{display:grid;grid-template-columns:5.6em 1fr;gap:8px;line-height:1.5}
   .k{font-weight:700;color:var(--gold);font-size:.78rem;background:#0004;border-radius:6px;padding:1px 6px;text-align:center;align-self:start}.k.tr{color:#ff9aa2}
+  .tabs{flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+  .item{display:flex;gap:10px;align-items:center;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+  .item .ic{font-size:1.5rem;flex:none;width:34px;text-align:center}.item b{display:block;font-size:.9rem}.item small{color:var(--mut);font-size:.78rem;line-height:1.4}
+  .find{width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--tx);font-size:.9rem;margin-bottom:4px}
+  .rl{background:var(--s2);border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
+  .rl summary{cursor:pointer;padding:9px 12px;font-weight:700;font-size:.88rem;list-style:none}.rl summary::-webkit-details-marker{display:none}
+  .rl summary::before{content:'▸ ';color:var(--gold)}.rl[open] summary::before{content:'▾ '}
+  .rl p{margin:0;padding:0 12px 10px;color:var(--mut);font-size:.86rem;line-height:1.6}
   @media(max-width:560px){.tabs button{padding:6px 12px}}
 </style>

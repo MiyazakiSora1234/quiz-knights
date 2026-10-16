@@ -151,3 +151,69 @@ test('[アイテム] 新アイテムの効果: 輸血パック・吸血の牙・
   r = await useItem('bento', { setup: (G, A) => { A.hp = 1; } }); assert.equal(r.A.hp, 4); assert.equal(r.A.restNow, true);
   r = await useItem('candy', { setup: (G, A) => { A.hp = 1; A.poison = 2; } }); assert.deepEqual([r.A.hp, r.A.poison], [2, 0]);
 });
+
+/* ===== 保存・再開・途中参戦・離脱 ===== */
+test('[アイテム] 途中のバトルを保存して読み込んでも、持ち物がそのまま残る（再開）', async () => {
+  const { b } = mk({ seed: 11 });
+  b.start({ players, mode: 'pvp', items: 3 });
+  const saved = JSON.parse(JSON.stringify(b.G));
+  const { b: b2 } = mk({ seed: 12, script: ['item:0', -1] });
+  b2.load(saved);
+  assert.deepEqual(b2.G.units.map(u => u.items), saved.units.map(u => u.items));
+  b2.select(b2.G.units[0].id);
+  assert.ok(await b2.correct());
+  assert.equal(b2.G.units[0].items.length, 2);
+});
+test('[アイテム] 配布数の設定は途中参戦にも引き継がれる。離脱した人の持ち物は消える', () => {
+  const { b } = mk({ seed: 13 });
+  b.start({ players: players.map((p, i) => ({ ...p, pid: 'p' + i })), items: 2 });
+  assert.ok(b.join({ name: 'N', job: 'mage', team: 'e', pid: 'pn' }));
+  assert.equal(b.G.units.find(u => u.name === 'N').items.length, 2);
+  assert.ok(b.leave('pn'));
+  assert.ok(!b.G.units.some(u => u.name === 'N'));
+  assert.equal(b.G.units.reduce((t, u) => t + (u.items || []).length, 0), 6);
+});
+test('[アイテム] 参加者が操作する魔王にも、CPUにも、アイテムは配られない', () => {
+  const { b } = mk({ seed: 14 });
+  b.start({ players: [{ name: 'A', job: 'warrior', team: 'p' }, { name: 'M', job: 'boss2', team: 'e' }], mode: 'pvp', items: 2 });
+  assert.equal(b.G.units.find(u => u.name === 'M').items, undefined);
+  assert.equal(b.G.units.find(u => u.name === 'A').items.length, 2);
+  b.join({ name: 'B', job: 'boss3', pid: 'zz' });
+  assert.equal(b.G.units.find(u => u.name === 'B').items, undefined);
+});
+test('[アイテム] 配られる数の上限なしでも極端に大きい値で壊れない（0・負・小数・文字列）', () => {
+  for (const items of [0, -3, 0.5, 'x', null, undefined]) {
+    const { b } = mk({ seed: 15 });
+    b.start({ players, mode: 'pvp', items });
+    for (const u of b.G.units) assert.ok(!u.items || u.items.length === 0 || u.items.length >= 1);
+    checkOk(b);
+  }
+  const { b } = mk({ seed: 16 }); b.start({ players, mode: 'pvp', items: 40 });
+  assert.equal(b.G.units[0].items.length, 40);
+});
+function checkOk(b) { assert.ok(b.G && b.G.units.length === 3); }
+test('[アイテム] 配り方に偏りはあるが、全員が同じ物ばかりにならない（重み付きの抽選）', () => {
+  const tally = {};
+  for (let s = 1; s <= 400; s++) { const { b } = mk({ seed: s }); b.start({ players, mode: 'pvp', items: 3 }); for (const u of b.G.units) for (const k of u.items) tally[k] = (tally[k] || 0) + 1; }
+  const total = Object.values(tally).reduce((a, b) => a + b, 0), wsum = ITEM_KEYS.reduce((a, k) => a + ITEMS[k].w, 0);
+  for (const k of ITEM_KEYS) {
+    const expect = total * ITEMS[k].w / wsum;
+    assert.ok(Math.abs(tally[k] - expect) < expect * 0.35 + 12, `${k}: 実際 ${tally[k]} / 期待 ${expect.toFixed(0)}`);
+  }
+});
+test('[アイテム] 誤答では使えない（メニューが出ない）。誤答しても持ち物は減らない', async () => {
+  const { b, asks } = mk({ seed: 17 });
+  b.start({ players, mode: 'pvp', items: 2 });
+  const before = JSON.stringify(b.G.units[0].items);
+  b.select(b.G.units[0].id);
+  await b.wrong();
+  assert.equal(JSON.stringify(b.G.units[0].items), before);
+  assert.ok(!asks.some(a => a.t.endsWith('の行動')));
+});
+test('[アイテム] 手直し（edit）で職業を変えても、持ち物は残る', () => {
+  const { b } = mk({ seed: 18 });
+  b.start({ players, mode: 'pvp', items: 2 });
+  const before = [...b.G.units[0].items];
+  b.edit(b.G.units[0].id, { job: 'bm', hp: 1 });
+  assert.deepEqual(b.G.units[0].items, before);
+});
