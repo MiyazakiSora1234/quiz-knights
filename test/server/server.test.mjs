@@ -146,6 +146,22 @@ test('入室: 同じ pid で再接続しても人数が増えない（パスワ�
   host.send({ t: 'close' });
 });
 
+test('入室: IDを失って戻った人は、同じ名前で接続が切れたままの人として復元される', async () => {
+  const { id, host } = await makeRoom({ password: 'pw1' });
+  const p = await joinPlayer(id, 'たろう', { password: 'pw1' });
+  p.ws.close();
+  await sleep(100);
+  const again = await client(id);
+  again.send({ t: 'join', id, name: 'たろう', password: 'pw1' });
+  assert.equal((await again.wait('joined')).pid, p.pid);
+  const wrong = await client(id);
+  wrong.send({ t: 'join', id, name: 'たろう', password: 'xx' });
+  assert.equal((await wrong.wait('error')).code, 'pw');
+  await sleep(100);
+  assert.equal((await api())[id - 1].count, 1);
+  host.send({ t: 'close' });
+});
+
 test('参加者の増減・プロフィール変更が進行役に届く', async () => {
   const { id, host } = await makeRoom();
   host.clear();

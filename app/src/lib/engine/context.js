@@ -58,12 +58,6 @@ export function createContext({ ui, getG, emit }) {
   };
 
   /* ---------- 位置・陣営 ---------- */
-  /** 席の並び。魔王は1人だけの列、対戦では同じチームの中だけが隣どうし */
-  const row = u => {
-    const G = getG();
-    return u.isBoss ? [u] : G.units.filter(x => !x.isBoss && (G.mode !== 'pvp' || x.side === u.side));
-  };
-  const neighbors = u => { const r = row(u), i = r.indexOf(u); return [r[i - 1], r[i + 1]].filter(Boolean); };
   const foesOf = a => getG().units.filter(u => u.alive && u.side !== a.side);
   /** 魔王1の「半分以下で+2」を含めた与ダメージ */
   // 魔王・CPUの与えるダメージは、難易度で加減される（0ダメージの技は0のまま、1以上は1未満にならない）
@@ -240,6 +234,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    BACK, event, fxUnit, wait, ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    BACK, event, fxUnit, wait, ask, setActor, setAuto, setSim, rand, log, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }

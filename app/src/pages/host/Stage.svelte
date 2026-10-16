@@ -1,7 +1,7 @@
 <script>
   import { flip } from 'svelte/animate';
   import Unit from '../../components/Unit.svelte';
-  import { seatOf, tagsFor } from './gameView.js';
+  import { tagsFor } from './gameView.js';
 
   let { host, G } = $props();
   const foes = $derived(G.units.filter(u => u.side === 'e'));
@@ -10,9 +10,9 @@
   const versus = $derived(pvp && !G.cpu);          // ユーザー対戦: チームA（上）→ B → C の順に並べる
   const TEAM = { p: ['チームA', 'ally'], e: ['チームB', 'foe'], c: ['チームC', 'third'] };
   const groups = $derived(versus
-    ? ['p', 'e', 'c'].map(t => ({ key: t, label: TEAM[t][0], cls: TEAM[t][1], units: G.units.filter(u => u.side === t), seats: true })).filter(g => g.units.length)
-    : [{ key: 'e', label: G.cpu ? (foes.every(u => u.isBoss) ? '魔王軍' : 'CPUチーム') : '魔王軍', cls: 'foe', units: foes, seats: pvp, boss: foes.length === 1 && foes[0].isBoss },
-       { key: 'p', label: 'プレイヤー', cls: 'ally', units: allies, seats: true }]);
+    ? ['p', 'e', 'c'].map(t => ({ key: t, label: TEAM[t][0], cls: TEAM[t][1], units: G.units.filter(u => u.side === t) })).filter(g => g.units.length)
+    : [{ key: 'e', label: G.cpu ? (foes.every(u => u.isBoss) ? '魔王軍' : 'CPUチーム') : '魔王軍', cls: 'foe', units: foes, boss: foes.length === 1 && foes[0].isBoss },
+       { key: 'p', label: 'プレイヤー', cls: 'ally', units: allies }]);
   // 参加者（端末を持つ人）は早押しで決まるので、進行役は選べない。魔王・CPUだけ進行役が選ぶ
   // 接続が切れている参加者のカードには印を付ける（戻ってこられるので、ユニットは残る）
   const offlineIds = $derived(new Set(Object.entries(G.pids ?? {}).filter(([pid]) => !host.lobby.find(l => l.pid === pid)?.online).map(([, id]) => id)));
@@ -27,9 +27,9 @@
   const isHuman = u => Object.values(G.pids ?? {}).includes(u.id);
 </script>
 
-{#snippet card(u, seat)}
+{#snippet card(u)}
   <div class="cw">
-  <Unit {u} sel={G.sel === u.id} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} {seat} bubble={bubbles[u.id] ?? ''} acting={G.acting === u.id} fxs={(G.fxs ?? []).filter(f => f.uid === u.id)} answering={G.sel === u.id} dim={G.sel != null && G.sel !== u.id} />
+  <Unit {u} sel={G.sel === u.id} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={G.acting === u.id} fxs={(G.fxs ?? []).filter(f => f.uid === u.id)} answering={G.sel === u.id} dim={G.sel != null && G.sel !== u.id} />
   <button class="edit" onclick={() => (host.editing = u.id)} disabled={host.busy} title="職業・HPなどを調整" aria-label="{u.name}を調整">✎</button>
   </div>
 {/snippet}
@@ -39,11 +39,11 @@
     <div class="team-label {g.cls}" style={gi ? 'margin-top:8px' : ''}>{g.label}</div>
     {#if g.boss}
       <div class="foes">
-        {#each g.units as u (u.id)}{@render card(u, g.seats ? seatOf(u, G) : null)}{/each}
+        {#each g.units as u (u.id)}{@render card(u)}{/each}
       </div>
     {:else}
       <div class="units">
-        {#each g.units as u (u.id)}<div animate:flip={{ duration: 240 }}>{@render card(u, g.seats ? seatOf(u, G) : null)}</div>{/each}
+        {#each g.units as u (u.id)}<div animate:flip={{ duration: 240 }}>{@render card(u)}</div>{/each}
       </div>
     {/if}
   {/each}

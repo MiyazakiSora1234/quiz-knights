@@ -102,9 +102,9 @@ test('タンク: 範囲攻撃は1撃ごとに庇うか聞かれる', async () =>
   const h = harness();
   h.b.start({ players: [P('A', 'warrior'), P('T', 'tank'), P('C', 'monk')], boss: 1 });
   h.u('T').guards = 2;
-  await h.correct('魔王1', '技2', 'T', '庇わない'); // T 本人に2、両隣 A・C に1（A,C への1ダメージで庇い確認）
+  await h.correct('魔王1', '技2', 'T', 'A', '庇わない'); // T に2、A に1（それぞれ庇い確認）
   const guards = askedTitles(h).filter(t => t.startsWith('🛡'));
-  assert.ok(guards.length >= 2, '隣への巻き添えでも庇い確認が出る');
+  assert.ok(guards.length >= 1, '2人目への1ダメージでも庇い確認が出る');
 });
 
 test('タンク: 賢者に蘇生されても守り回数が保持される', async () => {

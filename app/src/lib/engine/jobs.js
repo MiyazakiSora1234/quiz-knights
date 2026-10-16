@@ -113,8 +113,8 @@ const SPECIALS = {
 const BOSS_SKILLS = {
   1(ctx, a, add) {
     add('技1', '敵1体に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 3)); });
-    add('技2', '指定1人に2ダメージ、その両隣に1ダメージ', [P('指定する人', foe(a))], async ([t]) => {
-      await ctx.applyEvents([{ src: a, to: t, amt: ctx.dm(a, 2) }, ...ctx.neighbors(t).map(n => ({ src: a, to: n, amt: ctx.dm(a, 1) }))]);
+    add('技2', '1人に2ダメージ、別の1人に1ダメージ', [P('2ダメージの人', foe(a)), P('1ダメージの人', notIn(foe(a)))], async ([t, n]) => {
+      await ctx.applyEvents([{ src: a, to: t, amt: ctx.dm(a, 2) }, ...(n ? [{ src: a, to: n, amt: ctx.dm(a, 1) }] : [])]);
     });
     add('技3', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, 1)); });
   },

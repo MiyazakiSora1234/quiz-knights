@@ -179,6 +179,12 @@ export class Room extends DurableObject {
   async onJoin(ws, m) {
     if (!this.R) return fail(ws, 'その部屋は存在しません', 'gone');
     let p = m.pid && this.R.players[m.pid];
+    // 参加者IDを失って戻ってきた人（別の端末・保存領域の消去）は、同じ名前で接続が切れたままの人を引き継ぐ
+    if (!p && m.name) {
+      const name = String(m.name).trim().slice(0, 12);
+      const same = Object.values(this.R.players).filter(x => x.name === name && !this.isOnline(x.pid));
+      if (same.length === 1 && (!this.R.password || this.R.password === String(m.password || ''))) p = same[0];
+    }
     if (!p && this.R.password && this.R.password !== String(m.password || '')) return fail(ws, 'パスワードが違います', 'pw');
     let isNew = false;
     if (!p) {

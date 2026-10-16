@@ -3,7 +3,7 @@
   import { jobName, jobDesc } from '../lib/engine.js';
   import { toast } from '../lib/stores/ui.svelte.js';
 
-  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false, fxs = [] } = $props();
+  let { u, sel = false, can = false, ribbon = '', onpick = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false, fxs = [] } = $props();
   const label = $derived(jobLabel ?? jobName(u));
 
   let floats = $state([]);
@@ -66,7 +66,6 @@
   data-id={u.id}
 >
   {#if ribbon}<div class="ribbon">{ribbon}</div>{/if}
-  {#if seat != null}<div class="seat" title="席順（両隣の判定に使います）">{seat}</div>{/if}
   <div class="u-in" class:shake={anim === 'hit'} class:glow={anim === 'heal'}>
     <div class="ic-wrap">{@html icon(u.isBoss ? `boss${u.bossId || 1}` : u.job)}</div>
     <div class="nm">{u.name}</div>
@@ -154,8 +153,7 @@
   @keyframes bossact{0%,100%{transform:scale(1)}30%{transform:scale(1.09) translateY(-6px)}55%{transform:scale(1.03) translateY(2px) rotate(-1deg)}}
   @keyframes act{0%,100%{box-shadow:0 0 0 0 #ff4d5e00;transform:scale(1)}50%{box-shadow:0 0 34px 8px #ff4d5eaa;transform:scale(1.06)}}
   .bubble{margin-top:8px;max-width:100%;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.85rem;line-height:1.35;padding:4px 9px;border-radius:10px;text-align:center;overflow-wrap:anywhere;word-break:break-word;box-shadow:0 3px 10px #0008}
-  .seat{position:absolute;top:3px;left:8px;z-index:3;font-size:.7rem;color:var(--mut);font-family:var(--display);font-weight:800;line-height:1.3}
-  .unit{text-align:center}
+    .unit{text-align:center}
   .compact .u-in{padding:24px 8px 20px}
   .compact .nm{font-size:.92rem}
 </style>

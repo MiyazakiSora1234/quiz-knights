@@ -89,13 +89,18 @@ export class PlayStore {
   get netGood() { return this.status === 'open' && this.rtt != null && this.rtt < 150 && (this.jitter ?? 0) <= 10; }
 
   /* ---------- 入室 ---------- */
+  // 参加者IDは、タブを閉じても・ブラウザを開き直しても残す（通信エラーで落ちた後、同じ人として戻れるように）
+  #knownPid() { return session.get(this.pidKey) || store.get(this.pidKey); }
+  #rememberPid(pid) { session.set(this.pidKey, pid); store.set(this.pidKey, pid); }
+  #forgetPid() { session.remove(this.pidKey); store.remove(this.pidKey); }
+
   async init() {
     try { this.info = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).find(r => String(r.id) === String(this.id)); } catch { /* noop */ }
     if (!this.info || !this.info.used) { toast('その部屋は存在しません'); goList(); return; }
     this.roomName = this.info.name;
     this.phase = 'join';
     const pw = session.get(KEY.pw(this.id)); if (pw != null) { this.pw = pw; session.remove(KEY.pw(this.id)); }
-    const known = session.get(this.pidKey);
+    const known = this.#knownPid();
     // 再接続、または部屋を作った直後だけ自動で入室する。初めての入室は taQu と同じく、参加ダイアログ（名前・ひとこと・パスワード）を出す
     if ((known || this.pw) && this.name) this.join(true);
   }
@@ -103,12 +108,12 @@ export class PlayStore {
   join(auto = false) {
     if (!this.name.trim()) { this.err = '名前を入力してください'; return; }
     this.err = ''; unlockAudio();
-    if (!auto) session.remove(this.pidKey);
+    if (!auto) this.#forgetPid();
     this.conn?.close();
     const conn = this.conn = new Conn(this.id, {
       status: s => { this.status = s; },
       clock: c => { this.rtt = Math.round(c.rtt); this.jitter = Math.round(c.jitter ?? 0); },
-      open: () => conn.send({ t: 'join', id: this.id, name: this.name.trim(), flavor: this.flavor.trim(), password: this.pw, pid: session.get(this.pidKey) || undefined }),
+      open: () => conn.send({ t: 'join', id: this.id, name: this.name.trim(), flavor: this.flavor.trim(), password: this.pw, pid: this.#knownPid() || undefined }),
       message: m => this.#onMessage(m),
     });
     conn.connect();
@@ -131,7 +136,7 @@ export class PlayStore {
       case 'answer_ack': this.answered = { q: m.q, text: m.text }; return;
       case 'ask_close': if (m.all || this.req?.qid === m.qid) this.req = null; return;     // all: 進行役が替わったので、途中だった選択は閉じる
       case 'chat': this.chat = [...this.chat, m].slice(-100); return;
-      case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
+      case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); this.#forgetPid(); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
       case 'ended': this.myItems = []; this.allyItems = {}; this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
@@ -148,20 +153,20 @@ export class PlayStore {
         if (m.pid === this.pid) { sfx.win(); vib([120, 60, 200]); } else sfx.other();
         return;
       case 'closed':
-        session.remove(this.pidKey);
+        this.#forgetPid();
         toast(m.why || '部屋が閉じられました', 3500); goList(2200);
     }
   }
   #onError(m) {
     if (m.code === 'claim') { toast(m.msg, 3500); return; }   // 進行役の引き継ぎができなかっただけ（入室は続ける）
-    session.remove(this.pidKey);
+    this.#forgetPid();
     if (m.code === 'gone') { toast(m.msg); goList(); return; }
     this.pid = null; this.conn.close();
     this.phase = 'join'; this.err = m.msg;
     if (m.code === 'pw') this.info = { ...this.info, hasPw: true };
   }
   #onJoined(m) {
-    this.pid = m.pid; session.set(this.pidKey, m.pid);
+    this.pid = m.pid; this.#rememberPid(m.pid);
     store.set(KEY.name, m.name); store.set(KEY.flavor, m.flavor || '');
     this.myJob = m.job; this.myTeam = m.team; this.roomName = m.roomName;
     if (this.delay && m.delay !== this.delay) this.conn.send({ t: 'profile', delay: this.delay });   // 入り直したときも、自分のディレイを引き継ぐ
@@ -209,10 +214,10 @@ export class PlayStore {
   saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
   /** 進行役のいない部屋で、自分が進行役になる */
   claimHost() { this.conn.send({ t: 'claim_host' }); }
-  leave() { this.conn.send({ t: 'leave' }); session.remove(this.pidKey); location.href = '/'; }
+  leave() { this.conn.send({ t: 'leave' }); this.#forgetPid(); location.href = '/'; }
   /** 名前を変える（いったん退室して入室フォームへ） */
   rename() {
-    this.conn.send({ t: 'leave' }); session.remove(this.pidKey);
+    this.conn.send({ t: 'leave' }); this.#forgetPid();
     this.conn.close(); this.pid = null; this.gs = null; this.phase = 'join';
   }
 

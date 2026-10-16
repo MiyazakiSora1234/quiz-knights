@@ -197,10 +197,10 @@ test('タンク: 庇わない選択も可能', async () => {
 
 test('タンク: 自分が範囲攻撃で死ぬ場合も庇える（守り回数は死んでも継続）', async () => {
   const h = harness();
-  // 席順 A, T。魔王1の技2は A に2、両隣(T)に1。T が A を庇うと T は 2+1 を受けて死ぬ
+  // 魔王1の技2は A に2、T に1。T が A を庇うと T は 2+1 を受けて死ぬ
   h.b.start({ players: [P('A', 'monk'), P('T', 'tank')], boss: 1 });
   h.u('T').hp = 3;
-  await h.correct('魔王1', '技2', 'A', 'T が代わりに');
+  await h.correct('魔王1', '技2', 'A', 'T', 'T が代わりに');
   assert.equal(h.u('A').hp, 6);
   assert.equal(h.u('T').alive, false);
   assert.equal(h.u('T').guards, 0);
@@ -234,11 +234,11 @@ test('魔王1: 残りHP半分以下で与ダメージ+2', async () => {
   assert.equal(h.u('A').hp, 7 - 5);
 });
 
-test('魔王1: 技2 は指定1人に2、両隣に1', async () => {
+test('魔王1: 技2 は1人に2、別の1人に1', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'warrior'), P('B', 'warrior'), P('C', 'warrior')], boss: 1 });
-  await h.correct('魔王1', '技2', 'B');
-  assert.deepEqual([h.u('A').hp, h.u('B').hp, h.u('C').hp], [6, 5, 6]);
+  await h.correct('魔王1', '技2', 'B', 'C');
+  assert.deepEqual([h.u('A').hp, h.u('B').hp, h.u('C').hp], [7, 5, 6]);
 });
 
 test('魔王2: 形態変化と、第3形態の仲間化・全体1ダメージ・スルー回復', async () => {
@@ -339,7 +339,7 @@ test('勝敗: 魔王撃破で勝ち／全滅で負け', async () => {
   assert.equal(h2.b.G.over, 'lose');
 });
 
-test('ユーザー対戦: 片方が全滅したら決着。両隣はチーム内', async () => {
+test('ユーザー対戦: 片方が全滅したら決着', async () => {
   const h = harness();
   h.b.start({ players: [P('A1', 'warrior', 'p'), P('A2', 'warrior', 'p'), P('B1', 'monk', 'e')], mode: 'pvp' });
   h.u('B1').hp = 1;

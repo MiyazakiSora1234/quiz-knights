@@ -1,13 +1,6 @@
 // バトル画面の表示用の小さな関数（画面部品どうしで共有する）
 import { JOB, ITEMS, bonusOf, statusTags } from '../../lib/engine.js';
 
-/** 席の番号（両隣の判定に使われる）。魔王は席なし。対戦ではチーム内の並び */
-export function seatOf(u, G) {
-  if (u.isBoss) return null;
-  const row = G.units.filter(x => !x.isBoss && (G.mode !== 'pvp' || x.side === u.side));
-  return row.indexOf(u) + 1;
-}
-
 /** ユニットのカードに出す印 */
 export function tagsFor(u, G) {
   const t = [];
