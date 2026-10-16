@@ -256,6 +256,7 @@ export class Room extends DurableObject {
       }
       case 'ask_close': this.toPlayers({ t: 'ask_close', qid: m.qid }); return;
       case 'set_delay': return this.setDelay(m.pid, m.delay);
+      case 'set_profile': return this.setProfile(m);
       case 'set_foes': return this.setFoes(m.foes);
       case 'set_level': return this.setLevel(m.level);
       case 'transfer': return this.transferHost(m.pid, m.name);
@@ -315,6 +316,19 @@ export class Room extends DurableObject {
   }
 
   /** 部屋名・パスワードの変更（入室済みの人には影響しない） */
+  /** 進行役が、参加者の職業・チーム・名前を変える。本人の画面にもすぐ反映する */
+  async setProfile(m) {
+    const p = this.R.players[m.pid];
+    if (!p) return;
+    const out = {};
+    if (typeof m.job === 'string' && m.job.length > 0 && m.job.length <= 20) { p.job = m.job; out.job = p.job; }
+    if (m.team === 'p' || m.team === 'e' || m.team === 'c') { p.team = m.team; out.team = p.team; }
+    if (typeof m.name === 'string' && m.name.trim()) { p.name = m.name.trim().slice(0, 12); out.name = p.name; }
+    if (!Object.keys(out).length) return;
+    await this.save();
+    for (const s of this.playerWs(p.pid)) send(s, { t: 'profile_set', ...out });
+    this.lobby();
+  }
   /** 個人のディレイ（ms）を安全な値にする */
   cleanDelay(v) { const n = Math.round(+v); return Number.isFinite(n) ? Math.max(0, Math.min(PERSONAL_DELAY_MAX, n)) : 0; }
   /** 進行役が決めた「押せる人とディレイ」に、各自のディレイ設定を足す */

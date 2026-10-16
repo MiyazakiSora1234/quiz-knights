@@ -1072,3 +1072,20 @@ test('持ち物の配信: 進行役 → 本人だけに届き、ほかの参加�
   assert.equal(a.has('priv'), false, '無視された送信は届かない');
   host.send({ t: 'close' });
 });
+
+test('進行役が参加者の職業・チーム・名前を変える: 本人に届き、名簿にも反映。不正な値は無視。参加者からは変えられない', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'set_profile', pid: a.pid, job: 'mage', team: 'e', name: ' 新名 ' });
+  const got = await a.wait('profile_set');
+  assert.deepEqual([got.job, got.team, got.name], ['mage', 'e', '新名']);
+  await sleep(150);
+  assert.equal(b.has('profile_set'), false, '他の人には送らない');
+  const lob = await host.wait('lobby', 3000, x => x.players.find(p => p.pid === a.pid)?.job === 'mage');
+  assert.equal(lob.players.find(p => p.pid === a.pid).team, 'e');
+  host.send({ t: 'set_profile', pid: a.pid, job: '', team: 'z', name: '  ' });      // 不正
+  b.send({ t: 'set_profile', pid: a.pid, job: 'tank' });                            // 参加者からは変えられない
+  await sleep(200);
+  assert.equal(a.has('profile_set'), false);
+  host.send({ t: 'close' });
+});

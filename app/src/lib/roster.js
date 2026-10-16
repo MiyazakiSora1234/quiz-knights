@@ -22,6 +22,9 @@ export function syncRoster(roster, lobby, nextKey) {
     }
     if (!row.touchedName) row.name = lp.name;
     row.online = lp.online; row.flavor = lp.flavor || ''; row.rtt = lp.rtt ?? null; row.delay = lp.delay || 0;
+    // 進行役が変えた職業・チームは、サーバーに届いて同じ値が返ってくるまで守る（そのあとは、参加者が選び直せば反映する）
+    if (row.touchedJob && validJob(lp.job) === row.job) row.touchedJob = false;
+    if (row.touchedTeam && (lp.team || row.team) === row.team) row.touchedTeam = false;
     if (!row.touchedJob) row.job = validJob(lp.job);
     if (!row.touchedTeam) row.team = lp.team || row.team;
   }

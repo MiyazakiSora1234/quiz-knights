@@ -119,6 +119,12 @@ export class PlayStore {
       case 'joined': return this.#onJoined(m);
       case 'members': this.members = m.players; if (m.roomName) this.roomName = m.roomName; if (Array.isArray(m.foes)) this.foes = [...m.foes]; if (m.level) this.level = m.level; this.hasHost = m.hasHost; this.hostOnline = m.hostOnline; return;
       case 'ask': this.req = m; if (typeof navigator.vibrate === 'function') vib(40); sfx.open(); return;
+      case 'profile_set': {                      // 進行役が、自分の職業・チーム・名前を変えた
+        if (m.job) { this.myJob = m.job; store.set(KEY.job, m.job); }
+        if (m.team) { this.myTeam = m.team; store.set(KEY.team, m.team); }
+        if (m.name) { this.name = m.name; store.set(KEY.name, m.name); }
+        return;
+      }
       case 'priv': this.myItems = m.items ?? []; return;
       case 'answer_ack': this.answered = { q: m.q, text: m.text }; return;
       case 'ask_close': if (this.req?.qid === m.qid) this.req = null; return;

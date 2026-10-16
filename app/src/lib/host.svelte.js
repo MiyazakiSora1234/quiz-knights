@@ -198,8 +198,10 @@ export class HostStore {
   }
   /** 全員の職業をランダムに決める（進行役が決めた扱いになり、参加者の選び直しで上書きされない） */
   randomizeJobs() {
-    for (const p of this.roster) { p.job = SELECTABLE[Math.floor(Math.random() * SELECTABLE.length)]; p.touchedJob = true; }
+    for (const p of this.roster) { p.job = SELECTABLE[Math.floor(Math.random() * SELECTABLE.length)]; p.touchedJob = true; this.pushProfile(p, { job: p.job }); }
   }
+  /** 進行役が名簿で変えた職業・チーム・名前を、サーバー経由で本人の画面にも反映する（本人が入室中のときだけ） */
+  pushProfile(p, patch) { if (p.pid) this.conn?.send({ t: 'set_profile', pid: p.pid, ...patch }); }
   remove(p) {
     if (p.pid) this.conn.send({ t: 'kick', pid: p.pid });
     this.roster = this.roster.filter(x => x !== p);

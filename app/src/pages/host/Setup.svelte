@@ -40,7 +40,7 @@
       <div class="panel">
         <h3>参加者 <span class="chip">{host.roster.length}人</span>{#if offline}<span class="chip warn">オフライン {offline}</span>{/if}<button class="btn ghost sm rnd" onclick={() => host.randomizeJobs()} disabled={!host.roster.length}>🎲 全員の職業をランダムに</button></h3>
         {#each host.roster as p (p.key)}
-          <div animate:flip={{ duration: 220 }} in:fly={{ y: 12, duration: 220 }}><RosterRow {p} {pvp} onremove={() => host.remove(p)} /></div>
+          <div animate:flip={{ duration: 220 }} in:fly={{ y: 12, duration: 220 }}><RosterRow {p} {pvp} onremove={() => host.remove(p)} onedit={(patch) => host.pushProfile(p, patch)} /></div>
         {/each}
         {#if !host.roster.length}
           <div class="empty"><b>参加者を待っています…</b>URLを共有してください。入室した人は、ここに自動で追加されます。</div>

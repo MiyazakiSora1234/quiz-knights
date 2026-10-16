@@ -442,3 +442,27 @@ test('[進行役] 1つ戻す・スルー・手直しが画面の状態に反映�
     h.destroy();
   } finally { env.restore(); }
 });
+
+test('[双方向] 進行役が名簿で変えた職業・チームは本人の画面に届き、本人が選び直せば進行役の名簿にも反映される', async () => {
+  const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
+  try {
+    const { h, ws: hws } = await hostReady(env, mods, { players: lobbyPlayers() });
+    const row = h.roster[0];
+    row.job = 'tank'; row.touchedJob = true; h.pushProfile(row, { job: 'tank' });
+    assert.deepEqual(hws.of('set_profile')[0], { t: 'set_profile', pid: 'p0', job: 'tank' });
+    // 本人の画面
+    const { p, ws } = await joined(env, mods);
+    ws.recv({ t: 'profile_set', job: 'tank', team: 'e', name: '改名' });
+    assert.equal(p.myJob, 'tank'); assert.equal(p.myTeam, 'e'); assert.equal(p.name, '改名');
+    // サーバーから同じ値が返ってきたら、進行役の「手で変えた」印は外れる → その後の本人の選び直しが反映される
+    hws.recv({ t: 'lobby', players: lobbyPlayers().map((x, i) => (i === 0 ? { ...x, job: 'tank' } : x)), foes: ['boss1'], level: 'normal' });
+    assert.equal(h.roster[0].touchedJob, false);
+    hws.recv({ t: 'lobby', players: lobbyPlayers().map((x, i) => (i === 0 ? { ...x, job: 'bm' } : x)), foes: ['boss1'], level: 'normal' });
+    assert.equal(h.roster[0].job, 'bm');
+    // 手動追加の行（pid なし）は送らない
+    const before = hws.of('set_profile').length;
+    h.pushProfile({ pid: null, job: 'bm' }, { job: 'bm' });
+    assert.equal(hws.of('set_profile').length, before);
+    p.destroy(); h.destroy();
+  } finally { env.restore(); }
+});
