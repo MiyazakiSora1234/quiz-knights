@@ -102,3 +102,7 @@ select.input{padding-right:8px}
 /* 部屋番号などの丸いバッジ（サイズは --sz で変える） */
 .num{--sz:44px;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:calc(var(--sz) * .42);background:#120f0c;border:2px solid var(--gold);color:var(--gold);flex:none}
 .chip.pur{border-color:var(--pur);color:#d3b6ee}
+
+/* 参加者の選択シートが出ている間は、ページの下に余白を足して、盤面を最後まで見られるようにする */
+body.ask-open{padding-bottom:52dvh}
+body.ask-open.ask-folded{padding-bottom:84px}
