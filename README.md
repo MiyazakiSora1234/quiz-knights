@@ -17,6 +17,7 @@
 | ![進行役の準備画面](docs/screenshots/02-host-setup.jpg) | ![スマホの早押し画面](docs/screenshots/05-phone-buzzer.jpg) |
 
 紹介文の全文は [docs/INTRO.md](docs/INTRO.md)。アプリ内の紹介ページは `/about` です。
+技術構成の整理は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) にあります。
 
 ## 構成
 ```
