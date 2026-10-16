@@ -934,16 +934,6 @@ test('途中参戦: 勝者が決まったあとでも、順位の表示のため
   assert.deepEqual(r.all.map(x => x.pid), [a.pid, late.pid]);
   host.send({ t: 'close' });
 });
-  await a.wait('open');
-  a.send({ t: 'buzz', ts: Date.now(), rtt: 20 });
-  await host.wait('winner', 4000);
-  const late = await joinPlayer(id, 'Late');
-  host.send({ t: 'add_eligible', pid: late.pid, delay: 0 });
-  host.send({ t: 'add_eligible', pid: 'nobody', delay: 0 });
-  await sleep(300);
-  assert.equal(late.has('open'), false);
-  host.send({ t: 'close' });
-});
 
 test('順位の表示: 勝者の通知に全員の順位とms差があり、連チャンの控えの押下でも全員に順位が配られる', async () => {
   const { id, host } = await makeRoom();
