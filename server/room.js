@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BOSS_COUNT, PERSONAL_DELAY_MAX, OFFLINE_PRUNE_MS } from './config.js';
+import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BATTLE_MAX_CHARS, BOSS_COUNT, PERSONAL_DELAY_MAX, OFFLINE_PRUNE_MS } from './config.js';
 import { BuzzRound, clampRtt } from './buzz.js';
 import { lobbyStub } from './lobby.js';
 
@@ -17,6 +17,7 @@ export class Room extends DurableObject {
     super(ctx, env);
     this.R = null;                 // {id,name,password,hostKey,players:{pid:{...}},hostGone}
     this.state = null;             // 進行役が送ってくる表示用の状態
+    this.battle = null;            // 進行役が送ってくるバトルの全状態（進行役が替わっても続きから進められるように、サーバーが預かる）
     this.rtts = new Map();         // pid -> 往復遅延(ms)。参加者が自己申告（メモリのみ）
     this.chat = [];                // 直近のチャット（メモリのみ）
     this.lastWinner = null;        // 直近の早押しの勝者（進行役が戻ったとき用）
@@ -25,6 +26,7 @@ export class Room extends DurableObject {
     ctx.blockConcurrencyWhile(async () => {
       this.R = (await ctx.storage.get('room')) || null;
       this.state = (await ctx.storage.get('state')) || null;
+      this.battle = (await ctx.storage.get('battle')) || null;
       this.round = BuzzRound.from(await ctx.storage.get('buzz'));
     });
   }
@@ -85,7 +87,7 @@ export class Room extends DurableObject {
     this.toPlayers({ t: 'closed', why });
     const id = this.R?.id;
     for (const s of this.socks()) { try { s.close(1000, 'closed'); } catch { /* noop */ } }
-    this.R = null; this.state = null; this.lastWinner = null; this.chat = []; this.round = new BuzzRound();
+    this.R = null; this.state = null; this.battle = null; this.lastWinner = null; this.chat = []; this.round = new BuzzRound();
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     if (id) await lobbyStub(this.env).remove(id);
@@ -168,7 +170,7 @@ export class Room extends DurableObject {
     await this.save();
     await this.ctx.storage.deleteAlarm();
     ws.serializeAttachment({ role: 'host' });
-    send(ws, { t: 'created', room: this.R.id, name: this.R.name, password: this.R.password, hostKey: this.R.hostKey });
+    send(ws, { t: 'created', room: this.R.id, name: this.R.name, password: this.R.password, hostKey: this.R.hostKey, battle: this.battle });
     this.lobby();
     // 受付が終わっていて、勝者がまだ回答者に選ばれていないなら、戻った進行役にもう一度伝える
     if (this.lastWinner && this.lastWinner.q === this.round.q && !this.round.open) send(ws, this.lastWinner);
@@ -204,6 +206,13 @@ export class Room extends DurableObject {
         this.ctx.waitUntil(this.ctx.storage.put('state', m.state));
         this.toPlayers({ t: 'state', state: m.state });
         if (first) this.syncLobby();                   // 一覧の「バトル中」表示を更新
+        return;
+      }
+      case 'save': {                                    // バトルの全状態を預かる（進行役が替わったとき、新しい進行役に渡す）
+        const G = m.G;
+        if (!G || !Array.isArray(G.units) || JSON.stringify(G).length > BATTLE_MAX_CHARS) return;
+        this.battle = G;
+        this.ctx.waitUntil(this.ctx.storage.put('battle', G));
         return;
       }
       case 'open':                                      // 次の問題の早押し受付を始める
@@ -266,8 +275,8 @@ export class Room extends DurableObject {
       case 'release': return this.releaseHost(m.name);
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
       case 'endgame':
-        this.state = null; this.round = new BuzzRound();
-        await this.ctx.storage.delete('state');
+        this.state = null; this.battle = null; this.round = new BuzzRound();
+        await Promise.all([this.ctx.storage.delete('state'), this.ctx.storage.delete('battle')]);
         this.toPlayers({ t: 'ended' });
         this.syncLobby();
     }
@@ -299,9 +308,10 @@ export class Room extends DurableObject {
         ws.serializeAttachment({});
         return this.lobby(ws);
       case 'settings': if (!this.R.hostKey) return this.updateSettings(m); return;   // 進行役がいない間は誰でも変えられる
-      case 'set_boss': return this.setBoss(m.boss);
-      case 'set_foes': return this.setFoes(m.foes);                                       // 戦う相手も、参加者が変えられる
-      case 'set_level': return this.setLevel(m.level);                                      // 魔王の選択は参加者も変えられる
+      // 戦う相手・難易度・魔王の選択は、進行役だけが決める（進行役がいない間だけ、参加者も変えられる）
+      case 'set_boss': if (!this.R.hostKey) return this.setBoss(m.boss); return;
+      case 'set_foes': if (!this.R.hostKey) return this.setFoes(m.foes); return;
+      case 'set_level': if (!this.R.hostKey) return this.setLevel(m.level); return;
       case 'answer': this.toHost({ t: 'answer', pid, qid: m.qid, i: m.i }); return;
       case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
@@ -400,7 +410,7 @@ export class Room extends DurableObject {
       if (this.hostWs()) return fail(ws, 'すでに進行役がいます', 'claim');
       const gone = this.R.hostGone ? Date.now() - this.R.hostGone : Infinity;
       if (gone < HOST_TAKEOVER_MS) return fail(ws, `進行役が戻るかもしれません。あと${Math.ceil((HOST_TAKEOVER_MS - gone) / 1000)}秒ほど待ってください`, 'claim');
-      this.endBattleState();
+      this.dropPendingAsks();
     }
     await this.grantHost(pid);
     this.lobby();
@@ -418,7 +428,7 @@ export class Room extends DurableObject {
     if (!this.R.players[pid] || !this.isOnline(pid)) return this.toHost({ t: 'notice', msg: 'その人はオンラインではありません' });
     const old = this.hostWs();
     await this.grantHost(pid);
-    this.endBattleState();
+    this.dropPendingAsks();
     if (old) await this.demote(old, name);
     this.lobby();
   }
@@ -428,15 +438,14 @@ export class Room extends DurableObject {
     this.R.hostKey = null; this.R.hostGone = null;
     await this.save();
     await this.ctx.storage.deleteAlarm();
-    this.endBattleState();
+    this.dropPendingAsks();
     if (old) await this.demote(old, name);
     this.lobby();
   }
-  /** 進行役が替わるとバトルの状態は引き継げないので、参加者の画面をロビーに戻す */
-  endBattleState() {
-    this.state = null; clearTimeout(this.timer); this.round = new BuzzRound();
-    this.ctx.waitUntil(Promise.all([this.ctx.storage.delete('state'), this.persistRound()]));
-    this.toPlayers({ t: 'ended' });
+  /** 進行役が替わっても、バトルは続けられる（新しい進行役が、預かっている全状態を受け取る）。途中だった選択ダイアログだけは閉じる */
+  dropPendingAsks() {
+    clearTimeout(this.timer);
+    this.toPlayers({ t: 'ask_close', all: true });
   }
 
   /* ============================ 切断・タイマー ============================ */

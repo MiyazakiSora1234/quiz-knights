@@ -6,8 +6,8 @@
   import JobSelect from './JobSelect.svelte';
   import PresetSelect from './PresetSelect.svelte';
 
-  // 戦う相手を自由に並べる部品（進行役も参加者も同じものを使う）。魔王も職業のCPUも、同じものを何体でも
-  // who: 相手の一覧 foes と、変更する setFoes(list) を持つもの（進行役の HostStore / 参加者の PlayStore）
+  // 戦う相手を自由に並べる部品（進行役が使う）。魔王も職業のCPUも、同じものを何体でも
+  // who: 相手の一覧 foes と、変更する setFoes(list) を持つもの（進行役の HostStore）
   let { who, title = '戦う相手' } = $props();
   const MAX = 12;
   const LEVEL_OPTIONS = Object.entries(LEVELS).filter(([, l]) => !l.hidden).map(([v, l]) => ({ v, n: l.n, d: l.d }));

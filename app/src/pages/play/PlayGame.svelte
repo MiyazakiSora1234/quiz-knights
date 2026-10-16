@@ -77,6 +77,13 @@
 
 <div class="flash {flash}"></div>
 
+{#if !p.hostOnline}
+  <div class="hostgone" role="alert">
+    <span>{p.hasHost ? '進行役の接続が切れています。しばらく待っても戻らないときは、あなたが引き継げます（バトルは続きから進められます）。' : '進行役がいません。あなたが進行役になれます（バトルは続きから進められます）。'}</span>
+    <button class="btn sm primary" type="button" onclick={() => p.claimHost()}>👑 進行役になる</button>
+  </div>
+{/if}
+
 <div class="game">
   <div class="top">
     <div><span class="qn">第{gs.q}問</span>{#if gs.genre}<span class="chip pur" transition:fade>{gs.genre}</span>{/if}</div>
@@ -134,6 +141,7 @@
 {/if}
 
 <style>
+  .hostgone{position:sticky;top:0;z-index:25;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border:1px solid var(--gold);border-radius:10px;background:#3a2f1af0;font-size:.86rem;line-height:1.5}
   .flash{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
   .flash.d{background:radial-gradient(circle,#0000 40%,#ff2030aa);animation:fo .5s}
   .flash.h{background:radial-gradient(circle,#0000 40%,#40ff80aa);animation:fo .6s}

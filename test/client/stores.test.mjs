@@ -99,8 +99,7 @@ test('[参加者] 部屋の情報(members)・戦う相手・難易度・進行�
     const { p, ws } = await joined(env, mods);
     ws.recv({ t: 'members', players: [{ pid: 'me', name: 'A', online: true }], roomName: '改名', foes: ['boss2', 'warrior'], level: 'strong', hasHost: false, hostOnline: false });
     assert.equal(p.members.length, 1); assert.equal(p.roomName, '改名'); assert.deepEqual(p.foes, ['boss2', 'warrior']); assert.equal(p.level, 'strong'); assert.equal(p.hasHost, false);
-    p.setFoes(['boss3']); p.setLevel('weak');
-    assert.deepEqual(ws.of('set_foes')[0].foes, ['boss3']); assert.equal(ws.of('set_level')[0].level, 'weak');
+    assert.equal(typeof p.setFoes, 'undefined', '戦う相手・難易度は、参加者は変えられない（進行役だけ）');
     p.claimHost(); assert.equal(ws.of('claim_host').length, 1);
     p.destroy();
   } finally { env.restore(); }
@@ -513,6 +512,63 @@ test('[参加者] 早押しボタン: 回答権が決まったあとも、順位
     assert.equal(p.canBuzz, true, '順位のためだけにも押せる'); assert.equal(p.buzzLabel, '押す！');
     p.buzz(); assert.equal(ws.of('buzz').length, 1);
     assert.equal(p.canBuzz, false); assert.equal(p.buzzLabel, '', '押したあと（他の人が回答権）は文言なしの非活性');
+    p.destroy();
+  } finally { env.restore(); }
+});
+
+/* ===== 進行役が替わっても、バトルを続けられる ===== */
+test('[引き継ぎ] 新しい進行役は、サーバーが預かっていたバトルを続きから進める。参加者の一覧が届く前に、全員を退室扱いにしない', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const old = await hostReady(env, mods);
+    old.h.start(); await tick(30);
+    const saved = old.ws.of('save').at(-1).G;                        // 進行役が預けた全状態
+    assert.ok(saved.units.length === 3 && saved.log.length <= 40);
+    old.h.destroy();
+    env.local.clear();                                               // 別の端末（保存なし）が、新しい進行役になる
+    env.local.setItem('qr_hk_3', 'NEWKEY');
+    const h = new mods.host.HostStore(3);
+    h.connect(); const ws = env.ws(); ws.open();
+    ws.recv({ t: 'created', room: '3', name: '部屋', hostKey: 'NEWKEY', battle: saved });
+    await tick(30);
+    assert.ok(h.G && h.G.q === saved.q, 'バトルを続きから読み込んだ');
+    assert.ok(Object.keys(h.G.pids).length === 2, '一覧が届く前に、参加者を外していない');
+    ws.recv({ t: 'lobby', players: lobbyPlayers(), foes: ['boss1'], level: 'normal' });
+    await tick(30);
+    assert.equal(Object.keys(h.G.pids).length, 2);
+    assert.ok(ws.of('state').length >= 1 && ws.of('open').length >= 1, '参加者に、状態と早押しの受付を出し直した');
+    h.destroy();
+  } finally { env.restore(); }
+});
+test('[引き継ぎ] 同じ進行役が再接続しただけなら、バトルを読み込み直さない。終わったバトルは引き継がない', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const { h, ws } = await hostReady(env, mods);
+    h.start(); await tick(30);
+    const before = h.G.q; await h.skip(); await tick(60);
+    ws.recv({ t: 'created', room: '3', name: '部屋', battle: { ...ws.of('save').at(-1).G, q: 1 } });     // 古い預かり
+    await tick(20);
+    assert.equal(h.G.q, before + 1, '手元のバトルが優先');
+    h.destroy();
+    const h2 = new mods.host.HostStore(3); env.local.setItem('qr_hk_3', 'K'); h2.connect(); const w2 = env.ws(); w2.open();
+    w2.recv({ t: 'created', room: '3', name: 'x', battle: { ...ws.of('save').at(-1).G, over: 'win' } });
+    await tick(20);
+    assert.equal(h2.G, null, '終わったバトルは引き継がない');
+    h2.destroy();
+  } finally { env.restore(); }
+});
+test('[引き継ぎ] 参加者: 進行役が替わったら、途中だった選択ダイアログは閉じる。進行役がいないことが分かる', async () => {
+  const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
+  try {
+    const { p, ws } = await joined(env, mods);
+    ws.recv({ t: 'state', state: gstate() });
+    ws.recv({ t: 'ask', qid: 4, title: '行動', options: [{ label: 'a' }] });
+    assert.ok(p.req);
+    ws.recv({ t: 'ask_close', all: true });
+    assert.equal(p.req, null);
+    ws.recv({ t: 'members', players: [], hasHost: true, hostOnline: false });
+    assert.equal(p.hostOnline, false);
+    p.claimHost(); assert.equal(ws.of('claim_host').length, 1);
     p.destroy();
   } finally { env.restore(); }
 });

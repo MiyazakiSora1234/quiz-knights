@@ -129,7 +129,7 @@ export class PlayStore {
       }
       case 'priv': this.myItems = m.items ?? []; this.allyItems = m.allies ?? {}; return;
       case 'answer_ack': this.answered = { q: m.q, text: m.text }; return;
-      case 'ask_close': if (this.req?.qid === m.qid) this.req = null; return;
+      case 'ask_close': if (m.all || this.req?.qid === m.qid) this.req = null; return;     // all: 進行役が替わったので、途中だった選択は閉じる
       case 'chat': this.chat = [...this.chat, m].slice(-100); return;
       case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); session.remove(this.pidKey); location.href = `/host?id=${this.id}`; return;
       case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
@@ -197,8 +197,6 @@ export class PlayStore {
     store.set(KEY.delay, String(this.delay));
     this.conn?.send({ t: 'profile', delay: this.delay });
   }
-  setFoes(list) { this.foes = [...list]; this.conn.send({ t: 'set_foes', foes: this.foes }); }
-  setLevel(v) { this.level = v; this.conn.send({ t: 'set_level', level: v }); }
   sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   /** 部屋の中で名前・ひとことを変える */
   saveProfile(name, flavor) {

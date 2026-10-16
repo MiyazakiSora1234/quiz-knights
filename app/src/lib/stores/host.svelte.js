@@ -44,7 +44,7 @@ export class HostStore {
       ask: (title, options, o) => this.#ask(title, options, o), toast,
       pause: ms => new Promise(r => setTimeout(r, ms)),
       changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.canRedo = this.battle.canRedo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
-      persist: G => store.set(KEY.save(id), JSON.stringify(G)),
+      persist: G => { store.set(KEY.save(id), JSON.stringify(G)); this.#saveToServer(G); },
     });
     try { this.saved = JSON.parse(store.get(KEY.save(id))); } catch { this.saved = null; }
     if (this.saved?.over) this.saved = null;
@@ -77,7 +77,9 @@ export class HostStore {
     switch (m.t) {
       case 'created':
         this.status = 'ready'; this.roomName = m.name; this.password = m.password ?? ''; this.#openedFor = null;
-        if (this.G) this.#publish();
+        // 進行役が替わったとき（別の人が引き継いだ・譲られた・画面を開き直した）は、サーバーが預かっているバトルの続きから進める
+        if (m.battle && !m.battle.over && !this.battle.G) { this.saved = null; this.battle.load(m.battle); toast('バトルを引き継ぎました。続きから進めます', 3500); }
+        else if (this.G) this.#publish();
         return;
       case 'error':
         store.remove(KEY.hostKey(this.id));
@@ -118,7 +120,7 @@ export class HostStore {
   /** バトル中に入室した人を、途中参戦としてバトルに加える */
   #joinLate() {
     const G = this.battle.G;
-    if (!G || G.over || this.battle.busy) return;
+    if (!G || G.over || this.battle.busy || !this.#lobbyInit) return;      // 参加者の一覧が届く前は、退室したかどうかを判断できない
     // 退室した人（一覧から消えた人）は戦闘から外す。接続が切れただけの人は残す（戻ってこられる）
     let removed = false;
     for (const pid of Object.keys(G.pids)) {
@@ -287,6 +289,12 @@ export class HostStore {
   copyUrl = async () => {
     try { await navigator.clipboard.writeText(this.joinUrl); toast('参加用URLをコピーしました'); } catch { toast(this.joinUrl, 6000); }
   };
+
+  /* ---------- バトルの全状態をサーバーに預ける（進行役が替わっても続けられるように） ---------- */
+  #saveToServer(G) {
+    if (!this.conn) return;
+    this.conn.send({ t: 'save', G: { ...G, log: G.log.slice(0, 40) } });       // ログは直近だけで十分（サイズを抑える）
+  }
 
   /* ---------- 参加者への配信 ---------- */
   /** バトルの状態を配り、回答者が決まっていなければ次の早押しの受付を始める */

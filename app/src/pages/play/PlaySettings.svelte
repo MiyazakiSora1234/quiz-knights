@@ -3,13 +3,12 @@
   import { icon } from '../../lib/icons.js';
   import { JOB, SELECTABLE, BOSS, PLAYABLE_BOSS_KEYS, bossIdOf } from '../../lib/engine.js';
   import { panel } from '../../lib/stores/ui.svelte.js';
-  import FoePicker from '../../components/FoePicker.svelte';
   import Stepper from '../../components/Stepper.svelte';
 
-  // 参加者の設定ダイアログ。タブで「ユーザー（名前・職業・チーム）」「ゲーム（戦う相手・難易度・部屋）」「クイズ（ディレイ）」に分ける。
+  // 参加者の設定ダイアログ。タブで「ユーザー（名前・職業・チーム）」「クイズ（ディレイ）」に分ける。ゲームの設定（戦う相手・難易度）は進行役だけが決める。
   // バトル中は、バトルに関係するクイズ設定だけを出す
   let { p } = $props();   // PlayStore
-  const TABS = [['user', 'ユーザー'], ['game', 'ゲーム'], ['quiz', 'クイズ']];
+  const TABS = [['user', 'ユーザー'], ['quiz', 'クイズ']];
   const tabs = $derived(p.gs ? TABS.filter(([k]) => k === 'quiz') : TABS);
   const tab = $derived(tabs.some(([k]) => k === panel.settings) ? panel.settings : tabs[0][0]);
   let n = $state(''), f = $state(''), rn = $state(''), rp = $state('');
@@ -53,8 +52,6 @@
           <div class="jobdesc">{jobD(p.myJob)}</div>
           <div class="step">チーム（ユーザー対戦のときだけ使われます）</div>
           <div class="seg wide teams"><button class="ta" class:sel={p.myTeam === 'p'} onclick={() => p.pickTeam('p')}>チームA</button><button class="tb" class:sel={p.myTeam === 'e'} onclick={() => p.pickTeam('e')}>チームB</button><button class="tc" class:sel={p.myTeam === 'c'} onclick={() => p.pickTeam('c')}>チームC</button></div>
-        {:else if tab === 'game'}
-          <FoePicker who={p} />
           {#if !p.hasHost}
             <div class="step">部屋の設定（進行役がいない間は誰でも変えられます）</div>
             <label class="field"><span>部屋名</span><input class="input" bind:value={rn} maxlength="30"></label>

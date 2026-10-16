@@ -12,6 +12,7 @@ export const TS_MAX_PAST_MS = 2000;       // 押下時刻の申告は、到着�
 export const RTT_MAX_MS = 3000;
 /** 進行役の接続が切れてから、参加者が進行役を引き継げるようになるまでの時間（再読み込みで戻る人を待つ） */
 export const HOST_TAKEOVER_MS = 15 * 1000;
+export const BATTLE_MAX_CHARS = 100000;      // 預かるバトルの全状態の大きさの上限（Durable Object の保存の上限に収める）
 /** 魔王の種類の数（部屋で選べる魔王の番号は 1〜この数） */
 export const BOSS_COUNT = 6;
 /** 自分で設定できる早押しのディレイ（ms）の上限 */

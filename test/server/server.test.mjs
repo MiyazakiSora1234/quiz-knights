@@ -882,7 +882,7 @@ test('入力検査: 接続先と違う番号の部屋は作れない（別の枠
   assert.equal((await api())[4].used, false);
 });
 
-for (const [who, boss, want] of [['player', 3, 3], ['player', 6, 6], ['player', 1, 1], ['player', 0, 1], ['player', 7, 1], ['player', 'x', 1], ['player', 2.7, 2], ['host', 4, 4], ['host', 9, 1]]) {
+for (const [who, boss, want] of [['host', 4, 4], ['host', 9, 1], ['host', 3, 3]]) {
   test(`魔王の選択: ${who} が ${JSON.stringify(boss)} を選ぶ → ${want}（全員に反映）`, async () => {
     const { id, host } = await makeRoom();
     const p = await joinPlayer(id, 'A');
@@ -998,10 +998,10 @@ test('クイズ設定: 職業のディレイ（バーサーカー700）と個人
 
 /* ---------- 戦う相手・難易度の共有（進行役も参加者も変えられる） ---------- */
 for (const [who, foes, want] of [
-  ['player', ['boss3'], ['boss3']], ['player', ['boss1', 'boss1'], ['boss1', 'boss1']], ['player', ['warrior', 'monk', 'mage'], ['warrior', 'monk', 'mage']],
-  ['player', ['boss2', 'tank'], ['boss2', 'tank']], ['host', ['boss6', 'bomb', 'bomb'], ['boss6', 'bomb', 'bomb']], ['host', [], []],
-  ['player', ['boss9', 'warrior'], ['warrior']], ['player', ['BOSS1', 'x', 'warrior'], ['warrior']], ['player', ['a'.repeat(30), 'monk'], ['monk']],
-  ['player', Array(20).fill('warrior'), Array(12).fill('warrior')], ['player', 'boss1', null], ['player', null, null],
+  ['host', ['boss3'], ['boss3']], ['host', ['boss1', 'boss1'], ['boss1', 'boss1']], ['host', ['warrior', 'monk', 'mage'], ['warrior', 'monk', 'mage']],
+  ['host', ['boss2', 'tank'], ['boss2', 'tank']], ['host', ['boss6', 'bomb', 'bomb'], ['boss6', 'bomb', 'bomb']], ['host', [], []],
+  ['host', ['boss9', 'warrior'], ['warrior']], ['host', ['BOSS1', 'x', 'warrior'], ['warrior']], ['host', ['a'.repeat(30), 'monk'], ['monk']],
+  ['host', Array(20).fill('warrior'), Array(12).fill('warrior')], ['host', 'boss1', null], ['host', null, null],
 ]) {
   test(`戦う相手の共有: ${who} が ${JSON.stringify(foes)?.slice(0, 40)} を選ぶ`, async () => {
     const { id, host } = await makeRoom();
@@ -1020,7 +1020,7 @@ for (const [level, ok] of [['weak', true], ['strong', true], ['normal', true], [
   test(`難易度の共有: ${JSON.stringify(level)} → ${ok ? '反映' : '無視'}`, async () => {
     const { id, host } = await makeRoom();
     const p = await joinPlayer(id, 'A');
-    p.send({ t: 'set_level', level });
+    host.send({ t: 'set_level', level });
     if (ok && level !== 'normal') assert.equal((await host.wait('lobby', 3000, x => x.level === level)).level, level);
     else { await sleep(200); assert.ok(host.q.filter(m => m.t === 'lobby').every(m => (m.level ?? 'normal') === 'normal')); }
     host.send({ t: 'close' });
@@ -1100,4 +1100,59 @@ test('持ち物の配信: 仲間の持ち物（ユニットid → アイテム�
   await sleep(150);
   assert.equal(b.has('priv'), false);
   host.send({ t: 'close' });
+});
+
+test('ゲーム設定（魔王・戦う相手・難易度）: 進行役がいる間は、参加者からは変えられない。進行役がいない間は変えられる', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'A');
+  p.send({ t: 'set_foes', foes: ['boss4'] }); p.send({ t: 'set_level', level: 'extreme' }); p.send({ t: 'set_boss', boss: 5 });
+  await sleep(250);
+  assert.ok(host.q.filter(m => m.t === 'lobby').every(m => JSON.stringify(m.foes ?? ['boss1']) === '["boss1"]' && (m.level ?? 'normal') === 'normal' && (m.boss ?? 1) === 1), '参加者の変更は無視');
+  host.send({ t: 'set_foes', foes: ['boss2'] });
+  assert.deepEqual((await host.wait('lobby', 3000, x => JSON.stringify(x.foes) === '["boss2"]')).foes, ['boss2']);
+  host.send({ t: 'release', name: 'H' });
+  await host.wait('demoted');
+  p.send({ t: 'set_level', level: 'strong' });
+  assert.equal((await p.wait('members', 3000, x => x.level === 'strong')).level, 'strong');
+});
+
+/* ===== 進行役が替わっても、バトルを続けられる ===== */
+const fakeBattle = (q = 7) => ({ q, units: [{ id: 1, name: 'A', hp: 5 }, { id: 2, name: 'B', hp: 3 }], log: [], pids: {}, over: null });
+
+test('バトルの引き継ぎ: 進行役が預けた全状態は、進行役が替わっても失われず、新しい進行役に渡る（参加者の画面はロビーに戻らない）', async () => {
+  const { id, host, key } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'state', state: { q: 7, units: [], pids: {}, log: [] } });
+  host.send({ t: 'save', G: fakeBattle(7) });
+  await a.wait('state');
+  await sleep(150);
+  // 進行役が通信エラーで落ちる → 参加者の1人が引き継ぐ（15秒の待ちを避けるため、進行役を手放す形にする）
+  host.send({ t: 'release', name: '元進行役' });
+  await host.wait('demoted');
+  a.send({ t: 'claim_host' });
+  const granted = await a.wait('host_granted');
+  assert.equal(b.q.some(m => m.t === 'ended'), false, '参加者の画面は、ロビーに戻らない');
+  // 新しい進行役が接続し直す → 預かっていたバトルが渡る
+  const nh = await client(id);
+  nh.send({ t: 'host_resume', id, hostKey: granted.hostKey });
+  const created = await nh.wait('created');
+  assert.equal(created.battle.q, 7);
+  assert.equal(created.battle.units.length, 2);
+  // 参加者が途中で見ていた選択ダイアログは閉じられる
+  assert.ok(b.q.some(m => m.t === 'ask_close' && m.all));
+  nh.send({ t: 'close' });
+});
+test('バトルの預かり: 壊れた・大きすぎる状態は預からない。バトルを終えたら消える', async () => {
+  const { id, host, key } = await makeRoom();
+  host.send({ t: 'save', G: { nothing: true } });
+  host.send({ t: 'save', G: { units: [], pad: 'x'.repeat(200000) } });
+  host.send({ t: 'save', G: fakeBattle(3) });
+  await sleep(200);
+  const h2 = await client(id); h2.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await h2.wait('created')).battle.q, 3, '最後の正しい状態だけが残る');
+  h2.send({ t: 'endgame' });
+  await sleep(150);
+  const h3 = await client(id); h3.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await h3.wait('created')).battle, null, 'バトルを終えたら消える');
+  h3.send({ t: 'close' });
 });
