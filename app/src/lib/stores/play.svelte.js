@@ -49,7 +49,8 @@ export class PlayStore {
   get mine() { return this.gs?.pids?.[this.pid]; }
   get me() { return this.gs && this.mine != null ? this.gs.units.find(u => u.id === this.mine) ?? null : null; }
   get canPress() { return this.open && this.eligible.includes(this.pid); }
-  get canBuzz() { return !!(this.canPress && !this.sent && this.gs && !this.gs.over); }
+  /** 押せるのは、受付中で、押せる人で、まだ押していないとき。回答権が決まったあとは、連チャン（控え）のときだけ押せる */
+  get canBuzz() { return !!(this.canPress && !this.sent && this.gs && !this.gs.over && (!this.hasWinner || this.chain)); }
   get hasWinner() { return !!(this.winner && this.winner.q === this.gs?.q); }
   get myWin() { return this.hasWinner && this.winner.pid === this.pid; }
   get bannerKind() {
@@ -66,10 +67,10 @@ export class PlayStore {
   }
   get buzzLabel() {
     const me = this.me;
-    if (this.canBuzz) return this.hasWinner ? (this.chain ? '控えで押す' : '押す（順位のみ）') : '押す！';
-    if (this.sent) return this.myWin ? '回答権獲得' : '送信済み';
+    if (this.canBuzz) return '押す！';
+    if (this.sent) return this.myWin ? '回答権獲得！' : '送信済み';
     if (me && !me.alive && !me.ghost) return '戦闘不能';
-    if (me && me.restNow) return '今回は休み';
+    if (me && me.restNow) return '休み';
     return '待機中';
   }
   get overText() {

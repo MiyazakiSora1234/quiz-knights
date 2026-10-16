@@ -135,7 +135,7 @@ test('[参加者] 早押し: 受付→押す→送信済み。押せるのは受
     p.buzz(); assert.equal(ws.of('buzz').length, 1, '二重には送らない');
     ws.recv({ t: 'ack' });
     ws.recv({ t: 'winner', q: 1, pid: 'me', name: 'ぼく', ranking: [{ pid: 'me', name: 'ぼく', ms: 0 }] });
-    assert.equal(p.myWin, true); assert.equal(p.bannerKind, 'win'); assert.match(p.bannerText, /回答権を獲得/); assert.equal(p.buzzLabel, '回答権獲得');
+    assert.equal(p.myWin, true); assert.equal(p.bannerKind, 'win'); assert.match(p.bannerText, /回答権を獲得/); assert.equal(p.buzzLabel, '回答権獲得！');
     assert.equal(p.ranks.me.cls, 'rank1');
     p.destroy();
   } finally { env.restore(); }
@@ -146,11 +146,11 @@ test('[参加者] 他の人が回答権を取ったとき・自分は押せな�
     const { p, ws } = await joined(env, mods);
     ws.recv({ t: 'state', state: gstate({ units: [unit(1, 'ぼく', { restNow: true }), unit(2, '魔王1', { side: 'e', isBoss: true })] }) });
     ws.recv({ t: 'open', q: 1, chain: true, eligible: [] });
-    assert.equal(p.bannerText, '受付中（今回は押せません）'); assert.equal(p.buzzLabel, '今回は休み');
+    assert.equal(p.bannerText, '受付中（今回は押せません）'); assert.equal(p.buzzLabel, '休み');
     ws.recv({ t: 'open', q: 1, chain: true, eligible: ['me'] });
     ws.recv({ t: 'winner', q: 1, pid: 'x', name: 'ライバル', ranking: [{ pid: 'x', name: 'ライバル', ms: 0 }, { pid: 'me', name: 'ぼく', ms: 30 }] });
     assert.equal(p.bannerKind, 'other'); assert.equal(p.bannerText, '回答権：ライバル');
-    assert.equal(p.buzzLabel, '控えで押す', '連チャンでは控えとして押せる');
+    assert.equal(p.buzzLabel, '押す！', '連チャンでは控えとして押せる（文言は同じ）'); assert.equal(p.canBuzz, true);
     p.buzz(); assert.equal(ws.of('buzz').length, 1);
     ws.recv({ t: 'ranking', q: 1, all: [{ pid: 'x', ms: 0 }, { pid: 'me', ms: 55 }] });
     assert.equal(p.ranks.me.t, '2着 +55ms');
@@ -498,5 +498,20 @@ test('[進行役] 1つ進める: 戻した操作を進められる。画面の c
     h.redo(); await tick(20);
     assert.equal(h.G.q, 2); assert.equal(h.canRedo, false);
     h.destroy();
+  } finally { env.restore(); }
+});
+
+test('[参加者] 早押しボタン: 回答権が決まったあと、連チャン以外では押せない（順位のためだけの押下はなくす）', async () => {
+  const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
+  try {
+    const { p, ws } = await joined(env, mods);
+    ws.recv({ t: 'state', state: gstate() });
+    ws.recv({ t: 'open', q: 1, chain: false, eligible: ['me'] });
+    assert.equal(p.canBuzz, true); assert.equal(p.buzzLabel, '押す！');
+    ws.recv({ t: 'winner', q: 1, pid: 'x', name: 'ライバル', ranking: [{ pid: 'x', name: 'ライバル', ms: 0 }] });
+    assert.equal(p.canBuzz, false, '他の人が回答権を取ったら、押せない（非活性）');
+    p.buzz(); assert.equal(ws.of('buzz').length, 0);
+    assert.equal(p.buzzLabel, '待機中');
+    p.destroy();
   } finally { env.restore(); }
 });
