@@ -1,6 +1,6 @@
 <script>
   import { fade, fly } from 'svelte/transition';
-  import { JOB } from '../../lib/engine.js';
+  import { JOB, ITEMS, ITEM_KEYS } from '../../lib/engine.js';
   import JobSelect from '../../components/JobSelect.svelte';
   import Stepper from '../../components/Stepper.svelte';
 
@@ -9,8 +9,9 @@
   const u = $derived(G.units.find(x => x.id === host.editing));
   let f = $state(null);
   let lastId = null;
+  let add = $state(ITEM_KEYS[0]);        // 付与するアイテム
   $effect(() => {
-    if (u && u.id !== lastId) { lastId = u.id; f = { name: u.name, job: u.job, hp: u.hp, maxHp: u.maxHp, atk: u.atk, alive: u.alive, rest: u.restNow }; }
+    if (u && u.id !== lastId) { lastId = u.id; f = { name: u.name, job: u.job, hp: u.hp, maxHp: u.maxHp, atk: u.atk, alive: u.alive, rest: u.restNow, items: [...(u.items ?? [])] }; add = ITEM_KEYS[0]; }
     if (!u) { lastId = null; f = null; }
   });
 
@@ -20,10 +21,13 @@
     if (j) { f.job = job ?? f.job; f.atk = j.atk; f.maxHp = j.hp; f.hp = j.hp; }
   }
   function save() {
-    host.editUnit(u.id, { name: f.name, job: u.isBoss ? undefined : f.job, hp: +f.hp, maxHp: +f.maxHp, atk: +f.atk });
+    host.editUnit(u.id, { name: f.name, job: u.isBoss ? undefined : f.job, hp: +f.hp, maxHp: +f.maxHp, atk: +f.atk, ...(canItems ? { items: f.items } : {}) });
     host.editing = null;
   }
   const close = () => { host.editing = null; };
+  const canItems = $derived(!!u && !u.isBoss && !u.cpu);      // アイテムを持てるのは、参加者のユニットだけ
+  const give = () => { if (f.items.length < 20) f.items = [...f.items, add]; };
+  const take = i => { f.items = f.items.filter((_, k) => k !== i); };
 </script>
 
 {#if u && f}
@@ -42,6 +46,17 @@
         <div class="field"><span>最大HP</span><Stepper bind:value={f.maxHp} min={1} max={99} label="最大HP" /></div>
         {#if !u.isBoss}<div class="field"><span>攻撃</span><Stepper bind:value={f.atk} min={0} max={99} label="攻撃" /></div>{/if}
       </div>
+      {#if canItems}
+        <div class="field"><span>持ち物（付与・取り上げができます）</span>
+          <div class="its">
+            {#each f.items as k, i}<span class="it">{ITEMS[k].ic} {ITEMS[k].n}<button type="button" class="x" aria-label="{ITEMS[k].n}を取り上げる" onclick={() => take(i)}>×</button></span>{:else}<span class="none">持っていません</span>{/each}
+          </div>
+          <div class="giv">
+            <select class="input" bind:value={add} aria-label="付与するアイテム">{#each ITEM_KEYS as k}<option value={k}>{ITEMS[k].ic} {ITEMS[k].n} ― {ITEMS[k].d}</option>{/each}</select>
+            <button type="button" class="btn sm" onclick={give}>付与</button>
+          </div>
+        </div>
+      {/if}
       <div class="two"><button class="btn primary" onclick={save}>反映する</button><button class="btn ghost" onclick={close}>やめる</button></div>
     </div>
   </div>
@@ -53,5 +68,10 @@
   h3{color:var(--gold);margin-bottom:8px}
   .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
   .sw{display:flex;align-items:center;gap:10px;margin:8px 0;cursor:pointer}.sw input{width:18px;height:18px;accent-color:var(--gold)}
+  .its{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .it{display:inline-flex;align-items:center;gap:4px;background:#b8923a22;border:1px solid var(--gold-d);border-radius:999px;padding:2px 4px 2px 10px;font-size:.84rem}
+  .it .x{background:none;border:0;color:var(--mut);cursor:pointer;font-size:1rem;padding:0 6px;line-height:1}.it .x:hover{color:#ff9aa2}
+  .none{color:var(--mut);font-size:.84rem}
+  .giv{display:flex;gap:8px;align-items:center}.giv .input{flex:1;min-width:0}
   .two{display:flex;gap:10px;margin-top:14px}.two .btn{flex:1}
 </style>

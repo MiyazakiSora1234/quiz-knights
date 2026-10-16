@@ -3,7 +3,6 @@
   import { panel } from '../../lib/stores/ui.svelte.js';
   import { tick } from 'svelte';
   import Unit from '../../components/Unit.svelte';
-  import MePanel from './MePanel.svelte';
   import ScoreTable from '../../components/ScoreTable.svelte';
   import Confetti from '../../components/Confetti.svelte';
   import BuzzButton from './BuzzButton.svelte';
@@ -60,7 +59,7 @@
   /** 各ユニットのカードに出す印（休み・タンクの守り・サーバーが付けた状態） */
   /** 仲間の持ち物は名前まで見える（自分と相手は個数のまま）。仲間の持ち物の情報があれば、個数の印の代わりに出す */
   const allyTags = u => {
-    const list = p.allyItems?.[u.id];
+    const list = u.id === p.mine ? p.myItems : p.allyItems?.[u.id];     // 自分と仲間は、持ち物の名前まで見える
     if (!list) return null;
     return [...(u.st ?? []).filter(t => !t.t.startsWith('🎒')), ...list.map(k => ({ t: `${ITEMS[k]?.ic ?? '🎒'} ${ITEMS[k]?.n ?? k}`, cls: '', d: ITEMS[k]?.d ?? '' }))];
   };
@@ -94,7 +93,6 @@
     </div>
   </div>
 
-  <div class="a-me"><MePanel me={p.me} items={p.myItems} /></div>
 
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
@@ -190,9 +188,9 @@
 
   /* PC: 左に自分とボタン、右に全員とバトルログ */
   @media(min-width:900px){
-    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "me mid" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
+    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
     .ansbox{grid-area:ans}
-    .top{grid-area:top}.a-me{grid-area:me}.mid{grid-area:mid}
+    .top{grid-area:top}.mid{grid-area:mid}
     .buzzarea{grid-area:buzz;position:static;background:none;padding:6px 0}
     .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible;gap:16px;padding:4px 0 14px}
     .strip :global(.unit){flex:none}

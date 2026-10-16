@@ -272,3 +272,19 @@ test('[進める] 戻したあとの決着・保存・開始し直しの扱い',
   assert.equal(saves.at(-1), JSON.stringify(b.G), '進めたあとも保存される');
   b.undo(); b.start({ players, mode: 'pvp' }); assert.equal(b.canRedo, false, '開始し直したら進められない');
 });
+
+/* ===== 進行役による付与・取り上げ ===== */
+test('[アイテム] 進行役は、参加者に好きなアイテムを付与でき、取り上げもできる。「1つ戻す」で元に戻る。魔王・CPUには付けられない', () => {
+  const { b } = mk({ seed: 31 });
+  b.start({ players, mode: 'pvp', items: 1 });
+  const A = b.G.units[0];
+  assert.ok(b.edit(A.id, { items: ['bomb', 'potion', 'nonexistent', 'feather'] }));
+  assert.deepEqual(b.G.units[0].items, ['bomb', 'potion', 'feather'], '存在しない物は無視');
+  b.edit(A.id, { items: [] }); assert.deepEqual(b.G.units[0].items, []);
+  b.undo(); assert.deepEqual(b.G.units[0].items, ['bomb', 'potion', 'feather']);
+  b.edit(A.id, { items: Array(30).fill('pebble') }); assert.equal(b.G.units[0].items.length, 20, '上限は20個');
+  const m = mk({ seed: 32 }); m.b.start({ players, mode: 'cpu', foes: ['boss1', 'warrior'] });
+  const boss = m.b.G.units.find(u => u.isBoss), cpu = m.b.G.units.find(u => u.cpu);
+  m.b.edit(boss.id, { items: ['bomb'] }); m.b.edit(cpu.id, { items: ['bomb'] });
+  assert.equal(m.b.G.units.find(u => u.isBoss).items, undefined); assert.equal(m.b.G.units.find(u => u.cpu).items, undefined);
+});

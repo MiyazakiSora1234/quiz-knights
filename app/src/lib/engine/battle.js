@@ -1,6 +1,6 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, GENRES, LEVELS, squadFoeScale, isSquadFoes, jobName, nm, bossHp, bossIdOf } from './data.js';
+import { CANCEL, JOB, BOSS, ITEMS, GENRES, LEVELS, squadFoeScale, isSquadFoes, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
 import { buildItemActions, dealItems } from './items.js';
@@ -501,6 +501,7 @@ export function createBattle(ui) {
         Object.assign(u, { job: patch.job, atk: j.atk, maxHp: j.hp, hp: Math.min(u.hp, j.hp) || j.hp, guards: patch.job === 'tank' ? Math.max(1, u.guards) : 0 });
         u.ghost = false; u.converted = false;
       }
+      if (Array.isArray(patch.items) && !u.isBoss && !u.cpu) u.items = patch.items.filter(k => ITEMS[k]).slice(0, 20);      // 持ち物の付与・取り上げ
       const num = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+v)));
       if (patch.maxHp != null && Number.isFinite(+patch.maxHp)) u.maxHp = num(patch.maxHp, 1, 99);
       if (patch.atk != null && Number.isFinite(+patch.atk) && !u.isBoss) u.atk = num(patch.atk, 0, 99);

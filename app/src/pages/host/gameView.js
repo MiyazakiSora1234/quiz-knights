@@ -1,5 +1,5 @@
 // バトル画面の表示用の小さな関数（画面部品どうしで共有する）
-import { JOB, bonusOf, statusTags } from '../../lib/engine.js';
+import { JOB, ITEMS, bonusOf, statusTags } from '../../lib/engine.js';
 
 /** 席の番号（両隣の判定に使われる）。魔王は席なし。対戦ではチーム内の並び */
 export function seatOf(u, G) {
@@ -18,7 +18,8 @@ export function tagsFor(u, G) {
   if (JOB[u.job]?.tag && u.job !== 'tank') t.push({ t: JOB[u.job].tag });
   if (u.converted) t.push({ t: '魔王軍に寝返り', cls: 'warn' });
   if (u.isBoss && u.bossId === 1 && bonusOf(u)) t.push({ t: '与ダメ+2', cls: 'warn' });
-  t.push(...statusTags(u, true, G.q));
+  t.push(...statusTags(u, true, G.q).filter(x => !x.t.startsWith('🎒')));         // 個数の印の代わりに、持ち物の名前を出す
+  for (const k of u.items ?? []) if (ITEMS[k]) t.push({ t: `${ITEMS[k].ic} ${ITEMS[k].n}`, d: ITEMS[k].d });
   return t;
 }
 
