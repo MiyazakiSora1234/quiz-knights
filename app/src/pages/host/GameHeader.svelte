@@ -26,10 +26,10 @@
   </div>
   <div class="gc"><span class="qno">第{G.q}問</span>{#if showGenre}<span class="chip pur" transition:fade>ジャンル：{G.genre}</span>{/if}</div>
   <div class="gr">
-    <button class="btn sm chatbtn" onclick={() => (chatOpen = !chatOpen)}>💬 チャット{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
-    <button class="btn sm" disabled={!host.canUndo || host.busy} onclick={() => host.undo()}>↩ 1つ戻す<kbd>Ctrl+Z</kbd></button>
-    <button class="btn sm" disabled={!host.canRedo || host.busy} onclick={() => host.redo()}>↪ 1つ進める<kbd>Ctrl+Y</kbd></button>
-    <button class="btn sm" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
+    <button class="btn sm chatbtn" title="チャット" aria-label="チャット" onclick={() => (chatOpen = !chatOpen)}>💬<span class="lbl"> チャット</span>{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
+    <button class="btn sm" disabled={!host.canUndo || host.busy} title="1つ戻す" aria-label="1つ戻す" onclick={() => host.undo()}>↩<span class="lbl"> 1つ戻す</span><kbd>Ctrl+Z</kbd></button>
+    <button class="btn sm" disabled={!host.canRedo || host.busy} title="1つ進める" aria-label="1つ進める" onclick={() => host.redo()}>↪<span class="lbl"> 1つ進める</span><kbd>Ctrl+Y</kbd></button>
+    <button class="btn sm" title="クイズ設定" aria-label="クイズ設定" onclick={() => (panel.quiz = true)}>⏱<span class="lbl"> クイズ設定</span></button>
     <div class="menuwrap">
       <button class="btn sm" onclick={() => (menu = !menu)} aria-haspopup="true" aria-expanded={menu}>メニュー ▾</button>
       {#if menu}
@@ -64,7 +64,8 @@
   .hr{height:1px;background:var(--line);margin:4px 6px}
   @media(max-width:900px){
     .in{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 12px}.gl{display:none}
-    .gr{flex-wrap:wrap;gap:6px}
+    .gr{flex-wrap:wrap;gap:6px;align-items:center}
+    .lbl{display:none}
     kbd{display:none}
   }
   @media(max-width:900px){
