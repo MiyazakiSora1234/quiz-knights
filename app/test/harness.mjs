@@ -1,6 +1,6 @@
 // テスト共通の道具: 台本式の ask、乱数、状態の整合性チェック
 import assert from 'node:assert/strict';
-import { createBattle, CANCEL, BOSS } from '../src/lib/engine.js';
+import { createBattle, CANCEL, BOSS, ITEMS } from '../src/lib/engine.js';
 
 export { CANCEL };
 export const P = (name, job, team = 'p') => ({ name, job, team });
@@ -86,7 +86,11 @@ export function checkInvariants(G, ctx = '') {
     if (u.guards < 0 || !Number.isInteger(u.guards)) fail(`${u.name} の守り回数が不正`);
     if (u.poison != null && !(u.poison >= 0 && u.poison <= 2)) fail(`${u.name} の毒の値が不正`);
     if (u.barrier != null && !(u.barrier >= 0 && u.barrier <= 1)) fail(`${u.name} のバリアの値が不正`);
-    if (u.restNow && u.restNext && false) fail('休み');
+    if (u.items != null) {
+      if (!Array.isArray(u.items) || u.items.some(k => !ITEMS[k])) fail(`${u.name} の持ち物が不正`);
+      if (u.isBoss || u.cpu) fail(`${u.name} は魔王/CPU なのにアイテムを持っている`);
+    }
+    if (!u.isBoss && u.maxHp > 150) fail(`${u.name} の最大HPが大きすぎる`);
   }
   if (!(G.q >= 1) || !Number.isInteger(G.q)) fail('問題番号が不正');
   if (G.sel != null && !G.units.some(u => u.id === G.sel)) fail('選択中のユニットが存在しない');
