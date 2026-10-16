@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BOSS_COUNT, PERSONAL_DELAY_MAX } from './config.js';
+import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BOSS_COUNT, PERSONAL_DELAY_MAX, OFFLINE_PRUNE_MS } from './config.js';
 import { BuzzRound, clampRtt } from './buzz.js';
 import { lobbyStub } from './lobby.js';
 
@@ -54,6 +54,13 @@ export class Room extends DurableObject {
 
   /** 参加者一覧を進行役・参加者に配り、部屋一覧のサマリーも更新する */
   lobby(except) {
+    // 長いこと接続が切れたままの人は、名簿から外す（部屋に幽霊が溜まらないように）
+    const now = Date.now();
+    let pruned = false;
+    for (const p of Object.values(this.R.players)) {
+      if (p.lastSeen && now - p.lastSeen > OFFLINE_PRUNE_MS && !this.isOnline(p.pid, except)) { delete this.R.players[p.pid]; pruned = true; }
+    }
+    if (pruned) this.ctx.waitUntil(this.save());
     const players = Object.values(this.R.players).map(p => ({
       pid: p.pid, name: p.name, flavor: p.flavor, job: p.job, team: p.team, delay: p.delay || 0,
       online: this.isOnline(p.pid, except), rtt: this.rtts.get(p.pid) ?? null,
@@ -420,6 +427,7 @@ export class Room extends DurableObject {
       await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);
       this.lobby(ws);                                  // 参加者に「進行役が不在」と知らせる
     } else if (att.role === 'player') {
+      if (this.R.players[att.pid]) this.R.players[att.pid].lastSeen = Date.now();      // いつ切れたか（長いと名簿から外す）
       // 進行役のいない部屋で、全員がいなくなったら猶予のあとに閉じる
       if (!this.R.hostKey && !this.R.hostGone && !Object.keys(this.R.players).some(pid => this.isOnline(pid, ws))) {
         this.R.hostGone = Date.now(); await this.save(); await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);

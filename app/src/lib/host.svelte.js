@@ -191,6 +191,10 @@ export class HostStore {
   }
 
   /* ---------- 名簿 ---------- */
+  /** 接続が切れている参加者を、まとめて名簿から外す */
+  removeOffline() {
+    for (const p of [...this.roster]) if (p.pid && !p.online) this.remove(p);
+  }
   /** 全員の職業をランダムに決める（進行役が決めた扱いになり、参加者の選び直しで上書きされない） */
   randomizeJobs() {
     for (const p of this.roster) { p.job = SELECTABLE[Math.floor(Math.random() * SELECTABLE.length)]; p.touchedJob = true; }

@@ -16,3 +16,5 @@ export const HOST_TAKEOVER_MS = 15 * 1000;
 export const BOSS_COUNT = 6;
 /** 自分で設定できる早押しのディレイ（ms）の上限 */
 export const PERSONAL_DELAY_MAX = 3000;
+/** 接続が切れたままの参加者を名簿から外すまでの時間 */
+export const OFFLINE_PRUNE_MS = 30 * 60e3;
