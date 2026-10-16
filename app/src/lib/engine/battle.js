@@ -193,8 +193,8 @@ export function createBattle(ui) {
     G.streak = (G.prevCorrect === a.id) ? (G.streak || 1) + 1 : 1;
     if (a.job === 'tank') { a.guards++; log(`🛡 ${a.name} の守り回数 +1 (${a.guards})`, 'sys'); }
     if (a.job === 'playboy' && G.streak >= 2) {
-      const h = JOB.hero;
-      a.job = 'hero'; a.atk = h.atk; a.maxHp = h.hp; a.hp = h.hp;
+      const h = JOB.hero, sc = G.cfg.hpScale || 1;
+      a.job = 'hero'; a.atk = h.atk; a.maxHp = Math.max(1, Math.round(h.hp * sc)); a.hp = a.maxHp;      // 体力は、ほかの人と同じ倍率で増える
       log(`🎲→👑 ${a.name} は連答で勇者に転職！体力リセット (HP ${a.hp})`, 'sys');
       ctx.event({ kind: 'job', who: a.name, from: '遊び人', to: '勇者' });
     }
@@ -312,11 +312,11 @@ export function createBattle(ui) {
   /* ---------- 誤答 ---------- */
   /** 道化師: 誤答の2ダメージを他の1人に押し付けられる */
   async function jesterPush(a) {
-    const others = G.units.filter(u => u.alive && u !== a);
-    const choice = await ask('🃏 道化師：誤答の2ダメージを誰かに押し付ける？', [
-      ...others.map(u => ctx.unitOption(u, { sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}`, cls: u.side !== a.side ? 'foe' : '' })),
+    const others = G.units.filter(u => u.alive && u !== a && u.side === a.side);      // 押し付けられるのは味方だけ（敵に押し付けると、わざと誤答するだけの攻撃になってしまう）
+    const choice = await ask('🃏 道化師：誤答の2ダメージを味方の誰かに押し付ける？', [
+      ...others.map(u => ctx.unitOption(u, { sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}` })),
       { label: '自分で受ける', value: null, cls: 'ghost' },
-    ], { sub: '押し付けた相手が2ダメージを受けます' });
+    ], { sub: '押し付けた味方が2ダメージを受けます' });
     const target = choice === null ? a : G.units.find(x => x.id === choice);
     await applyEvents([{ src: target === a ? null : a, to: target, amt: 2 }]);
   }
@@ -326,7 +326,7 @@ export function createBattle(ui) {
     if (a.ghost) { a.ghost = false; a.ghostUsed = true; log(`👻 ${a.name} は成仏した`, 'sys'); return; }
     if (a.isBoss && !a.human && !G.cfg.bossPenalty) { log('魔王は誤答ペナルティなし'); return; }
     if (a.noWrong) { a.noWrong = false; log(`📜 ${a.name} は作戦で誤答ダメージを受けない`, 'sys'); return; }
-    if (a.job === 'jester' && G.units.some(u => u.alive && u !== a)) { await jesterPush(a); return; }
+    if (a.job === 'jester' && G.units.some(u => u.alive && u !== a && u.side === a.side)) { await jesterPush(a); return; }
     await applyEvents([{ src: null, to: a, amt: 2 }]);
   }
 

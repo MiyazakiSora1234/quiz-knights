@@ -84,13 +84,13 @@ test('[裁定] 幽霊: 通常攻撃だけで答えられ、アイテムは使え
   assert.equal(menu.filter(o => o.cls !== 'item' && o.cls !== 'ghost').length, 1, '行動は通常攻撃だけ');
   assert.equal(a.by('G').ghost, false, '成仏した');
 });
-test('[裁定] 勇者への転職: 連続2問の正解で、体力は勇者の基本値（7）。倍率は適用されない', async () => {
+test('[裁定] 勇者への転職: 連続2問の正解で、体力は勇者の基本値（7）に、ほかの人と同じ倍率がかかる', async () => {
   const a = arena([J('P', 'playboy'), J('B', 'monk', 'e')], { script: [-1, -1], start: { hpScale: 3 } });
   await a.go('P');
   assert.equal(a.by('P').job, 'playboy');
   await a.go('P');
   assert.equal(a.by('P').job, 'hero');
-  assert.equal(a.by('P').maxHp, 7);
+  assert.equal(a.by('P').maxHp, 21, '基本の7 × 倍率3');
 });
 test('[裁定] 連答は、間に誰も正解しない問題が入ると途切れる', async () => {
   const a = arena([J('P', 'playboy'), J('B', 'monk', 'e')], { script: [-1, -1] });

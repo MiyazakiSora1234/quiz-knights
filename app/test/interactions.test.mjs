@@ -357,17 +357,25 @@ test('模倣者: バトルマスターの必殺は自分の「1度だけ」と�
 });
 
 /* ================= 道化師・賭博師 ================= */
-test('道化師: 押し付けた相手が敵チームなら庇い確認が出る／軍師の加護があれば聞かれない', async () => {
+test('道化師: 押し付けられるのは味方だけ（敵は選択肢に出ない）。味方がいなければ自分で受ける。軍師の加護があれば聞かれない', async () => {
   const h = harness();
-  h.b.start({ players: [P('J', 'jester', 'p'), P('V', 'monk', 'e'), P('T', 'tank', 'e')], mode: 'pvp' });
-  h.script.push('V', 'T が代わりに'); await h.wrong('J');
-  assert.equal(h.u('T').hp, 6);
-  assert.equal(h.u('V').hp, 6);
-  assert.equal(h.u('J').hp, 4);
+  h.b.start({ players: [P('J', 'jester', 'p'), P('A', 'monk', 'p'), P('V', 'monk', 'e'), P('T', 'tank', 'e')], mode: 'pvp' });
+  h.script.push('A'); await h.wrong('J');
+  assert.equal(h.u('A').hp, 4, '味方に押し付けた');
+  assert.equal(h.u('J').hp, 4, '自分は受けていない');
+  assert.equal(h.u('V').hp, 6); assert.equal(h.u('T').hp, 8);
+  const q = h.asked.find(a => /道化師/.test(a.title));
+  assert.deepEqual(q.opts.map(o => o.label).filter(l => l !== '自分で受ける'), ['A'], '選択肢は味方だけ');
   h.u('J').noWrong = true;
   const n = h.asked.length;
   await h.wrong('J');
   assert.equal(h.asked.length, n, '加護があれば押し付けの質問は出ない');
+  const solo = harness();
+  solo.b.start({ players: [P('J', 'jester', 'p'), P('V', 'monk', 'e')], mode: 'pvp' });
+  await solo.wrong('J');
+  assert.equal(solo.u('J').hp, 2, '味方がいなければ自分で受ける');
+  assert.equal(solo.u('V').hp, 6, '敵には押し付けられない');
+  assert.ok(!solo.asked.some(a => /道化師/.test(a.title)), '選べる味方がいないときは質問も出ない');
 });
 
 test('賭博師: 裏で自分が倒れることもある／表で対象がいなければ不発', async () => {

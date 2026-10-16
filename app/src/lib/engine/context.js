@@ -198,8 +198,9 @@ export function createContext({ ui, getG, emit }) {
       k.ghost = true; k.ghostUsed = true;
       log(`👻 ${k.name} は幽霊になった（あと1回だけ答えられる）`, 'sys'); fxUnit(k.id, 'ghost');
     }
-    if (k.job === 'bomb') {
-      // 爆発: 自分以外の全員（敵も味方も）に2ダメージ。庇うことはできない
+    if (k.job === 'bomb' && !k.bombUsed) {
+      // 爆発: 自分以外の全員（敵も味方も）に2ダメージ。庇うことはできない。蘇生されて倒れ直しても、爆発は1回だけ
+      k.bombUsed = true;
       for (const n of G.units) if (n !== k && (n.alive || startAlive.has(n.id))) next.push({ src: k, to: n, amt: 2, blast: true });
       log('💥 ばくだんいわが爆発！', 'sys');
       event({ kind: 'bomb', who: k.name });
