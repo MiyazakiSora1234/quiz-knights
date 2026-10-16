@@ -10,7 +10,7 @@
   // who: 相手の一覧 foes と、変更する setFoes(list) を持つもの（進行役の HostStore / 参加者の PlayStore）
   let { who, title = '戦う相手' } = $props();
   const MAX = 12;
-  const LEVEL_OPTIONS = Object.entries(LEVELS).map(([v, l]) => ({ v, n: l.n, d: l.d }));
+  const LEVEL_OPTIONS = Object.entries(LEVELS).filter(([, l]) => !l.hidden).map(([v, l]) => ({ v, n: l.n, d: l.d }));
   const isBoss = f => /^boss\d+$/.test(f);
   const foes = $derived(who.foes);
   const set = list => who.setFoes(list.slice(0, MAX));

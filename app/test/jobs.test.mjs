@@ -200,6 +200,7 @@ test('道化師: 誤答の2ダメージを他の1人に押し付けられる／�
 test('賭博師: 表なら敵に5ダメージ、裏なら自分が2ダメージ', async () => {
   const h = harness();
   h.b.start({ players: [P('G', 'gambler'), P('W', 'warrior')], boss: 3 });
+  h.u('魔王3').hp = h.u('魔王3').maxHp = 30;          // 魔王の体力の倍率に左右されないように
   h.rolls.push(0.1);
   await h.correct('G', 'コイントス', '魔王3');
   assert.equal(h.u('魔王3').hp, h.u('魔王3').maxHp - 5);

@@ -256,16 +256,16 @@ test('魔王2: 仲間になった者が死んだら魔王側のまま。賢者�
   assert.equal(revive.disabled, true);
 });
 
-test('魔王2: 各形態のHPは「プレイヤー攻撃合計×0.5」で、死ぬたびに次の形態へ', async () => {
+test('魔王2: 各形態のHPは「プレイヤー攻撃合計×0.4」で、死ぬたびに次の形態へ', async () => {
   const h = harness();
-  h.b.start({ players: [P('A', 'warrior'), P('B', 'bm'), P('C', 'mw')], boss: 2 });    // 3+5+2=10 → 5
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'bm'), P('C', 'mw')], boss: 2 });    // 3+5+2=10 → 4
   const boss = h.u('魔王2');
-  assert.equal(boss.maxHp, 5);
+  assert.equal(boss.maxHp, 4);
   for (const form of [1, 2]) {
     boss.hp = 1;
     await h.correct('A', '通常攻撃', '魔王2');
     assert.equal(boss.form, form);
-    assert.equal(boss.hp, 5);
+    assert.equal(boss.hp, 4);
     assert.equal(boss.alive, true);
   }
   boss.hp = 1;

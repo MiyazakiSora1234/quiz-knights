@@ -51,7 +51,7 @@
           </ol>
           <div class="box"><b>知っておくと便利</b><ul>{#each NOTES as n}<li>{n}</li>{/each}</ul></div>
           <div class="box"><b>早押しのルール（進行役が選びます）</b><ul>{#each BUZZ_RULES as [t, d]}<li><b>{t}</b>：{d}</li>{/each}</ul></div>
-          <div class="box"><b>難易度</b><ul>{#each Object.values(LEVELS) as l}<li><b>{l.n}</b>：{l.d}</li>{/each}</ul></div>
+          <div class="box"><b>難易度</b><ul>{#each Object.values(LEVELS).filter(x => !x.hidden) as l}<li><b>{l.n}</b>：{l.d}</li>{/each}</ul></div>
         {:else if tab === 'jobs'}
           {#each JOB_GROUPS as g}
             <h4>{g.n}</h4>

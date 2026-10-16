@@ -238,7 +238,8 @@ export function createBattle(ui) {
     if (!plan) return { label: '何もしない', desc: '', names: [] };
     const act = buildActions(ctx, a)[plan.ai];
     const targets = plan.ids.map(id => G.units.find(u => u.id === id)).filter(Boolean);
-    if (!act || targets.length !== plan.ids.length) return chooseAndRunAction(a);      // 状況が変わっていたら、従来の自動選択に戻す
+    // 計画を立てたあとに状況が変わった（地雷で魔王が変身した、対象が消えた、など）ら、計画は使わず自動選択に戻す
+    if (!act || act.disabled || act.prompts.length !== plan.ids.length || targets.length !== plan.ids.length) return chooseAndRunAction(a);
     return perform(a, act, targets);
   }
 
@@ -340,8 +341,9 @@ export function createBattle(ui) {
     get canUndo() { return undoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
-    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'normal' }) {
-      if (!LEVELS[level]) level = 'normal';
+    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'base' }) {
+      // 難易度を指定しない場合は「基準」（調整なし）。進行役の画面は「普通」から始まる
+      if (!LEVELS[level]) level = 'base';
       // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
       const hasBossPlayer = players.some(p => bossIdOf(p.job));      // 魔王を選んだ参加者がいるときも、チーム戦のルールで進める
       const squad = mode === 'cpu' && (foes.length > 0 || hasBossPlayer);

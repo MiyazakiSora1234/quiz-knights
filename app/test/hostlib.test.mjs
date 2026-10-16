@@ -262,11 +262,12 @@ test('難易度: 弱い=魔王HP0.7倍・与ダメ-1、強い=1.4倍・+1、普�
   const hpOf = level => { const b = battle([{ name: 'A', job: 'warrior', pid: 'a' }]); return b.G.units.find(u => u.isBoss).maxHp; };
   const mk = level => { const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed() {} }); b.start({ players: [{ name: 'A', job: 'warrior', pid: 'a' }, { name: 'B', job: 'tank', pid: 'b' }], mode: 'cpu', boss: 6, level }); return b; };
   const weak = mk('weak'), normal = mk('normal'), strong = mk('strong'), bad = mk('???');
+  const { LEVELS } = await import('../src/lib/engine.js');
   const hp = b => b.G.units.find(u => u.isBoss).maxHp;
   assert.ok(hp(weak) < hp(normal) && hp(normal) < hp(strong));
-  assert.equal(hp(bad), hp(normal));
+  assert.equal(hp(bad), hp(mk('base')), '不明な難易度は基準になる');
   // 魔王6の技1（5ダメージ）を戦士Aに撃つ: 弱い4 / 普通5 / 強い6
-  for (const [b, dmg] of [[weak, 4], [normal, 5], [strong, 6]]) {
+  for (const [b, dmg] of [[weak, 5 + LEVELS.weak.dmg], [normal, 5 + LEVELS.normal.dmg], [strong, 5 + LEVELS.strong.dmg]]) {
     const boss = b.G.units.find(u => u.isBoss), a = b.G.units.find(u => u.name === 'A');
     b.select(boss.id);
     // A が庇い対象ではないので、直接ダメージを確認（技1の対象は最初の選択肢）
@@ -338,13 +339,13 @@ test('順位の表示: 1着は🥇、2着以降は1着からの遅れ(ms)。順�
   assert.equal(rankTag(null, 0), null);
 });
 
-test('難易度: 職業のCPUも体力が変わる（弱い=7割・強い=1.4倍）。プレイヤーは変わらない', () => {
+test('難易度: 職業のCPUも体力が変わる（難易度ごとの倍率）。プレイヤーは変わらない', async () => {
   const mk = level => { const b = createBattle({ ask: async () => 0, toast() {}, changed() {} }); b.start({ players: [{ name: 'A', job: 'warrior' }], mode: 'cpu', foes: ['warrior', 'tank'], level }); return b; };
   const hp = (b, n) => b.G.units.find(u => u.name === n).maxHp;
+  const { LEVELS } = await import('../src/lib/engine.js');
   for (const [n, base] of [['CPU戦士', 7], ['CPUタンク', 8]]) {
-    assert.equal(hp(mk('normal'), n), base);
-    assert.equal(hp(mk('weak'), n), Math.ceil(base * 0.7));
-    assert.equal(hp(mk('strong'), n), Math.ceil(base * 1.4));
+    assert.equal(hp(mk('base'), n), base);
+    for (const k of ['weak', 'normal', 'strong', 'extreme']) assert.equal(hp(mk(k), n), Math.max(1, Math.ceil(base * LEVELS[k].hp)), k);
   }
   assert.equal(hp(mk('strong'), 'A'), 7);
 });
@@ -512,4 +513,17 @@ test('演出: 先読み（CPUの頭脳）の最中は、演出も画面の更新
   await Promise.resolve();
   // 先読みで何十通りも試しても、画面に出た演出は本当に起きた分（回答・コイントス・ラウンドなど）だけ
   assert.ok(new Set(events).size <= 8, `演出の数が多すぎる: ${new Set(events).size}`);
+});
+
+test('CPUの先読み: 計画のあとで魔王が地雷で変身しても、古い計画を使わず落ちない（エラーで問題が取り消されない）', async () => {
+  const toasts = [];
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled && x.value !== '__back__').value, toast: m => toasts.push(m), changed() {}, random: () => 0.1 });
+  b.start({ players: [{ name: 'A', job: 'warrior' }, { name: 'B', job: 'monk' }], mode: 'cpu', foes: ['boss2'], cpuAuto: true });
+  const boss = b.G.units.find(u => u.isBoss);
+  boss.form = 1; boss.hp = 1;                                  // 第2形態の魔王が、地雷で倒れて第3形態に変身する
+  boss.mine = { by: b.G.units.find(u => u.name === 'A').id, dmg: 3 };
+  const origError = console.error; console.error = () => {};
+  try { await b.skip(); } finally { console.error = origError; }
+  assert.equal(toasts.length, 0, 'エラーで処理が取り消されていない: ' + toasts.join());
+  assert.equal(b.G.q, 2);
 });
