@@ -5,6 +5,7 @@
   import List from './pages/List.svelte';
   import Host from './pages/Host.svelte';
   import Play from './pages/Play.svelte';
+  import About from './pages/About.svelte';
 
   const path = location.pathname.replace(/\.html$/, '').replace(/\/+$/, '');
   const id = new URLSearchParams(location.search).get('id');
@@ -14,6 +15,8 @@
   <Host {id} />
 {:else if path === '/play'}
   <Play {id} />
+{:else if path === '/about'}
+  <About />
 {:else}
   <List />
 {/if}

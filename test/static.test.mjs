@@ -138,3 +138,11 @@ test('[静的] 使われていない import がない（Svelte・JS）', () => {
   }
   assert.deepEqual(bad, [], '使われていない import');
 });
+
+test('[静的] 画面が参照するスクリーンショット（/screenshots/…）が、public にある', () => {
+  const missing = [];
+  for (const f of files.filter(x => x.endsWith('.svelte'))) {
+    for (const m of read(f).matchAll(/['"]\/screenshots\/([\w.\-]+)['"]/g)) if (!fs.existsSync(path.join(ROOT, 'app/public/screenshots', m[1]))) missing.push(`${rel(f)}: ${m[1]}`);
+  }
+  assert.deepEqual(missing, []);
+});

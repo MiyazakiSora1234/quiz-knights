@@ -50,7 +50,7 @@
     <h1 class="logo">QUIZ KNIGHTS<small>クイズ騎士団</small></h1>
   </header>
 
-  <div class="who"><button class="btn sm ghost" onclick={() => (panel.rules = true)}>職業・ルールを見る</button></div>
+  <div class="who"><button class="btn sm ghost" onclick={() => (panel.rules = true)}>職業・ルールを見る</button> <a class="btn sm ghost" href="/about">このゲームについて</a></div>
 
   <h2 class="sec">開いている部屋</h2>
   {#if rooms === null}
