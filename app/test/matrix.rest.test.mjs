@@ -188,16 +188,16 @@ for (let seed = 1; seed <= 1000; seed++) {
     const first = order[0];
     round.record(first, 1000, 1000); round.decided();
     let t = 1000;
-    for (const pid of order.slice(1)) { t += 5 + r.int(30); const ok = round.record(pid, t, t); assert.equal(ok, chain); }
+    for (const pid of order.slice(1)) { t += 5 + r.int(30); const ok = round.record(pid, t, t); assert.equal(ok, true); }
     const rank = round.ranking().map(x => x.pid);
     assert.equal(rank[0], first);
-    assert.equal(rank.length, chain ? n : 1);
+    assert.equal(rank.length, n, 'どのルールでも全員の順位が残る');
     const ex = [];
     for (let i = 0; i < n + 2; i++) { const nx = round.ranking(undefined, ex)[0]; if (!nx) break; ex.push(nx.pid); }
     assert.deepEqual(ex, rank);
     // 復元しても連チャンの設定が保たれる
     const back = BuzzRound.from(JSON.parse(JSON.stringify(round.toJSON())));
-    assert.equal(back.chain, chain); assert.equal(back.backup, chain);
+    assert.equal(back.chain, chain); assert.equal(back.backup, true);
   });
 }
 

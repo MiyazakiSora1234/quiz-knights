@@ -64,7 +64,7 @@ export class PlayStore {
   }
   get buzzLabel() {
     const me = this.me;
-    if (this.canBuzz) return this.hasWinner ? '控えで押す' : '押す！';
+    if (this.canBuzz) return this.hasWinner ? (this.chain ? '控えで押す' : '押す（順位のみ）') : '押す！';
     if (this.sent) return this.myWin ? '回答権獲得' : '送信済み';
     if (me && !me.alive && !me.ghost) return '戦闘不能';
     if (me && me.restNow) return '今回は休み';
@@ -129,12 +129,12 @@ export class PlayStore {
         this.ranks = {}; this.open = true; this.chain = !!m.chain; this.eligible = m.eligible; this.sent = false; this.winner = null;
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
         return;
-      case 'locked': if (!this.chain) this.open = false; return;   // 連チャンでは、回答者が決まったあとも2着以降の押下を受け付ける
+      case 'locked': return;     // 回答者が決まったあとも押せる（順位の表示のため。連チャンでは回答権の移り先にもなる）
       case 'ack': this.sent = true; return;
       case 'ranking': if (m.q === this.gs?.q || this.gs == null) this.ranks = rankTags(m.all); return;
       case 'winner':
         this.ranks = rankTags(m.all ?? m.ranking);
-        if (!this.chain) this.open = false;
+        // 受付は閉じない: 後から押した人の順位も、全員に表示する
         this.winner = m;
         if (m.pid === this.pid) { sfx.win(); vib([120, 60, 200]); } else sfx.other();
         return;

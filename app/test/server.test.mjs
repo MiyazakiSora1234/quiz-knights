@@ -918,10 +918,22 @@ test('途中参戦: いまの受付に加えても、ほかの人の押した記
   assert.equal(w.ranking.length, 2);
   host.send({ t: 'close' });
 });
-test('途中参戦: 受付が終わっている問題には加えられない／入室していない人は無視', async () => {
+test('途中参戦: 勝者が決まったあとでも、順位の表示のために加えられる／入室していない人は無視', async () => {
   const { id, host } = await makeRoom();
   const a = await joinPlayer(id, 'A');
   host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0 } });
+  await a.wait('open');
+  a.send({ t: 'buzz', ts: Date.now() - 100, rtt: 20 });
+  await host.wait('winner', 4000);
+  const late = await joinPlayer(id, 'Late');
+  host.send({ t: 'add_eligible', pid: late.pid, delay: 0 });
+  host.send({ t: 'add_eligible', pid: 'nobody', delay: 0 });
+  assert.equal((await late.wait('open', 3000)).q, 1);
+  late.send({ t: 'buzz', ts: Date.now() - 20, rtt: 20 });
+  const r = await host.wait('ranking', 3000, x => x.all.length === 2);
+  assert.deepEqual(r.all.map(x => x.pid), [a.pid, late.pid]);
+  host.send({ t: 'close' });
+});
   await a.wait('open');
   a.send({ t: 'buzz', ts: Date.now(), rtt: 20 });
   await host.wait('winner', 4000);

@@ -130,11 +130,13 @@ test('連チャン: 勝者が決まったあとも押下を記録でき、順位
   assert.equal(r.canBuzz('x'), false);
 });
 
-test('連チャンでない通常の受付は、勝者が決まったら押せなくなる。保存しても連チャンの設定は残る', () => {
+test('連チャンでなくても、勝者が決まったあとの押下は順位の表示のために記録される（回答権は移らない）。保存しても連チャンの設定は残る', () => {
   const r = BuzzRound.start(1, { a: 0, b: 0 });
   r.record('a', 1000, 1010);
   r.decided();
-  assert.equal(r.canBuzz('b'), false);
+  assert.equal(r.canBuzz('b'), true);
+  assert.equal(r.record('b', 1100, 1120), true);
+  assert.deepEqual(r.ranking().map(x => x.pid), ['a', 'b']);
   const c = BuzzRound.from(JSON.parse(JSON.stringify(BuzzRound.start(2, { a: 0 }, true).toJSON())));
   assert.equal(c.chain, true);
 });

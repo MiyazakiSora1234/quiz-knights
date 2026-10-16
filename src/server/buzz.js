@@ -17,8 +17,8 @@ export class BuzzRound {
 
   canBuzz(pid) { return (this.open || this.backup) && pid in this.eligible && !(pid in this.buzzes); }
 
-  /** 勝者が決まった。連チャンなら、2着以降の押下を引き続き受け付ける */
-  decided() { this.open = false; if (this.chain) this.backup = true; }
+  /** 勝者が決まった。どのルールでも、2着以降の押下は順位の表示のために記録し続ける（連チャンでは回答権の移り先にもなる） */
+  decided() { this.open = false; this.backup = true; }
 
   /**
    * 押下を記録する。arrival=サーバーに届いた時刻、ts=本人が申告した押した時刻（サーバー時刻換算）。

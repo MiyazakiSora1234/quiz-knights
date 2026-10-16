@@ -67,13 +67,13 @@ for (const [n, chain] of [[1, false], [2, false], [3, true], [5, true], [8, true
     round.decided();
     let accepted = 0;
     for (let i = 1; i < n; i++) if (round.record('p' + i, 1000 + i * 10, 1000 + i * 10)) accepted++;
-    assert.equal(accepted, chain ? n - 1 : 0);
+    assert.equal(accepted, n - 1);
     const rest = round.ranking(undefined, ['p0']).map(x => x.pid);
-    assert.deepEqual(rest, chain ? Array.from({ length: n - 1 }, (_, i) => 'p' + (i + 1)) : []);
+    assert.deepEqual(rest, Array.from({ length: n - 1 }, (_, i) => 'p' + (i + 1)));
     // 順に除外していくと、最後は空になる
     const ex = [];
     for (let i = 0; i < n; i++) { const nx = round.ranking(undefined, ex)[0]; if (!nx) break; ex.push(nx.pid); }
-    assert.equal(ex.length, chain ? n : 1);
+    assert.equal(ex.length, n);
   });
 }
 
