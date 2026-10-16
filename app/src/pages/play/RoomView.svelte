@@ -4,7 +4,7 @@
   import { tick } from 'svelte';
   import { icon } from '../../lib/icons.js';
   import { JOB, SELECTABLE, BOSS, PLAYABLE_BOSS_KEYS, bossIdOf } from '../../lib/engine.js';
-  import { panel, confirmAsk } from '../../lib/ui.svelte.js';
+  import { panel, confirmAsk } from '../../lib/stores/ui.svelte.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
   let { p } = $props();   // PlayStore

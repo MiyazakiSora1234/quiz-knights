@@ -1,6 +1,6 @@
 <script>
   import { fade, fly } from 'svelte/transition';
-  import { panel } from '../lib/ui.svelte.js';
+  import { panel } from '../lib/stores/ui.svelte.js';
 
   // バトルログ（メニューから開く）。lines = [{m, c}]、新しいものが上
   let { lines = [] } = $props();

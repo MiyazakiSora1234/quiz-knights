@@ -2,11 +2,12 @@
   "name": "quiz-knights",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --config app/vite.config.js",
     "build": "vite build --config app/vite.config.js",
     "worker": "wrangler dev",
-    "test": "node --test \"app/test/*.test.mjs\"",
+    "test": "node --test \"test/**/*.test.mjs\"",
     "deploy": "npm run build && wrangler deploy",
     "preview": "npm run build && wrangler dev",
     "test:update-golden": "node scripts/update-golden.mjs"

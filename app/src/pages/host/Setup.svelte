@@ -1,7 +1,7 @@
 <script>
   import { flip } from 'svelte/animate';
   import { fly, slide } from 'svelte/transition';
-  import { panel, confirmAsk } from '../../lib/ui.svelte.js';
+  import { panel, confirmAsk } from '../../lib/stores/ui.svelte.js';
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
   import FoePicker from '../../components/FoePicker.svelte';

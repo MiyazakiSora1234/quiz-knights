@@ -1,6 +1,6 @@
 <script>
   import { fade, scale } from 'svelte/transition';
-  import { modal, answerModal, cancelModal } from '../lib/ui.svelte.js';
+  import { modal, answerModal, cancelModal } from '../lib/stores/ui.svelte.js';
   import { icon } from '../lib/icons.js';
   import { groupOptions } from '../lib/groups.js';
 

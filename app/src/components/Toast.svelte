@@ -1,7 +1,7 @@
 <script>
   import { flip } from 'svelte/animate';
   import { fly } from 'svelte/transition';
-  import { toasts } from '../lib/ui.svelte.js';
+  import { toasts } from '../lib/stores/ui.svelte.js';
 </script>
 
 <div class="stack" aria-live="polite">

@@ -1,6 +1,6 @@
 <script>
   import { fade, scale } from 'svelte/transition';
-  import { panel } from '../lib/ui.svelte.js';
+  import { panel } from '../lib/stores/ui.svelte.js';
   import { icon } from '../lib/icons.js';
   import { JOB, BOSS, JOB_GROUPS, LEVELS, ITEMS } from '../lib/engine.js';
   import { RULINGS } from '../lib/rulings.js';

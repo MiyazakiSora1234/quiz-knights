@@ -1,7 +1,7 @@
 <script>
   import { fade, fly } from 'svelte/transition';
-  import { panel, confirmAsk } from '../../lib/ui.svelte.js';
-  import { sound, toggleSound } from '../../lib/sound.svelte.js';
+  import { panel, confirmAsk } from '../../lib/stores/ui.svelte.js';
+  import { sound, toggleSound } from '../../lib/stores/sound.svelte.js';
 
   let { host, G, chatOpen = $bindable(false), answerCount = 0 } = $props();
   let menu = $state(false);

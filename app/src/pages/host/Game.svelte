@@ -9,8 +9,8 @@
   import Notice from '../../components/Notice.svelte';
   import EventFx from '../../components/EventFx.svelte';
   import { fade, fly } from 'svelte/transition';
-  import { panel, modal } from '../../lib/ui.svelte.js';
-  import { sfx, unlockAudio } from '../../lib/sound.svelte.js';
+  import { panel, modal } from '../../lib/stores/ui.svelte.js';
+  import { sfx, unlockAudio } from '../../lib/stores/sound.svelte.js';
 
   // バトル画面: 左に舞台（魔王とプレイヤー）、右に進行パネルとバトルログ。スマホでは進行パネルが下に固定される
   let { host } = $props();

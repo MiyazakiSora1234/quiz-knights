@@ -1,13 +1,13 @@
 <script>
   import { fade, scale, fly } from 'svelte/transition';
-  import { panel } from '../../lib/ui.svelte.js';
+  import { panel } from '../../lib/stores/ui.svelte.js';
   import { tick } from 'svelte';
   import Unit from '../../components/Unit.svelte';
   import MePanel from './MePanel.svelte';
   import ScoreTable from '../../components/ScoreTable.svelte';
   import Confetti from '../../components/Confetti.svelte';
   import BuzzButton from './BuzzButton.svelte';
-  import { sfx, vib } from '../../lib/sound.svelte.js';
+  import { sfx, vib } from '../../lib/stores/sound.svelte.js';
   import { ITEMS } from '../../lib/engine.js';
 
   let { p } = $props();   // PlayStore

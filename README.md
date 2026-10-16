@@ -3,16 +3,28 @@
 早押しクイズと連携する、職業ありのバトルゲーム。遠隔参加の早押し付き。
 
 ## 構成
-- `app/` … フロント（Svelte 5 + Vite）
-  - `src/lib/engine.js` ゲームの全ルール（画面に依存しない）。`app/test/` に自動テスト一式
-    - `engine/jobs/interactions` 個別ルール、`explore` 全職業×全行動×全対象の分岐を総当たり、`fuzz` 数万手のランダム戦闘で毎手の整合性を検査、`server` 早押し・部屋・引き継ぎ
-  - `src/lib/net.js` WebSocket 接続（自動再接続・サーバーとの時計ずれ補正）
-  - `src/lib/host.svelte.js` 進行役の状態（部屋・名簿・早押し受付）
-  - `src/pages/` 部屋一覧 `List` / 進行役 `Host`（準備・バトル）/ 参加者 `Play`
-  - `src/theme.css` 共通デザイン（金=主操作、緑=正解・回復、赤=誤答・敵、青=味方）
-- `src/worker.js` … サーバー（Cloudflare Workers + Durable Objects）
-  - 部屋ごとに1つの Durable Object が早押しの時計を一括管理し、同時押しは「押下時刻＋ディレイ」で判定
-- `dist/` … ビルド結果（Git 管理外）。Workers Assets で配信
+```
+app/                フロント（Svelte 5 + Vite）
+  src/lib/engine/   ゲームのルール（画面に依存しない）… data / context / jobs / items / ai / battle
+  src/lib/engine.js ルールの入口（ここから import する）
+  src/lib/stores/   画面の状態クラス … host（進行役）/ play（参加者）/ ui（トースト・ダイアログ）/ sound
+  src/lib/          通信 net・名簿 roster・配信 publish・裁定 rulings など、画面に依存しない部品
+  src/components/   共通の部品（Unit・Modal・RulesDialog など）
+  src/pages/        部屋一覧 List / 進行役 Host（準備・バトル）/ 参加者 Play
+  src/theme.css     共通デザイン（金=主操作、緑=正解・回復、赤=誤答・敵、青=味方）
+server/             サーバー（Cloudflare Workers + Durable Objects）
+  worker.js         入口（/api と /ws）
+  room.js           部屋ごとの Durable Object（早押しの判定・選択の中継・進行役の引き継ぎ）
+  buzz.js           早押しの判定（押下時刻＋ディレイ、同時押しの許容）
+  lobby.js / config.js  部屋一覧・定数
+test/               自動テスト（種類ごとに分けています）
+  engine/           ルール: 個別・総当たり・ランダム戦闘・アイテム・裏技・裁定・ゴールデン
+  server/           サーバー: 早押し・部屋・引き継ぎ（wrangler を起動して通信まで確かめます）
+  client/           画面の状態・通信・名簿などの部品
+  static.test.mjs   コンパイル・import・孤立ファイル・未使用 import の検査
+scripts/            補助スクリプト（ゴールデンの更新）
+dist/               ビルド結果（Git 管理外）。Workers Assets で配信
+```
 
 ## 開発
 ```
@@ -35,7 +47,7 @@ npm run deploy        # ビルドしてデプロイ
 
 ## 早押し判定
 - 各端末が時計ずれを補正した押下時刻を送信し、サーバーが `押下時刻 + ディレイ` の最小の人を勝者にします。
-- 通信遅延の許容は `TOLERANCE_MS`（`src/worker.js`、既定150ms）。
+- 通信遅延の許容は、押した人の遅延から自動で決まります（`server/config.js` の `TOLERANCE_MIN_MS` 〜 `TOLERANCE_MAX_MS`）。
 - バーサーカーは +700ms（`app/src/lib/engine.js` の `BERSERKER_DELAY_MS`）。
 
 ## 部屋
@@ -45,9 +57,9 @@ npm run deploy        # ビルドしてデプロイ
 ## テストの種類
 
 - `npm test` — すべてのテスト（約4万件、1分弱）
-- **ゴールデンテスト**（`app/test/golden.test.mjs`）… 決まった乱数で戦闘を最後まで進め、結果を `app/test/golden/engine.json` と比べます。リファクタリングで挙動が変わると失敗します。意図して挙動を変えたときだけ `npm run test:update-golden` で保存し直します。
-- **画面の状態クラス**（`app/test/stores.test.mjs`）… 参加者の `PlayStore` と進行役の `HostStore` を、偽のサーバー・偽の保存領域で動かし、受け取ったメッセージでの状態の変化と、送るメッセージを確かめます（Vite でルーン付きの `.svelte.js` を読み込みます）。
+- **ゴールデンテスト**（`test/engine/golden.test.mjs`）… 決まった乱数で戦闘を最後まで進め、結果を `test/engine/golden/engine.json` と比べます。リファクタリングで挙動が変わると失敗します。意図して挙動を変えたときだけ `npm run test:update-golden` で保存し直します。
+- **画面の状態クラス**（`test/client/stores.test.mjs`）… 参加者の `PlayStore` と進行役の `HostStore` を、偽のサーバー・偽の保存領域で動かし、受け取ったメッセージでの状態の変化と、送るメッセージを確かめます（Vite でルーン付きの `.svelte.js` を読み込みます）。
 - **アイテム・裁定**（`items*.test.mjs`・`rulings.test.mjs`）… アイテムの効果・乱戦・全職業×全アイテムと、ルール画面の裁定がエンジンの動きと合っているかを確かめます。
-- **静的検査**（`app/test/static.test.mjs`）… すべての Svelte がコンパイルでき、import の行き先と名前が存在し、孤立したファイルがないことを確かめます。
+- **静的検査**（`test/static.test.mjs`）… すべての Svelte がコンパイルでき、import の行き先と名前が存在し、孤立したファイルがないことを確かめます。
 - **組み合わせテスト**（`matrix.*.test.mjs`）… 職業×職業、魔王×難易度×人数、ランダム戦闘などを1ケース1テストで流します。
-- **サーバーのテスト**（`server.test.mjs`）… `wrangler dev` を起動して、実際の部屋・早押し・チャットを検証します。
+- **サーバーのテスト**（`test/server/server.test.mjs`）… `wrangler dev` を起動して、実際の部屋・早押し・チャットを検証します。

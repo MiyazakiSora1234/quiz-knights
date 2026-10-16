@@ -1,6 +1,6 @@
 <script>
   import { fade, scale } from 'svelte/transition';
-  import { panel } from '../lib/ui.svelte.js';
+  import { panel } from '../lib/stores/ui.svelte.js';
   import Stepper from './Stepper.svelte';
 
   // クイズ設定（右上のボタンから開く）。参加者は「自分のディレイ」、進行役は「早押しのルール」と「参加者のディレイ」を決める

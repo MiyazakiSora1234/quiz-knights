@@ -1,9 +1,9 @@
 <script>
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { panel, toast, confirmAsk } from '../lib/ui.svelte.js';
-  import { PlayStore } from '../lib/play.svelte.js';
-  import { sound, toggleSound } from '../lib/sound.svelte.js';
+  import { panel, toast, confirmAsk } from '../lib/stores/ui.svelte.js';
+  import { PlayStore } from '../lib/stores/play.svelte.js';
+  import { sound, toggleSound } from '../lib/stores/sound.svelte.js';
   import JoinForm from './play/JoinForm.svelte';
   import PlayLobby from './play/RoomView.svelte';
   import PlayGame from './play/PlayGame.svelte';

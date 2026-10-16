@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { HostStore } from '../lib/host.svelte.js';
+  import { HostStore } from '../lib/stores/host.svelte.js';
   import Setup from './host/Setup.svelte';
   import Game from './host/Game.svelte';
   import QuizSettings from '../components/QuizSettings.svelte';
