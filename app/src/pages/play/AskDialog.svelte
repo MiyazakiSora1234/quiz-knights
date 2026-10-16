@@ -27,7 +27,7 @@
 {#if req}
   <div class="sheetwrap" role="presentation">
     <div class="dlg" class:folded transition:fly={{ y: 40, duration: 160 }} role="dialog" aria-label={req.title}>
-      <div class="bar">
+      <div class="asktop">
         <span class="you">あなたの番です</span>
         <button class="fold" type="button" onclick={() => (folded = !folded)} aria-expanded={!folded}>{folded ? '▲ 選択を開く' : '▼ 盤面を見る'}</button>
       </div>
@@ -55,7 +55,7 @@
   .sheetwrap{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:0 8px 8px;z-index:75;pointer-events:none}
   .dlg{pointer-events:auto;background:var(--s1);border:1px solid var(--gold);border-radius:16px;padding:12px 14px 14px;max-width:560px;width:100%;max-height:50dvh;overflow:auto;box-shadow:0 -8px 30px #000b}
   .dlg.folded{padding-bottom:10px}
-  .bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+  .asktop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
   .fold{background:var(--s2);border:1px solid var(--line2);border-radius:999px;padding:4px 12px;font-size:.78rem;font-weight:700;color:var(--tx);cursor:pointer}
   .you{display:inline-block;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.75rem;border-radius:999px;padding:2px 10px}
   h3{font-size:1.15rem;color:var(--gold)}
