@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { JOB, SELECTABLE, JOB_GROUPS, BOSS, LEVELS, GENRES, PLAYABLE_BOSS_KEYS, bossIdOf, bossHp, jobName, nm, iconKey, statusTags, bonusOf, recommendedHpScale, BERSERKER_DELAY_MS, jobDesc, jobDescOf } from '../../app/src/lib/engine.js';
 import { icon, ICON_KEYS } from '../../app/src/lib/icons.js';
 import { groupOptions } from '../../app/src/lib/groups.js';
+import { isBuzzKey } from '../../app/src/lib/buzzkey.js';
 import { rankTag, rankTags } from '../../app/src/lib/ranks.js';
 
 /* ===== データ表 ===== */
@@ -150,4 +151,19 @@ test('[データ] 職業の説明: 全職業・全魔王に説明があり、ユ
   assert.equal(jobDescOf('???'), '');
   assert.equal(jobDesc({ job: 'monk', isBoss: false }), JOB.monk.d);
   assert.ok(jobDesc({ isBoss: true, bossId: 3, job: 'boss' }).includes(BOSS[3].intro));
+});
+
+/* ===== キーボードでの早押し ===== */
+test('[早押しキー] Space / Enter で押せる。長押しの連打・修飾キー・ダイアログ中・入力欄やボタン上では押さない（早押しボタン自身は除く）', () => {
+  const ev = (key, target = { tagName: 'BODY' }, extra = {}) => ({ key, code: key === ' ' ? 'Space' : key, target, repeat: false, ...extra });
+  assert.equal(isBuzzKey(ev(' ')), true);
+  assert.equal(isBuzzKey(ev('Enter')), true);
+  assert.equal(isBuzzKey(ev('a')), false);
+  assert.equal(isBuzzKey(ev(' '), true), false, 'ダイアログ中');
+  assert.equal(isBuzzKey(ev(' ', undefined, { repeat: true })), false, '押しっぱなしの連打');
+  for (const m of ['ctrlKey', 'metaKey', 'altKey', 'shiftKey']) assert.equal(isBuzzKey(ev(' ', undefined, { [m]: true })), false, m);
+  for (const tag of ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'SUMMARY']) assert.equal(isBuzzKey(ev('Enter', { tagName: tag })), false, tag);
+  assert.equal(isBuzzKey(ev('Enter', { tagName: 'DIV', isContentEditable: true })), false);
+  assert.equal(isBuzzKey(ev(' ', { tagName: 'BUTTON', classList: { contains: c => c === 'buzz' } })), true, '早押しボタン自身は押せる');
+  assert.equal(isBuzzKey({ key: ' ', code: 'Space', repeat: false }), true, 'target がなくても');
 });
