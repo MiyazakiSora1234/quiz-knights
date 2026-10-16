@@ -1,6 +1,6 @@
 <script>
   import { icon } from '../../lib/icons.js';
-  import { ITEMS } from '../../lib/engine.js';
+  import { ITEMS, jobDesc } from '../../lib/engine.js';
   import { toast } from '../../lib/stores/ui.svelte.js';
 
   let { me, items = [] } = $props();   // 自分のユニット。観戦中は null
@@ -12,7 +12,7 @@
   {#if me}
     <div class="em">{@html icon(me.job)}</div>
     <div class="mi">
-      <div class="nm">{me.name} <span class="sub">{me.jobName}</span></div>
+      <div class="nm">{me.name} <button type="button" class="sub jn" title="クリックで職業の説明" onclick={() => toast(`${me.jobName}：${jobDesc(me)}`, 5000)}>{me.jobName}</button></div>
       <div class="bar {level}"><i style="width:{Math.max(0, ratio * 100)}%"></i></div>
       <div class="st">HP <b>{Math.max(0, me.hp)}</b> / {me.maxHp}{me.restNow ? '　💤 今回は休み' : ''}{me.job === 'tank' ? `　🛡 守り×${me.guards}` : ''}{me.alive ? '' : me.ghost ? '　👻 幽霊（あと1回だけ答えられる）' : '　💀 戦闘不能'}</div>
       {#if items.length}<div class="its" aria-label="持ち物">🎒 {#each items as k}<button type="button" class="it" title={ITEMS[k]?.d} onclick={() => toast(`${ITEMS[k]?.ic} ${ITEMS[k]?.n}：${ITEMS[k]?.d}`, 4000)}>{ITEMS[k]?.ic} {ITEMS[k]?.n}</button>{/each}</div>{/if}
@@ -30,5 +30,6 @@
   .bar{margin:6px 0}
   .st{font-size:.9rem;font-variant-numeric:tabular-nums}
   .its{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px;font-size:.78rem;color:var(--mut)}
+  .jn{background:none;border:0;padding:0;font:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:var(--mut)}
   .it{background:#b8923a22;border:1px solid var(--gold-d);border-radius:999px;padding:1px 8px;color:var(--tx);white-space:nowrap;cursor:pointer;font:inherit;font-size:.78rem}
 </style>

@@ -1,6 +1,6 @@
 <script>
   import { icon } from '../lib/icons.js';
-  import { jobName } from '../lib/engine.js';
+  import { jobName, jobDesc } from '../lib/engine.js';
   import { toast } from '../lib/stores/ui.svelte.js';
 
   let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false, fxs = [] } = $props();
@@ -68,7 +68,7 @@
   <div class="u-in" class:shake={anim === 'hit'} class:glow={anim === 'heal'}>
     <div class="ic-wrap">{@html icon(u.isBoss ? `boss${u.bossId || 1}` : u.job)}</div>
     <div class="nm">{u.name}</div>
-    <div class="jb">{label}{u.isBoss || u.atk == null ? '' : ` ／ ATK ${u.atk}`}</div>
+    <div class="jb"><span class="jbn" role="button" tabindex="0" title="クリックで職業の説明" onclick={(e) => { e.stopPropagation(); toast(`${label}：${jobDesc(u)}`, 5000); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toast(`${label}：${jobDesc(u)}`, 5000); } }}>{label}</span>{u.isBoss || u.atk == null ? '' : ` ／ ATK ${u.atk}`}</div>
     <div class="bar {level}" style="margin-top:8px"><i style="width:{pct}%"></i></div>
     <div class="hp">HP <b>{Math.max(0, u.hp)}</b> / {u.maxHp}{u.alive ? '' : ' 💀'}</div>
     {#if bubble}<div class="bubble" title={bubble}>{bubble}</div>{/if}
@@ -107,6 +107,7 @@
 </button>
 
 <style>
+  .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .tag.tip{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   /* 攻撃を受けた: 赤くフラッシュ・斬撃・内側が揺れる／回復: 緑の光と、立ちのぼる✚ */
   .fx{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}

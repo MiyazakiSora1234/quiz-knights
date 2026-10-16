@@ -1,7 +1,7 @@
 // 小さな部品のテスト: データ表の整合、アイコン、選択肢のグループ化、保存領域の入口、順位の表示、時計合わせ
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { JOB, SELECTABLE, JOB_GROUPS, BOSS, LEVELS, GENRES, PLAYABLE_BOSS_KEYS, bossIdOf, bossHp, jobName, nm, iconKey, statusTags, bonusOf, recommendedHpScale, BERSERKER_DELAY_MS } from '../../app/src/lib/engine.js';
+import { JOB, SELECTABLE, JOB_GROUPS, BOSS, LEVELS, GENRES, PLAYABLE_BOSS_KEYS, bossIdOf, bossHp, jobName, nm, iconKey, statusTags, bonusOf, recommendedHpScale, BERSERKER_DELAY_MS, jobDesc, jobDescOf } from '../../app/src/lib/engine.js';
 import { icon, ICON_KEYS } from '../../app/src/lib/icons.js';
 import { groupOptions } from '../../app/src/lib/groups.js';
 import { rankTag, rankTags } from '../../app/src/lib/ranks.js';
@@ -142,4 +142,12 @@ test('[裁定] 見出し・質問・答えがそろい、質問は重複せず�
   for (const g of RULINGS) { assert.ok(g.n && g.items.length); for (const [q, a] of g.items) { assert.ok(q.length >= 4 && q.endsWith('？'), q); assert.ok(a.length >= 10, q); } }
   assert.ok(RULINGS.some(g => g.n === 'アイテム'));
   assert.ok(qs.length >= 50, `${qs.length}件`);
+});
+
+test('[データ] 職業の説明: 全職業・全魔王に説明があり、ユニットからも引ける（クリックで出す文）', () => {
+  for (const k of [...SELECTABLE, 'hero']) { assert.equal(jobDescOf(k), JOB[k].d); assert.ok(jobDescOf(k).length >= 6, k); }
+  for (const k of PLAYABLE_BOSS_KEYS) assert.ok(jobDescOf(k).includes(BOSS[bossIdOf(k)].intro), k);
+  assert.equal(jobDescOf('???'), '');
+  assert.equal(jobDesc({ job: 'monk', isBoss: false }), JOB.monk.d);
+  assert.ok(jobDesc({ isBoss: true, bossId: 3, job: 'boss' }).includes(BOSS[3].intro));
 });

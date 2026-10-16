@@ -3,8 +3,8 @@
   import { flip } from 'svelte/animate';
   import { tick } from 'svelte';
   import { icon } from '../../lib/icons.js';
-  import { JOB, SELECTABLE, BOSS, bossIdOf } from '../../lib/engine.js';
-  import { panel, confirmAsk } from '../../lib/stores/ui.svelte.js';
+  import { JOB, SELECTABLE, BOSS, bossIdOf, jobDescOf } from '../../lib/engine.js';
+  import { panel, confirmAsk, toast } from '../../lib/stores/ui.svelte.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
   let { p } = $props();   // PlayStore
@@ -36,7 +36,7 @@
         <span class="av">{@html icon(jobKey(m))}</span>
         <div class="mi">
           <b><span class="dot {m.online ? 'on' : ''}"></span><span class="nm">{m.name}</span><span class="tm {m.team === 'e' ? 'b' : m.team === 'c' ? 'c' : 'a'}">{m.team === 'e' ? 'B' : m.team === 'c' ? 'C' : 'A'}</span></b>
-          <small>{jobN(jobKey(m))}{m.flavor ? ` ・ ${m.flavor}` : ''}</small>
+          <small><span class="jbn" role="button" tabindex="0" title="クリックで職業の説明" onclick={() => toast(`${jobN(jobKey(m))}：${jobDescOf(jobKey(m))}`, 5000)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toast(`${jobN(jobKey(m))}：${jobDescOf(jobKey(m))}`, 5000))}>{jobN(jobKey(m))}</span>{m.flavor ? ` ・ ${m.flavor}` : ''}</small>
         </div>
       </div>
     {/each}
@@ -76,6 +76,7 @@
   .mcard.me{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}.mcard.off{opacity:.5}
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
   .mi{min-width:0;flex:1}.mi b{display:flex;align-items:center;gap:6px;min-width:0}.mi .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi .dot{flex:none}
+  .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .mi small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .bottom{flex:none;display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
   .chat{display:flex;flex-direction:column;gap:8px;min-width:0}
