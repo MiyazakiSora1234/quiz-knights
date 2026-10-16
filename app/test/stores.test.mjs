@@ -485,3 +485,18 @@ test('[持ち物] 進行役は、本人と同じ陣営の仲間にだけ名前�
     p.destroy();
   } finally { env.restore(); }
 });
+
+test('[進行役] 1つ進める: 戻した操作を進められる。画面の canRedo が追従する', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const { h } = await hostReady(env, mods);
+    h.start(); await tick(30);
+    assert.equal(h.canRedo, false);
+    await h.skip(); await tick(60);
+    h.undo(); await tick(20);
+    assert.equal(h.G.q, 1); assert.equal(h.canRedo, true);
+    h.redo(); await tick(20);
+    assert.equal(h.G.q, 2); assert.equal(h.canRedo, false);
+    h.destroy();
+  } finally { env.restore(); }
+});

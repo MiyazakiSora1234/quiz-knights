@@ -30,6 +30,7 @@ export class HostStore {
   G = $state(null);                  // バトルの状態（engine から届く写し）
   busy = $state(false);
   canUndo = $state(false);
+  canRedo = $state(false);
   rank = $state('');
   ranks = $state({});                // この問題の早押しの順位 pid → 表示用のタグ                 // 直近の早押しの順位
   rtt = $state(null);
@@ -42,7 +43,7 @@ export class HostStore {
     this.battle = createBattle({
       ask: (title, options, o) => this.#ask(title, options, o), toast,
       pause: ms => new Promise(r => setTimeout(r, ms)),
-      changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
+      changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.canRedo = this.battle.canRedo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
       persist: G => store.set(KEY.save(id), JSON.stringify(G)),
     });
     try { this.saved = JSON.parse(store.get(KEY.save(id))); } catch { this.saved = null; }
@@ -266,6 +267,7 @@ export class HostStore {
   sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   skip() { return this.battle.skip(); }
   undo() { return this.battle.undo(); }
+  redo() { return this.battle.redo(); }
   reopen() { this.#openedFor = null; this.rank = ''; this.#publish(true); }
 
   saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }

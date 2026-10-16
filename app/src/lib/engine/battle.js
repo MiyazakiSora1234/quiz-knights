@@ -9,7 +9,7 @@ import { buildItemActions } from './items.js';
 const TEAM_ORDER = { p: 0, e: 1, c: 2 };
 
 export function createBattle(ui) {
-  let G = null, undoStack = [], busy = false, pending = false, simulating = false;
+  let G = null, undoStack = [], redoStack = [], busy = false, pending = false, simulating = false;
 
   /** 変化を画面へ知らせる（同じ瞬間の変化は1回にまとめる） */
   const emit = () => {
@@ -363,7 +363,7 @@ export function createBattle(ui) {
     let ok = true;
     try {
       await fn();
-      undoStack.push(snap);
+      undoStack.push(snap); redoStack = [];                    // 新しい操作をしたら、「進める」は使えなくなる
       if (undoStack.length > 40) undoStack.shift();
       ui.persist && ui.persist(G);
     } catch (e) {
@@ -379,6 +379,7 @@ export function createBattle(ui) {
     get G() { return G; },
     get busy() { return busy; },
     get canUndo() { return undoStack.length > 0; },
+    get canRedo() { return redoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
     start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'base', hpScale = 1, bossHpScale = null, items = 0 }) {
@@ -437,7 +438,7 @@ export function createBattle(ui) {
       }
       if (pvp) checkEnd();                       // 相手が誰もいない構成なら、始まってすぐ決着
       log('── 第1問 ──', 'sys');
-      undoStack = []; busy = false;
+      undoStack = []; redoStack = []; busy = false;
       ui.persist && ui.persist(G);
       emit();
     },
@@ -465,6 +466,7 @@ export function createBattle(ui) {
       if (sc !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * sc)); u.hp = u.maxHp; }
       if (pid) G.pids[pid] = u.id;
       dealItems(u, G.cfg.items);
+      redoStack = [];
       log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);
       emit();
@@ -482,14 +484,15 @@ export function createBattle(ui) {
       if (G.sel === id) G.sel = null;
       if (G.prevCorrect === id) G.prevCorrect = null;
       G.wrongOn = (G.wrongOn || []).filter(x => x !== id);
+      redoStack = [];
       log(`${u.name} が離脱した`, 'sys');
       checkEnd();
       ui.persist && ui.persist(G);
       emit();
       return true;
     },
-    load(saved) { G = saved; undoStack = []; busy = false; emit(); },
-    reset() { G = null; undoStack = []; busy = false; emit(); },
+    load(saved) { G = saved; undoStack = []; redoStack = []; busy = false; emit(); },
+    reset() { G = null; undoStack = []; redoStack = []; busy = false; emit(); },
 
     /** 回答者を選ぶ（死亡・休み中は選べない。幽霊は選べる）。null で選択解除 */
     select(id) {
@@ -508,6 +511,7 @@ export function createBattle(ui) {
       if (!G || busy) return false;
       const u = G.units.find(x => x.id === id); if (!u) return false;
       undoStack.push(JSON.stringify(G)); if (undoStack.length > 40) undoStack.shift();
+      redoStack = [];
       u.edit = (u.edit || 0) + 1;                      // 画面に「手直し」だと伝える（攻撃・回復の演出を出さない。戻したときも手直しとして扱われる）
       if (typeof patch.name === 'string' && patch.name.trim()) u.name = patch.name.trim().slice(0, 12);
       if (!u.isBoss && patch.job && patch.job !== u.job && JOB[patch.job]) {          // 職業を変えると、その職業の基本の数値になる
@@ -536,8 +540,18 @@ export function createBattle(ui) {
     skip() { return transact(doThrow); },
     undo() {
       if (busy || !undoStack.length) return false;
+      redoStack.push(JSON.stringify(G));
       G = JSON.parse(undoStack.pop());
       G.over = null;
+      ui.persist && ui.persist(G);
+      emit();
+      return true;
+    },
+    /** 「1つ戻す」で戻した操作を、もう一度進める（戻したあとに新しい操作をすると使えない） */
+    redo() {
+      if (busy || !redoStack.length) return false;
+      undoStack.push(JSON.stringify(G)); if (undoStack.length > 40) undoStack.shift();
+      G = JSON.parse(redoStack.pop());
       ui.persist && ui.persist(G);
       emit();
       return true;

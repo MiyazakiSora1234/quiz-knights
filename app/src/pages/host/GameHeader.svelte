@@ -28,6 +28,7 @@
   <div class="gr">
     <button class="btn sm chatbtn" onclick={() => (chatOpen = !chatOpen)}>💬 チャット{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
     <button class="btn sm" disabled={!host.canUndo || host.busy} onclick={() => host.undo()}>↩ 1つ戻す<kbd>Ctrl+Z</kbd></button>
+    <button class="btn sm" disabled={!host.canRedo || host.busy} onclick={() => host.redo()}>↪ 1つ進める<kbd>Ctrl+Y</kbd></button>
     <button class="btn sm" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
     <div class="menuwrap">
       <button class="btn sm" onclick={() => (menu = !menu)} aria-haspopup="true" aria-expanded={menu}>メニュー ▾</button>
@@ -62,7 +63,8 @@
   .mi:hover{background:var(--s3)}.mi.danger{color:#ff9aa2}
   .hr{height:1px;background:var(--line);margin:4px 6px}
   @media(max-width:900px){
-    .in{display:flex;justify-content:space-between;padding:8px 12px}.gl{display:none}
+    .in{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 12px}.gl{display:none}
+    .gr{flex-wrap:wrap;gap:6px}
     kbd{display:none}
   }
   @media(max-width:900px){

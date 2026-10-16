@@ -19,13 +19,13 @@
   let chatOpen = $state(false);
   const answerCount = $derived(host.chat.filter(c => c.answer && c.q === G.q).length);
 
-  /** キーボード操作: O=正解 X=誤答 S=スルー R=選び直し/受付やり直し Ctrl+Z=戻す */
+  /** キーボード操作: O=正解 X=誤答 S=スルー R=選び直し/受付やり直し Ctrl+Z=戻す Ctrl+Shift+Z / Ctrl+Y=進める */
   function onkey(e) {
     if (modal.req || panel.rules || panel.log || host.editing != null) return;
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || e.metaKey || e.altKey) return;
     if (G.over) return;
     const k = e.key.toLowerCase();
-    if (e.ctrlKey) { if (k === 'z') { e.preventDefault(); host.undo(); } return; }
+    if (e.ctrlKey) { if (k === 'z' && !e.shiftKey) { e.preventDefault(); host.undo(); } else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); host.redo(); } return; }
     if (k === 'escape') { header?.closeMenu(); return; }
     if (host.busy) return;
     const sel = G.sel != null;

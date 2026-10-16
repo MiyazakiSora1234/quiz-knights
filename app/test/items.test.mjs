@@ -230,3 +230,45 @@ test('[アイテム] アイテムで自分が倒れたら、そのあとの行�
   assert.equal(asks.filter(a => a.t.endsWith('の行動')).length, 1, '倒れたあとは行動を聞かない');
   assert.deepEqual(b.G.units[0].items, ['bandage'], '残りの持ち物はそのまま');
 });
+
+/* ===== 1つ進める（やり直し） ===== */
+test('[進める] 戻した操作をもう一度進められる。進めたあとにもう一度戻せる。状態は完全に同じ', async () => {
+  const { b } = mk({ seed: 21, script: ['item:0', -1] });
+  b.start({ players, mode: 'pvp', items: 1 });
+  assert.equal(b.canRedo, false); assert.equal(b.redo(), false);
+  b.select(b.G.units[0].id);
+  await b.correct();
+  const after = JSON.stringify(b.G);
+  assert.ok(b.undo()); assert.equal(b.canRedo, true);
+  assert.equal(b.G.q, 1);
+  assert.ok(b.redo());
+  assert.equal(JSON.stringify(b.G), after, '進めたら戻す前と同じ');
+  assert.equal(b.canRedo, false); assert.equal(b.canUndo, true);
+  assert.ok(b.undo()); assert.ok(b.redo()); assert.ok(b.undo()); assert.equal(b.G.q, 1);
+});
+test('[進める] 何回でも戻して、同じ回数だけ進められる。新しい操作・手直し・途中参戦・離脱をすると進められなくなる', async () => {
+  const { b } = mk({ seed: 22, script: [-1, -1, -1, -1] });
+  b.start({ players: players.map((p, i) => ({ ...p, pid: 'p' + i })), mode: 'pvp' });
+  for (let i = 0; i < 3; i++) await b.skip();
+  assert.equal(b.G.q, 4);
+  b.undo(); b.undo(); b.undo(); assert.equal(b.G.q, 1);
+  b.redo(); b.redo(); assert.equal(b.G.q, 3);
+  await b.skip(); assert.equal(b.canRedo, false, '新しい操作で進められなくなる');
+  b.undo(); assert.ok(b.canRedo);
+  b.edit(b.G.units[0].id, { hp: 1 }); assert.equal(b.canRedo, false, '手直しでも');
+  b.undo(); assert.ok(b.canRedo);
+  b.join({ name: 'N', job: 'mage', team: 'e', pid: 'pn' }); assert.equal(b.canRedo, false, '途中参戦でも');
+  b.undo(); assert.ok(b.canRedo); assert.ok(b.leave('p0')); assert.equal(b.canRedo, false, '離脱でも');
+});
+test('[進める] 戻したあとの決着・保存・開始し直しの扱い', async () => {
+  const saves = [];
+  const b = createBattle({ ask: async (t, o) => (t.endsWith('の行動') ? 0 : o.filter(x => !x.disabled)[0].value), toast() {}, changed() {}, random: rng(23), persist: G => saves.push(JSON.stringify(G)) });
+  b.start({ players, mode: 'pvp' });
+  b.G.units[2].hp = 1; b.G.units[1].alive = false; b.G.units[1].hp = 0;
+  b.select(b.G.units[0].id); await b.correct();
+  const over = b.G.over;
+  b.undo(); assert.equal(b.G.over, null);
+  b.redo(); assert.equal(b.G.over, over, '進めると決着も元どおり');
+  assert.equal(saves.at(-1), JSON.stringify(b.G), '進めたあとも保存される');
+  b.undo(); b.start({ players, mode: 'pvp' }); assert.equal(b.canRedo, false, '開始し直したら進められない');
+});
