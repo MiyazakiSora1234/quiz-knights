@@ -44,11 +44,11 @@ export const JOB_GROUPS = [
 export const GENRES = ['理系','文系','青問','緑問','赤問'];
 export const BERSERKER_DELAY_MS = 700;
 
-/** 難易度（魔王・CPUの強さ）: hp=魔王の体力の倍率 / dmg=魔王・CPUの与えるダメージの加減 */
+/** 難易度（CPUの強さ。魔王も職業のCPUも含む）: hp=CPUの体力の倍率 / dmg=CPUの与えるダメージの加減 */
 export const LEVELS = {
-  weak:   { n: '弱い',  hp: 0.7, dmg: -1, d: '魔王の体力が7割に。魔王・CPUの与えるダメージが1少なくなる' },
+  weak:   { n: '弱い',  hp: 0.7, dmg: -1, d: 'CPUの体力が7割に。CPUの与えるダメージが1少なくなる' },
   normal: { n: '普通',  hp: 1,   dmg: 0,  d: '基準の強さ' },
-  strong: { n: '強い',  hp: 1.4, dmg: 1,  d: '魔王の体力が1.4倍に。魔王・CPUの与えるダメージが1多くなる' },
+  strong: { n: '強い',  hp: 1.4, dmg: 1,  d: 'CPUの体力が1.4倍に。CPUの与えるダメージが1多くなる' },
 };
 
 /**

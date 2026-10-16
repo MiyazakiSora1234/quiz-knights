@@ -63,7 +63,7 @@ select.input{padding-right:8px}
 .bar.low i{background:linear-gradient(180deg,#f0c964,var(--gold-d))}.bar.crit i{background:linear-gradient(180deg,#ff7d87,var(--red-d))}
 
 /* ユニットカード（盾型）: 味方=青、敵=赤、選択中=金 */
-.unit{--shape:polygon(0 0,100% 0,100% 90%,50% 100%,0 90%);position:relative;text-align:center;border:0;background:var(--team,var(--blu-d));padding:2px;clip-path:var(--shape);cursor:default;color:var(--tx);transition:transform .12s,filter .12s}
+.unit{display:flex;flex-direction:column;justify-content:flex-start;--shape:polygon(0 0,100% 0,100% 90%,50% 100%,0 90%);position:relative;text-align:center;border:0;background:var(--team,var(--blu-d));padding:2px;clip-path:var(--shape);cursor:default;color:var(--tx);transition:transform .12s,filter .12s}
 .unit::before{content:"";position:absolute;inset:2px;clip-path:var(--shape);background:linear-gradient(180deg,#2c2419,#1a1510);z-index:0}
 .unit>*{position:relative;z-index:1}
 .unit.foe{--team:var(--red-d)}.unit.ally{--team:var(--blu-d)}.unit.third{--team:var(--grn-d)}

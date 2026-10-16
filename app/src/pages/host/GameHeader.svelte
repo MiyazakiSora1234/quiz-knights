@@ -28,6 +28,7 @@
   <div class="gr">
     <button class="btn sm chatbtn" onclick={() => (chatOpen = !chatOpen)}>💬 チャット{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
     <button class="btn sm" disabled={!host.canUndo || host.busy} onclick={() => host.undo()}>↩ 1つ戻す<kbd>Ctrl+Z</kbd></button>
+    <button class="btn sm" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
     <div class="menuwrap">
       <button class="btn sm" onclick={() => (menu = !menu)} aria-haspopup="true" aria-expanded={menu}>メニュー ▾</button>
       {#if menu}

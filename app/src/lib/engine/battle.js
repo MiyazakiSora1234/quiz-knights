@@ -259,6 +259,7 @@ export function createBattle(ui) {
           const total = foes.filter(x => x === j).length;
           const u = mkPlayer(`CPU${JOB[key].n}${total > 1 ? count[key] : ''}`, key);
           u.side = 'e'; u.cpu = true;
+          u.maxHp = u.hp = Math.max(1, Math.ceil(u.maxHp * LEVELS[level].hp));      // 難易度でCPUの体力が変わる
           G.units.push(u);
         }
       }

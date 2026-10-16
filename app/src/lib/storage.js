@@ -20,6 +20,7 @@ export const KEY = {
   job: 'qr_job',
   team: 'qr_team',
   sound: 'qk_sound',
+  delay: 'qk_delay',               // 自分の早押しディレイ（ms）
   hostKey: id => 'qr_hk_' + id,    // 進行役の鍵（部屋ごと）
   save: id => 'qr_save_' + id,     // 途中のバトル（部屋ごと）
   pw: id => 'qr_pw_' + id,         // 作った部屋のパスワード（入室の自動入力用・タブごと）

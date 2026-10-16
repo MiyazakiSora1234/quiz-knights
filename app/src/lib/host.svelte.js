@@ -255,6 +255,8 @@ export class HostStore {
   reopen() { this.#openedFor = null; this.rank = ''; this.#publish(true); }
 
   saveRoom(name, password) { this.conn.send({ t: 'settings', name, password }); }
+  /** 参加者のディレイ（ms）を進行役が決める */
+  setDelay(pid, ms) { this.conn?.send({ t: 'set_delay', pid, delay: ms }); }
   /** 魔王を選ぶ（参加者も選べるので、サーバー経由で全員に反映される） */
   pickBoss(id) { this.#setFirstBoss(id); this.conn?.send({ t: 'settings', boss: id }); }
   /** 部屋で選ばれた魔王を、相手の先頭の魔王にする（魔王がいなければ追加する） */

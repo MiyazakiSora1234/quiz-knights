@@ -24,6 +24,7 @@ export class PlayStore {
   ranks = $state({});             // この問題の早押しの順位 pid → 表示用のタグ
   req = $state(null);             // 自分が選ぶ場面（行動・対象など）{qid,title,sub,options}
   boss = $state(1);               // 部屋で選ばれている魔王（誰でも変えられる）
+  delay = $state(Math.max(0, parseInt(store.get(KEY.delay) ?? '0', 10) || 0));   // 自分の早押しディレイ（ms）。クイズ設定で変える
   chat = $state([]);              // 部屋のチャットと入退室のお知らせ
   hasHost = $state(true);         // 進行役がいるか（いなければ誰でもなれる）
   hostOnline = $state(false);
@@ -153,6 +154,7 @@ export class PlayStore {
     this.pid = m.pid; session.set(this.pidKey, m.pid);
     store.set(KEY.name, m.name); store.set(KEY.flavor, m.flavor || '');
     this.myJob = m.job; this.myTeam = m.team; this.roomName = m.roomName;
+    if (this.delay && m.delay !== this.delay) this.conn.send({ t: 'profile', delay: this.delay });   // 入り直したときも、自分のディレイを引き継ぐ
     this.phase = this.gs ? 'game' : 'lobby';
     this.keepAwake();
   }
@@ -179,6 +181,12 @@ export class PlayStore {
   }
   /** チャット回答（進行役にだけ届く） */
   sendAnswer(text) { if (text.trim()) this.conn.send({ t: 'chat', text, answer: true }); }
+  /** 自分の早押しディレイを決める（0〜3000ms）。サーバーが押した時刻に足して順位を決める */
+  setDelay(ms) {
+    this.delay = Math.max(0, Math.min(3000, Math.round(+ms) || 0));
+    store.set(KEY.delay, String(this.delay));
+    this.conn?.send({ t: 'profile', delay: this.delay });
+  }
   pickBoss(id) { this.boss = id; this.conn.send({ t: 'set_boss', boss: id }); }
   sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   /** 部屋の中で名前・ひとことを変える */

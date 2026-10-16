@@ -31,4 +31,4 @@ export function cancelModal() {
   modal.req = null; r.reject(CANCEL);
 }
 
-export const panel = $state({ rules: false, log: false });
+export const panel = $state({ rules: false, log: false, quiz: false });

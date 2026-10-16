@@ -952,3 +952,44 @@ test('順位の表示: 勝者の通知に全員の順位とms差があり、連�
   assert.equal(Math.round(r2.all[2].ms), 330);
   host.send({ t: 'close' });
 });
+
+/* ---------- 個人のディレイ（クイズ設定） ---------- */
+for (const [delay, want] of [[0, 0], [250, 250], [3000, 3000], [3001, 3000], [99999, 3000], [-5, 0], [12.6, 13], ['abc', 0], [null, null]]) {
+  test(`クイズ設定: プロフィールのディレイ ${JSON.stringify(delay)} は ${want} になる`, async () => {
+    const { id, host } = await makeRoom();
+    const p = await joinPlayer(id, 'A');
+    p.send({ t: 'profile', delay });
+    if (want === null) { await sleep(200); assert.ok(host.q.filter(m => m.t === 'lobby').every(m => !m.players[0].delay)); }
+    else assert.equal((await host.wait('lobby', 3000, x => (x.players[0]?.delay ?? 0) === want && (want !== 0 || true))).players[0].delay, want);
+    host.send({ t: 'close' });
+  });
+}
+test('クイズ設定: 個人のディレイが押した時刻に足されて、順位が変わる', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  a.send({ t: 'profile', delay: 600 });
+  await host.wait('lobby', 3000, x => x.players.some(p => p.delay === 600));
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 0, [b.pid]: 0 } });
+  await a.wait('open');
+  const t = Date.now();
+  a.send({ t: 'buzz', ts: t - 300, rtt: 20 });          // A が先に押したが、ディレイ600ms
+  b.send({ t: 'buzz', ts: t - 100, rtt: 20 });
+  const w = await host.wait('winner', 4000);
+  assert.equal(w.pid, b.pid);
+  assert.deepEqual(w.ranking.map(x => x.pid), [b.pid, a.pid]);
+  host.send({ t: 'close' });
+});
+test('クイズ設定: 職業のディレイ（バーサーカー700）と個人のディレイは足し算になる／進行役が参加者のディレイを決められる', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'A'), b = await joinPlayer(id, 'B');
+  host.send({ t: 'set_delay', pid: a.pid, delay: 300 });
+  await host.wait('lobby', 3000, x => x.players.some(p => p.pid === a.pid && p.delay === 300));
+  host.send({ t: 'open', q: 1, eligible: { [a.pid]: 700, [b.pid]: 0 } });   // A はバーサーカー相当
+  await a.wait('open');
+  const t = Date.now();
+  a.send({ t: 'buzz', ts: t - 900, rtt: 20 });           // 実効: t-900+1000 = t+100
+  b.send({ t: 'buzz', ts: t - 50, rtt: 20 });            // 実効: t-50
+  assert.equal((await host.wait('winner', 4000)).pid, b.pid);
+  a.send({ t: 'chat', text: '確認' });
+  host.send({ t: 'close' });
+});

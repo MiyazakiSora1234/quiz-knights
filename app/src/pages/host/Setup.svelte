@@ -19,6 +19,7 @@
   <div class="topbar">
     <div class="logo">QUIZ KNIGHTS <span class="sub">／ 進行役：バトルの準備</span></div>
     <div class="acts">
+      <button class="btn sm" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
       <button class="btn sm" onclick={() => (panel.rules = true)}>職業・ルール一覧</button>
       <button class="btn sm" onclick={() => host.release()}>進行役をやめる</button>
       <button class="btn sm danger" onclick={async () => (await confirmAsk('部屋を閉じますか？', '参加者は全員退室になります。', '部屋を閉じる')) && host.closeRoom()}>部屋を閉じる</button>
@@ -70,7 +71,7 @@
     </aside>
   </div>
   <div class="startbar"><div class="start">
-    <div class="info">{block}</div>
+    {#if block}<div class="info">{block}</div>{/if}
     <button class="btn primary go" disabled={!!block} onclick={() => host.start()}>{block ? 'バトル開始' : `バトル開始（${host.playersNamed.length}人）`}</button>
   </div></div>
 </div>
@@ -92,9 +93,9 @@
   .empty{border:1px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--mut);margin-bottom:10px}
   .empty b{display:block;color:var(--tx)}
   .startbar{position:sticky;bottom:0;z-index:25;margin:18px -18px -50px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110e00,#14110e 30%)}
-  .start{max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 12px 10px 20px;border:1px solid var(--gold);border-radius:16px;background:linear-gradient(180deg,#2d2414,#1e1914);box-shadow:0 -8px 30px #000a}
-  .info{flex:1;min-width:0;color:var(--mut);font-size:.95rem;line-height:1.4}
-  .go{flex:none;min-width:260px;padding:14px 28px;font-size:1.2rem;font-weight:800;letter-spacing:.08em;border-radius:12px}
+  .start{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:14px;padding:8px;border:1px solid var(--gold);border-radius:16px;background:linear-gradient(180deg,#2d2414,#1e1914);box-shadow:0 -8px 30px #000a}
+  .info{flex:none;max-width:45%;color:var(--mut);font-size:.88rem;line-height:1.35;padding-left:10px}
+  .go{flex:1;padding:14px 24px;font-size:1.2rem;font-weight:800;letter-spacing:.08em;border-radius:12px}
   .go:disabled{filter:grayscale(.6);opacity:.55}
-  @media(max-width:700px){.start{flex-direction:column-reverse;align-items:stretch;gap:8px;padding:10px 12px}.go{min-width:0;width:100%}.info{text-align:center}}
+  @media(max-width:700px){.start{flex-direction:column-reverse;align-items:stretch;gap:6px}.info{max-width:none;text-align:center;padding:0}}
 </style>

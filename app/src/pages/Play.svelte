@@ -9,6 +9,7 @@
   import PlayGame from './play/PlayGame.svelte';
   import AskDialog from './play/AskDialog.svelte';
   import LogSheet from '../components/LogSheet.svelte';
+  import QuizSettings from '../components/QuizSettings.svelte';
   import Notice from '../components/Notice.svelte';
 
   let { id } = $props();
@@ -73,6 +74,7 @@
     <PlayGame {p} />
   {/if}
   <AskDialog {p} />
+  <QuizSettings who={p} role="player" />
   {#if p.gs}<Notice notice={p.gs.notice} />{/if}
   <LogSheet lines={(p.gs?.log ?? []).map(m => ({ m }))} />
 </div>

@@ -14,3 +14,5 @@ export const RTT_MAX_MS = 3000;
 export const HOST_TAKEOVER_MS = 15 * 1000;
 /** 魔王の種類の数（部屋で選べる魔王の番号は 1〜この数） */
 export const BOSS_COUNT = 6;
+/** 自分で設定できる早押しのディレイ（ms）の上限 */
+export const PERSONAL_DELAY_MAX = 3000;

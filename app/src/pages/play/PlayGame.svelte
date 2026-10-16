@@ -1,5 +1,6 @@
 <script>
   import { fade, scale, fly } from 'svelte/transition';
+  import { panel } from '../../lib/ui.svelte.js';
   import { tick } from 'svelte';
   import Unit from '../../components/Unit.svelte';
   import MePanel from './MePanel.svelte';
@@ -72,6 +73,7 @@
   <div class="top">
     <div><span class="qn">第{gs.q}問</span>{#if gs.genre}<span class="chip pur" transition:fade>{gs.genre}</span>{/if}</div>
     <div class="topr">
+      <button class="btn sm" type="button" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
       <button class="btn sm chat-t" type="button" onclick={toggleChat} aria-expanded={chatOpen} title="チャット">💬 チャット{#if unread}<span class="badge">{unread}</span>{/if}</button>
       <div class="net"><span class="dot {p.netGood ? 'on' : p.status === 'open' ? 'warn' : ''}"></span>{p.rtt != null ? `${p.rtt}ms` : ''}{p.jitter != null ? ` ±${p.jitter}` : ''}</div>
     </div>

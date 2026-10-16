@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BOSS_COUNT } from './config.js';
+import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BOSS_COUNT, PERSONAL_DELAY_MAX } from './config.js';
 import { BuzzRound, clampRtt } from './buzz.js';
 import { lobbyStub } from './lobby.js';
 
@@ -55,13 +55,13 @@ export class Room extends DurableObject {
   /** 参加者一覧を進行役・参加者に配り、部屋一覧のサマリーも更新する */
   lobby(except) {
     const players = Object.values(this.R.players).map(p => ({
-      pid: p.pid, name: p.name, flavor: p.flavor, job: p.job, team: p.team,
+      pid: p.pid, name: p.name, flavor: p.flavor, job: p.job, team: p.team, delay: p.delay || 0,
       online: this.isOnline(p.pid, except), rtt: this.rtts.get(p.pid) ?? null,
     }));
     const boss = this.R.boss ?? 1;
     const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players, boss });
     const hasHost = !!this.R.hostKey;
-    this.toPlayers({ t: 'members', roomName: this.R.name, boss, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team }) => ({ pid, name, flavor, online, job, team })) }, except);
+    this.toPlayers({ t: 'members', roomName: this.R.name, boss, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team, delay }) => ({ pid, name, flavor, online, job, team, delay })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -181,7 +181,7 @@ export class Room extends DurableObject {
     }
     ws.serializeAttachment({ role: 'player', pid: p.pid });
     if (!this.R.hostKey && this.R.hostGone) { this.R.hostGone = null; await this.save(); await this.ctx.storage.deleteAlarm(); }
-    send(ws, { t: 'joined', pid: p.pid, room: this.R.id, roomName: this.R.name, name: p.name, flavor: p.flavor, job: p.job, team: p.team });
+    send(ws, { t: 'joined', pid: p.pid, room: this.R.id, roomName: this.R.name, name: p.name, flavor: p.flavor, job: p.job, team: p.team, delay: p.delay || 0 });
     for (const e of this.chat) send(ws, e);
     if (this.state) send(ws, { t: 'state', state: this.state });
     if (isNew) this.say({ sys: true, text: `${p.name} が入室しました。` });
@@ -201,14 +201,14 @@ export class Room extends DurableObject {
       }
       case 'open':                                      // 次の問題の早押し受付を始める
         clearTimeout(this.timer);
-        this.round = BuzzRound.start(m.q, m.eligible, m.chain);
+        this.round = BuzzRound.start(m.q, this.withPersonalDelays(m.eligible), m.chain);
         await this.persistRound();
         this.toPlayers({ t: 'open', q: m.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
       case 'add_eligible': {                            // 途中参戦した人を、いまの受付に加える（ほかの人の受付は変えない）
         const pid = m.pid;
         if (!this.R.players[pid] || !(this.round.open || this.round.backup) || pid in this.round.eligible) return;
-        this.round.eligible[pid] = Math.max(0, Math.min(2000, +m.delay || 0));
+        this.round.eligible[pid] = Math.max(0, Math.min(2000, +m.delay || 0)) + (this.R.players[pid].delay || 0);
         await this.persistRound();
         for (const s of this.playerWs(pid)) send(s, { t: 'open', q: this.round.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
@@ -243,6 +243,7 @@ export class Room extends DurableObject {
         return;
       }
       case 'ask_close': this.toPlayers({ t: 'ask_close', qid: m.qid }); return;
+      case 'set_delay': return this.setDelay(m.pid, m.delay);
       case 'transfer': return this.transferHost(m.pid);
       case 'release': return this.releaseHost();
       case 'close': return this.closeRoom('進行役が部屋を閉じました');
@@ -270,6 +271,7 @@ export class Room extends DurableObject {
         if (typeof m.flavor === 'string') p.flavor = m.flavor.trim().slice(0, 20);
         if (typeof m.job === 'string' && m.job.length > 0 && m.job.length <= 20) p.job = m.job;
         if (m.team === 'p' || m.team === 'e' || m.team === 'c') p.team = m.team;
+        if (m.delay != null) p.delay = this.cleanDelay(m.delay);
         await this.save();
         return this.lobby();
       case 'leave':
@@ -297,6 +299,22 @@ export class Room extends DurableObject {
   }
 
   /** 部屋名・パスワードの変更（入室済みの人には影響しない） */
+  /** 個人のディレイ（ms）を安全な値にする */
+  cleanDelay(v) { const n = Math.round(+v); return Number.isFinite(n) ? Math.max(0, Math.min(PERSONAL_DELAY_MAX, n)) : 0; }
+  /** 進行役が決めた「押せる人とディレイ」に、各自のディレイ設定を足す */
+  withPersonalDelays(eligible) {
+    const out = {};
+    for (const [pid, d] of Object.entries(eligible || {})) out[pid] = (+d || 0) + (this.R.players[pid]?.delay || 0);
+    return out;
+  }
+  /** 進行役が、参加者のディレイを決める */
+  async setDelay(pid, delay) {
+    const p = this.R.players[pid];
+    if (!p) return;
+    p.delay = this.cleanDelay(delay);
+    await this.save();
+    this.lobby();
+  }
   /** 戦う魔王の選択（進行役も参加者も変えられる。最後に選んだものが有効） */
   async setBoss(v) {
     const b = Math.trunc(+v);

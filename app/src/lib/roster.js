@@ -17,11 +17,11 @@ export function syncRoster(roster, lobby, nextKey) {
   for (const lp of lobby) {
     const row = roster.find(p => p.pid === lp.pid);
     if (!row) {
-      roster.push({ key: nextKey(), name: lp.name, flavor: lp.flavor || '', job: validJob(lp.job), team: lp.team || 'p', pid: lp.pid, online: lp.online, rtt: lp.rtt ?? null });
+      roster.push({ key: nextKey(), name: lp.name, flavor: lp.flavor || '', job: validJob(lp.job), team: lp.team || 'p', pid: lp.pid, online: lp.online, rtt: lp.rtt ?? null, delay: lp.delay || 0 });
       continue;
     }
     if (!row.touchedName) row.name = lp.name;
-    row.online = lp.online; row.flavor = lp.flavor || ''; row.rtt = lp.rtt ?? null;
+    row.online = lp.online; row.flavor = lp.flavor || ''; row.rtt = lp.rtt ?? null; row.delay = lp.delay || 0;
     if (!row.touchedJob) row.job = validJob(lp.job);
     if (!row.touchedTeam) row.team = lp.team || row.team;
   }

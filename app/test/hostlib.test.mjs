@@ -337,3 +337,14 @@ test('順位の表示: 1着は🥇、2着以降は1着からの遅れ(ms)。順�
   assert.deepEqual(rankTags(undefined), {});
   assert.equal(rankTag(null, 0), null);
 });
+
+test('難易度: 職業のCPUも体力が変わる（弱い=7割・強い=1.4倍）。プレイヤーは変わらない', () => {
+  const mk = level => { const b = createBattle({ ask: async () => 0, toast() {}, changed() {} }); b.start({ players: [{ name: 'A', job: 'warrior' }], mode: 'cpu', foes: ['warrior', 'tank'], level }); return b; };
+  const hp = (b, n) => b.G.units.find(u => u.name === n).maxHp;
+  for (const [n, base] of [['CPU戦士', 7], ['CPUタンク', 8]]) {
+    assert.equal(hp(mk('normal'), n), base);
+    assert.equal(hp(mk('weak'), n), Math.ceil(base * 0.7));
+    assert.equal(hp(mk('strong'), n), Math.ceil(base * 1.4));
+  }
+  assert.equal(hp(mk('strong'), 'A'), 7);
+});

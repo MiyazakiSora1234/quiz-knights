@@ -1,10 +1,10 @@
 <script>
   // 数字を増減する部品: 大きな ー / ＋ ボタン（押し続けると連続で変わる）と、直接入力もできる欄
-  let { value = $bindable(0), min = 0, max = 99, label = '' } = $props();
+  let { value = $bindable(0), min = 0, max = 99, label = '', step: unit = 1, onchange = null } = $props();
   let timer = null, rep = null;
 
   const clamp = v => Math.min(max, Math.max(min, Math.round(+v || 0)));
-  const step = d => { value = clamp(value + d); };
+  const step = d => { const v = clamp(value + d * unit); if (v !== value) { value = v; onchange?.(v); } };
   function hold(d) {
     step(d);
     timer = setTimeout(() => { rep = setInterval(() => step(d), 90); }, 380);
@@ -21,7 +21,7 @@
 <div class="st" role="group" aria-label={label}>
   <button type="button" class="b" disabled={value <= min} aria-label="{label}を減らす" onpointerdown={(e) => { e.preventDefault(); hold(-1); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(-1); } }}>−</button>
   <input class="v" inputmode="numeric" aria-label={label} value={value} onfocus={(e) => e.currentTarget.select()} onkeydown={onkey}
-    oninput={(e) => { const n = parseInt(e.currentTarget.value, 10); if (!Number.isNaN(n)) value = clamp(n); }}
+    oninput={(e) => { const n = parseInt(e.currentTarget.value, 10); if (!Number.isNaN(n)) { value = clamp(n); onchange?.(value); } }}
     onblur={(e) => { e.currentTarget.value = String(value); }}>
   <button type="button" class="b" disabled={value >= max} aria-label="{label}を増やす" onpointerdown={(e) => { e.preventDefault(); hold(1); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); step(1); } }}>＋</button>
 </div>

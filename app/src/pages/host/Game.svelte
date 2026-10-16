@@ -50,6 +50,7 @@
   <Stage {host} {G} />
   <aside class="side">
     <ControlPanel {host} {G} />
+    {#if chatOpen}<div class="chatdock"><ChatPanel {host} {G} /></div>{/if}
   </aside>
 </div>
 
@@ -73,12 +74,15 @@
   .wait{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--gold);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 8px 24px #000a;font-weight:700}
   .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
+  .chatdock{display:block}
   .sheet{position:fixed;inset:0;background:#0009;z-index:60;display:flex;justify-content:flex-end;align-items:flex-start;padding:64px 14px 14px}
   .sheet-in{width:min(100%,420px);max-height:calc(100dvh - 80px);overflow:auto;display:flex;flex-direction:column;gap:6px}
   .sheet-in .close{align-self:flex-end}
   .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;max-width:1320px;margin:0 auto;padding:18px}
   .side{position:sticky;top:76px;align-self:start;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 92px);overflow:auto}
+  @media(min-width:901px){.sheet{display:none}}
   @media(max-width:900px){
+    .chatdock{display:none}
     .layout{grid-template-columns:1fr;padding:12px 12px 270px}
     .side{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;max-height:none;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110ecc,#14110e 30%);border-top:1px solid var(--line2);gap:8px}
   }

@@ -4,6 +4,7 @@
   import { HostStore } from '../lib/host.svelte.js';
   import Setup from './host/Setup.svelte';
   import Game from './host/Game.svelte';
+  import QuizSettings from '../components/QuizSettings.svelte';
 
   let { id } = $props();
   // svelte-ignore state_referenced_locally
@@ -16,6 +17,8 @@
 {:else}
   <Setup {host} />
 {/if}
+
+<QuizSettings who={host} role="host" />
 
 {#if host.status === 'replaced'}
   <div class="rep" transition:fade={{ duration: 150 }}>
