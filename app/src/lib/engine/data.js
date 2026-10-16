@@ -41,6 +41,18 @@ export const JOB_GROUPS = [
   { n: '守り・支援', keys: ['tank', 'cleric', 'bard', 'tactician', 'oracle'] },
   { n: '特殊', keys: ['thief', 'mimic', 'ghost', 'jester', 'bomb', 'apprentice', 'playboy'] },
 ];
+/** アイテム: n=名前 / ic=絵文字 / d=説明 / w=配られやすさ（大きいほど出やすい） */
+export const ITEMS = {
+  potion:  { n: '回復薬',     ic: '🧪', w: 4, d: '味方1人を3回復' },
+  bomb:    { n: '爆弾',       ic: '💣', w: 3, d: '敵1人に3ダメージ' },
+  amulet:  { n: '守りの護符', ic: '🔰', w: 3, d: '味方1人にバリア（次のダメージ1回を無効）' },
+  venom:   { n: '毒薬',       ic: '☠', w: 2, d: '敵1人に毒（次の2問が終わるたびに1ダメージ）' },
+  powder:  { n: '眠りの粉',   ic: '💤', w: 2, d: '敵1人を次の問題休みにする' },
+  charm:   { n: '身代わり札', ic: '📜', w: 2, d: '味方1人の次の誤答ダメージを無効にする' },
+  feather: { n: '蘇生の羽',   ic: '🪶', w: 1, d: '死んだ味方1人を体力1で蘇生' },
+  elixir:  { n: 'エリクサー', ic: '🍷', w: 1, d: '自分の体力を全回復' },
+};
+export const ITEM_KEYS = Object.keys(ITEMS);
 export const GENRES = ['理系','文系','青問','緑問','赤問'];
 export const BERSERKER_DELAY_MS = 700;
 
@@ -125,6 +137,7 @@ export function statusTags(u, forHost = true, q = null) {
   if (u.noWrong) t.push({ t: '📜 誤答無効', cls: 'warn' });
   if (u.ghost) t.push({ t: '👻 幽霊', cls: 'warn' });
   if (u.delayQ != null && q != null && u.delayQ === q) t.push({ t: '⏱ ディレイ中', cls: 'warn' });
+  if (u.items && u.items.length) t.push({ t: `🎒×${u.items.length}`, cls: '' });
   if (forHost && u.mine) t.push({ t: '💣 地雷', cls: 'warn' });
   return t;
 }

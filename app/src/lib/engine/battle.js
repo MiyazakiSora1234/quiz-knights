@@ -1,8 +1,9 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, GENRES, LEVELS, jobName, nm, bossHp, bossIdOf } from './data.js';
+import { CANCEL, JOB, BOSS, GENRES, LEVELS, ITEMS, ITEM_KEYS, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
+import { buildItemActions } from './items.js';
 
 /** チームの並び順（A=p / B=e / C=c） */
 const TEAM_ORDER = { p: 0, e: 1, c: 2 };
@@ -29,6 +30,17 @@ export function createBattle(ui) {
     const hp = bossHp(S, id);
     return baseUnit({ name: BOSS[id].n, job: 'boss', side: 'e', isBoss: true, bossId: id, form: 0, S, atk: 0, maxHp: hp, hp, guards: 0 });
   };
+
+  /** アイテムをランダムに n 個配る（重みつき）。魔王とCPUには配らない */
+  function dealItems(u, n) {
+    if (!(n > 0) || u.isBoss || u.cpu) return;
+    const total = ITEM_KEYS.reduce((s, k) => s + ITEMS[k].w, 0);
+    u.items = [];
+    for (let i = 0; i < n; i++) {
+      let r = ctx.rand() * total;
+      u.items.push(ITEM_KEYS.find(k => (r -= ITEMS[k].w) < 0) ?? ITEM_KEYS[0]);
+    }
+  }
 
   /* ---------- 決着・問題の終わり ---------- */
   function checkEnd() {
@@ -214,12 +226,27 @@ export function createBattle(ui) {
   async function chooseAndRunAction(a) {
     for (;;) {
       const acts = buildActions(ctx, a);
+      const items = buildItemActions(ctx, a);
       const noSpecial = acts.every(x => x.disabled);
+      const blocked = x => x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, [])));
       const options = [
-        ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, []))) })),
+        ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: blocked(x) })),
+        ...items.map((x, i) => ({ label: x.label, sub: `アイテム：${x.desc}（使っても行動は残る）`, value: 'item:' + i, cls: 'item', disabled: blocked(x) })),
         { label: '何もしない', value: -1, cls: 'ghost' },
       ];
-      const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : '行動を選んでください' });
+      const c = await ask(`${nm(a)} の行動`, options, { sub: noSpecial ? '使える行動がありません' : (items.length ? '行動を選んでください（🎒 アイテムも使えます）' : '行動を選んでください') });
+      if (typeof c === 'string' && c.startsWith('item:')) {
+        const it = items[+c.slice(5)];
+        if (!it) continue;
+        const got = await pickTargets(it);
+        if (got === ctx.BACK) continue;
+        const at = a.items.indexOf(it.key);
+        if (at >= 0) a.items.splice(at, 1);
+        log(`🎒 ${a.name} は ${it.label} を使った`, 'sys');
+        ctx.fxUnit(a.id, 'item');
+        await perform(a, { ...it, label: `${it.label}を使う`, desc: it.desc }, got);
+        continue;                                            // アイテムは行動を消費しない。メニューに戻る
+      }
       if (c < 0) return { label: '何もしない', desc: '', names: [] };
       const act = acts[c], picked = [];
       let back = false;
@@ -232,6 +259,17 @@ export function createBattle(ui) {
       if (back) continue;
       return perform(a, act, picked);
     }
+  }
+  /** 対象を1つずつ選ばせる。戻るなら BACK、対象がいなければ空の配列 */
+  async function pickTargets(act) {
+    const picked = [];
+    for (const p of act.prompts) {
+      const t = await ctx.pickUnit(p.label, p.f, picked, { back: true });
+      if (t === ctx.BACK) return ctx.BACK;
+      if (!t) return ctx.BACK;
+      picked.push(t);
+    }
+    return picked;
   }
   /** 先読みで決めた計画を実行する。計画がなければ何もしない */
   async function runPlan(a, plan) {
@@ -341,7 +379,7 @@ export function createBattle(ui) {
     get canUndo() { return undoStack.length > 0; },
 
     /** players:[{name,job,team,pid?}] */
-    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'base', hpScale = 1, bossHpScale = null }) {
+    start({ players, mode = 'cpu', boss = 1, bossPenalty = true, genres = null, foes = [], cpuAuto = false, level = 'base', hpScale = 1, bossHpScale = null, items = 0 }) {
       // 難易度を指定しない場合は「基準」（調整なし）。進行役の画面は「普通」から始まる
       if (!LEVELS[level]) level = 'base';
       // foes: 魔王の代わりに、CPU の職業ユニットが相手になる（進行役が操作する。ルールは対戦と同じ）
@@ -349,7 +387,7 @@ export function createBattle(ui) {
       const squad = mode === 'cpu' && (foes.length > 0 || hasBossPlayer);
       if (squad) mode = 'pvp';
       G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
-            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level, hpScale, bossHpScale: bossHpScale ?? hpScale } };
+            genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level, hpScale, bossHpScale: bossHpScale ?? hpScale, items } };
       const pvp = mode === 'pvp';
       const humanBosses = [];
       for (const p of players) {
@@ -358,6 +396,7 @@ export function createBattle(ui) {
         if (bid) { u.name = p.name.trim(); u.human = true; humanBosses.push(u); }       // 参加者が操作する魔王
         if (pvp) u.side = squad ? 'p' : (TEAM_ORDER[p.team] != null ? p.team : 'p');
         G.units.push(u);
+        dealItems(u, items);
         if (p.pid) G.pids[p.pid] = u.id;
       }
       // 参加者が操作する魔王の体力は、ほかの参加者の攻撃合計から決まる（難易度の影響は受けない）
@@ -423,6 +462,7 @@ export function createBattle(ui) {
       const sc = (u.isBoss ? G.cfg.bossHpScale : G.cfg.hpScale) || 1;
       if (sc !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * sc)); u.hp = u.maxHp; }
       if (pid) G.pids[pid] = u.id;
+      dealItems(u, G.cfg.items);
       log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);
       emit();

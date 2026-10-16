@@ -86,6 +86,7 @@
         {:else if f.kind === 'st-grow'}<i class="flash"></i><b class="stamp up sm">成長！</b><b class="p p1">✦</b><b class="p p3">✦</b>
         {:else if f.kind === 'st-ghost'}<b class="big ghostup">👻</b>
         {:else if f.kind === 'st-copy'}<i class="ring"></i><b class="big">❖</b>
+        {:else if f.kind === 'st-item'}<i class="ring"></i><b class="big">🎒</b>
         {:else if f.kind === 'st-delay'}<i class="ring"></i><b class="big">⏱</b>
         {/if}
       </div>
