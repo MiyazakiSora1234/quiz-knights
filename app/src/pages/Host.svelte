@@ -18,7 +18,7 @@
   <Setup {host} />
 {/if}
 
-<QuizSettings who={host} role="host" />
+<QuizSettings who={host} />
 
 {#if host.status === 'replaced'}
   <div class="rep" transition:fade={{ duration: 150 }}>

@@ -9,7 +9,7 @@
   import PlayGame from './play/PlayGame.svelte';
   import AskDialog from './play/AskDialog.svelte';
   import LogSheet from '../components/LogSheet.svelte';
-  import QuizSettings from '../components/QuizSettings.svelte';
+  import PlaySettings from './play/PlaySettings.svelte';
   import Notice from '../components/Notice.svelte';
   import EventFx from '../components/EventFx.svelte';
 
@@ -75,7 +75,7 @@
     <PlayGame {p} />
   {/if}
   <AskDialog {p} />
-  <QuizSettings who={p} role="player" />
+  <PlaySettings {p} />
   {#if p.gs}<Notice notice={p.gs.notice} /><EventFx event={p.gs.event} />{/if}
   <LogSheet lines={(p.gs?.log ?? []).map(m => ({ m }))} />
 </div>

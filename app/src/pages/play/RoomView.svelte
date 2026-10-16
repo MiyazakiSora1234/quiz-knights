@@ -3,24 +3,15 @@
   import { flip } from 'svelte/animate';
   import { tick } from 'svelte';
   import { icon } from '../../lib/icons.js';
-  import { JOB, SELECTABLE, BOSS, PLAYABLE_BOSS_KEYS, bossIdOf } from '../../lib/engine.js';
+  import { JOB, SELECTABLE, BOSS, bossIdOf } from '../../lib/engine.js';
   import { panel, confirmAsk } from '../../lib/stores/ui.svelte.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
   let { p } = $props();   // PlayStore
-  let dlg = $state(false), n = $state(''), f = $state(''), rn = $state(''), rp = $state('');
   let msg = $state(''), logEl = $state();
   const jobKey = m => (SELECTABLE.includes(m.job) || bossIdOf(m.job) ? m.job : 'warrior');
   const jobN = k => (bossIdOf(k) ? BOSS[bossIdOf(k)].n : JOB[k].n);
-  const jobD = k => (bossIdOf(k) ? `${BOSS[bossIdOf(k)].intro}（魔王として戦います。体力は、ほかの参加者の攻撃力の合計で決まります）` : JOB[k].d);
 
-  function openSettings() { n = p.name; f = p.flavor; rn = p.roomName; rp = ''; dlg = true; }
-  function save() {
-    if (!n.trim()) return;
-    p.saveProfile(n, f);
-    if (!p.hasHost && rn.trim() && (rn.trim() !== p.roomName || rp !== '')) p.saveRoom(rn, rp);
-    dlg = false;
-  }
   function send(e) { e.preventDefault(); if (!msg.trim()) return; p.sendChat(msg); msg = ''; }
   async function leave() { if (await confirmAsk('退室しますか？', '部屋一覧に戻ります。', '退室する')) p.leave(); }
   const time = ts => new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -32,9 +23,9 @@
   <header class="rbar">
     <div class="ttl"><b>{p.roomName}</b><span class="sub"><span class="dot {p.hasHost && p.hostOnline ? 'on' : ''}"></span>{p.hasHost ? (p.hostOnline ? '進行役あり' : '進行役：接続待ち') : '進行役なし'} ・ {p.id}番</span></div>
     <div class="tools">
-      <button class="btn sm qz" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
+      <button class="btn sm qz" onclick={() => (panel.settings = 'quiz')}>⏱ クイズ設定</button>
       <button class="ib" onclick={() => (panel.rules = true)} title="職業・ルール" aria-label="職業・ルール">📖</button>
-      <button class="ib" onclick={openSettings} title="設定（名前・職業・チーム）" aria-label="設定">⚙</button>
+      <button class="ib" onclick={() => (panel.settings = 'user')} title="設定（名前・職業・チーム）" aria-label="設定">⚙</button>
       <button class="ib" onclick={leave} title="退室" aria-label="退室">⎋</button>
     </div>
   </header>
@@ -68,37 +59,6 @@
   </div>
 </div>
 
-{#if dlg}
-  <div class="back" role="presentation" onclick={(e) => e.target === e.currentTarget && (dlg = false)} transition:fade={{ duration: 120 }}>
-    <div class="dialog panel" in:fly={{ y: 14, duration: 180 }}>
-      <h3>設定</h3>
-      <label class="field"><span>名前</span><input class="input" bind:value={n} maxlength="12"></label>
-      <label class="field"><span>ひとこと（任意）</span><input class="input" bind:value={f} maxlength="20"></label>
-      <div class="step">職業 <button class="btn ghost sm" onclick={() => { const o = SELECTABLE.filter(j => j !== p.myJob); p.pickJob(o[Math.floor(Math.random() * o.length)]); }}>🎲 ランダム</button></div>
-      <div class="jobs">
-        {#each SELECTABLE as j}
-          <button class="job" class:sel={p.myJob === j} onclick={() => p.pickJob(j)}><span class="e">{@html icon(j)}</span><span><b>{JOB[j].n}</b><small>ATK{JOB[j].atk} / HP{JOB[j].hp}</small></span></button>
-        {/each}
-      </div>
-      <div class="step">魔王として戦う</div>
-      <div class="jobs">
-        {#each PLAYABLE_BOSS_KEYS as k}
-          <button class="job boss" class:sel={p.myJob === k} onclick={() => p.pickJob(k)}><span class="e">{@html icon(k)}</span><span><b>{BOSS[bossIdOf(k)].n}</b><small>魔王</small></span></button>
-        {/each}
-      </div>
-      <div class="jobdesc">{jobD(p.myJob)}</div>
-      <div class="step">チーム（ユーザー対戦のときだけ使われます）</div>
-      <div class="seg wide teams"><button class="ta" class:sel={p.myTeam === 'p'} onclick={() => p.pickTeam('p')}>チームA</button><button class="tb" class:sel={p.myTeam === 'e'} onclick={() => p.pickTeam('e')}>チームB</button><button class="tc" class:sel={p.myTeam === 'c'} onclick={() => p.pickTeam('c')}>チームC</button></div>
-      {#if !p.hasHost}
-        <div class="step">部屋の設定（進行役がいない間は誰でも変えられます）</div>
-        <label class="field"><span>部屋名</span><input class="input" bind:value={rn} maxlength="30"></label>
-        <label class="field"><span>パスワード（空なら変更なし）</span><input class="input" bind:value={rp} maxlength="20"></label>
-      {/if}
-      <div class="two"><button class="btn primary" onclick={save}>保存して閉じる</button><button class="btn ghost" onclick={() => (dlg = false)}>閉じる</button></div>
-    </div>
-  </div>
-{/if}
-
 <style>
   .room{display:flex;flex-direction:column;min-height:calc(100dvh - 24px);gap:12px}
   .rbar{flex:none;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 10px}
@@ -113,7 +73,6 @@
   .mcard{border-left:5px solid var(--blu-d)}.mcard.tb{border-left-color:var(--red-d)}.mcard.tc{border-left-color:var(--grn-d)}
   .tm{flex:none;margin-left:auto;font-size:.7rem;font-weight:800;border-radius:6px;padding:0 7px;line-height:1.5}
   .tm.a{background:var(--blu);color:#06182b}.tm.b{background:var(--red);color:#2b0609}.tm.c{background:var(--grn);color:#06220f}
-  .seg.teams .ta.sel{background:var(--blu);color:#06182b}.seg.teams .tb.sel{background:var(--red);color:#2b0609}.seg.teams .tc.sel{background:var(--grn);color:#06220f}
   .mcard.me{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}.mcard.off{opacity:.5}
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
   .mi{min-width:0;flex:1}.mi b{display:flex;align-items:center;gap:6px;min-width:0}.mi .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi .dot{flex:none}
@@ -137,16 +96,4 @@
     .room{min-height:calc(100dvh - 40px)}
     .bottom{grid-template-columns:1fr 1fr;align-items:stretch}.log{height:180px}.big{min-height:0}
   }
-  .back{position:fixed;inset:0;background:#000b;z-index:80;display:flex;align-items:center;justify-content:center;padding:12px}
-  .dialog{width:100%;max-width:560px;max-height:92dvh;overflow:auto}
-  .dialog h3{color:var(--gold);font-size:1.2rem;margin-bottom:6px}
-  .step{color:var(--mut);font-size:.86rem;margin-top:10px}
-  .jobs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}
-  .job{background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:center}
-  .job.boss .e{border-radius:50%}
-  .job.sel{background:#3a2f1a;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
-  .e{font-size:1.6rem;flex:none}.job b{display:block;font-size:.92rem}.job small{color:var(--mut)}
-  .jobdesc{color:var(--mut);font-size:.88rem;margin:4px 0 10px;padding:8px 10px;border-left:3px solid var(--gold);background:#0003;border-radius:0 8px 8px 0}
-  .seg.wide{display:flex;width:100%;margin:6px 0 10px}.seg.wide button{flex:1}
-  .two{display:flex;gap:10px;margin-top:14px}.two .btn{flex:1}
 </style>

@@ -23,7 +23,6 @@
 
   const used = $derived((rooms ?? []).filter(r => r.used));
   const free = $derived((rooms ?? []).filter(r => !r.used));
-  const mine = id => !!store.get(KEY.hostKey(id));
 
   function join(id) {
     location.href = `/play?id=${id}`;
@@ -71,7 +70,6 @@
             </div>
           </div>
           <div class="acts">
-            {#if mine(r.id)}<button class="btn" onclick={() => (location.href = `/host?id=${r.id}`)}>管理へ戻る</button>{/if}
             <button class="btn primary" onclick={() => join(r.id)}>参加</button>
           </div>
         </div>

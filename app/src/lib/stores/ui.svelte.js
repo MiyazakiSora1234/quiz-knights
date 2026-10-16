@@ -31,4 +31,4 @@ export function cancelModal() {
   modal.req = null; r.reject(CANCEL);
 }
 
-export const panel = $state({ rules: false, log: false, quiz: false });
+export const panel = $state({ rules: false, log: false, quiz: false, settings: null });     // settings: 参加者の設定ダイアログ（null＝閉じる / 'user' / 'game' / 'quiz'）

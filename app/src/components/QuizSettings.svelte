@@ -3,12 +3,11 @@
   import { panel } from '../lib/stores/ui.svelte.js';
   import Stepper from './Stepper.svelte';
 
-  // クイズ設定（右上のボタンから開く）。参加者は「自分のディレイ」、進行役は「早押しのルール」と「参加者のディレイ」を決める
-  // who: 参加者の画面なら PlayStore、進行役の画面なら HostStore。role で見分ける
-  let { who, role } = $props();
+  // クイズ設定（右上のボタンから開く）。進行役が「早押しのルール」と「参加者のディレイ」を決める（参加者の設定は、参加者の設定ダイアログのクイズタブ）
+  let { who } = $props();   // HostStore
   const close = () => { panel.quiz = false; };
   const RULES = [['next', '次の問題へ'], ['retry', '誤答者を除いて再受付'], ['chain', '連チャン']];
-  const players = $derived(role === 'host' ? who.roster.filter(p => p.pid && p.online) : []);
+  const players = $derived(who.roster.filter(p => p.pid && p.online));
 </script>
 
 <svelte:window onkeydown={(e) => panel.quiz && e.key === 'Escape' && close()} />
@@ -18,26 +17,18 @@
     <div class="dlg" role="dialog" aria-modal="true" aria-label="クイズ設定" transition:scale={{ start: .96, duration: 140 }}>
       <div class="head"><h3>クイズ設定</h3><button class="btn sm" onclick={close}>閉じる<kbd>Esc</kbd></button></div>
       <div class="body">
-        {#if role === 'host'}
-          <section>
-            <h4>誤答したとき</h4>
-            <div class="rules">
-              {#each RULES as [k, n]}<button class="rule" class:on={who.buzzRule === k} onclick={() => (who.buzzRule = k)} aria-pressed={who.buzzRule === k}>{n}</button>{/each}
-            </div>
-          </section>
-          <section>
-            <h4>参加者のディレイ</h4>
-            {#each players as p (p.pid)}
-              <div class="row"><span class="nm">{p.name}</span><div class="stp"><Stepper value={p.delay ?? 0} min={0} max={3000} step={50} label="{p.name}のディレイ" onchange={(v) => who.setDelay(p.pid, v)} /></div><span class="u">ms</span></div>
-            {:else}<div class="none">オンラインの参加者がいません</div>{/each}
-          </section>
-        {:else}
-          <section>
-            <h4>自分のディレイ</h4>
-            <div class="row big"><div class="stp"><Stepper value={who.delay} min={0} max={3000} step={50} label="自分のディレイ" onchange={(v) => who.setDelay(v)} /></div><span class="u">ms</span></div>
-            <p class="hint">押した時刻に足されます</p>
-          </section>
-        {/if}
+        <section>
+          <h4>誤答したとき</h4>
+          <div class="rules">
+            {#each RULES as [k, n]}<button class="rule" class:on={who.buzzRule === k} onclick={() => (who.buzzRule = k)} aria-pressed={who.buzzRule === k}>{n}</button>{/each}
+          </div>
+        </section>
+        <section>
+          <h4>参加者のディレイ</h4>
+          {#each players as p (p.pid)}
+            <div class="row"><span class="nm">{p.name}</span><div class="stp"><Stepper value={p.delay ?? 0} min={0} max={3000} step={50} label="{p.name}のディレイ" onchange={(v) => who.setDelay(p.pid, v)} /></div><span class="u">ms</span></div>
+          {:else}<div class="none">オンラインの参加者がいません</div>{/each}
+        </section>
       </div>
     </div>
   </div>
