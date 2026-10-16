@@ -42,9 +42,9 @@ test('[アイテム] 配られる種類は偏りつつ全種類が出る', () =>
   assert.deepEqual([...seen].sort(), [...ITEM_KEYS].sort());
 });
 
-async function useItem(key, { setup = () => {}, target } = {}) {
+async function useItem(key, { setup = () => {}, target, team = players } = {}) {
   const { b, asks } = mk({ script: ['item:0', -1], pick: (t, ok) => (target != null ? ok.find(x => x.value === target)?.value ?? ok[0].value : ok[0].value) });
-  b.start({ players, mode: 'pvp', items: 0 });
+  b.start({ players: team, mode: 'pvp', items: 0 });
   const [A, B, C] = b.G.units;
   A.items = [key];
   setup(b.G, A, B, C);
@@ -122,4 +122,32 @@ test('[アイテム] ランダムな戦闘を最後まで回しても壊れな�
       for (const u of b.G.units) for (const k of u.items || []) assert.ok(ITEMS[k]);
     }
   }
+});
+
+test('[アイテム] 30種類そろっていて、説明・絵文字があり、強すぎない（全アイテムが使えて、1個だけ減る）', async () => {
+  assert.ok(ITEM_KEYS.length >= 30, `${ITEM_KEYS.length}種`);
+  for (const k of ITEM_KEYS) {
+    assert.ok(ITEMS[k].n && ITEMS[k].ic && ITEMS[k].d && ITEMS[k].w > 0, k);
+    const { b, A, C, asks } = await useItem(k, { team: [...players, { name: 'D', job: 'bm', team: 'e' }], setup: (G, A, B, C) => { A.hp = 3; A.poison = 1; A.restNext = true; const d = G.units.find(u => u.side === A.side && u !== A && u.id !== A.id); if (k === 'feather') { d.alive = false; d.hp = 0; } } });
+    assert.deepEqual(A.items, [], `${k} は使うと減る`);
+    assert.ok(b.G.q === 2 && !b.busy, `${k} のあとも進行できる`);
+    for (const u of b.G.units) assert.ok(u.hp <= u.maxHp, k);
+  }
+});
+test('[アイテム] 新アイテムの効果: 輸血パック・吸血の牙・呪いの人形・手裏剣・花火・足かせ・地雷・煙玉・命綱・栄養ドリンク・お弁当', async () => {
+  let r = await useItem('blood', { setup: (G, A, B) => { B.hp = 1; } });
+  assert.equal(r.B.hp, 4); assert.equal(r.A.hp, r.A.maxHp - 1);
+  r = await useItem('fang', { setup: (G, A) => { A.hp = 2; } }); assert.equal(r.C.hp, r.C.maxHp - 1); assert.equal(r.A.hp, 3);
+  r = await useItem('doll'); assert.equal(r.C.hp, r.C.maxHp - 1); assert.equal(r.A.hp, r.A.maxHp - 1);
+  const two = [...players, { name: 'D', job: 'bm', team: 'e' }];
+  r = await useItem('shuriken', { team: two }); assert.deepEqual(r.b.G.units.filter(u => u.side === 'e').map(u => u.hp === u.maxHp - 1), [true, true]);
+  r = await useItem('shuriken'); assert.equal(r.asks.find(a => a.t.endsWith('の行動')).o.find(o => o.cls === 'item').disabled, true, '敵が1人なら使えない');
+  r = await useItem('firework'); assert.deepEqual([r.A.hp, r.B.hp, r.C.hp], [r.A.maxHp, r.B.maxHp - 1, r.C.maxHp - 1]);
+  r = await useItem('shackle'); assert.equal(r.C.delayQ, r.b.G.q);
+  r = await useItem('landmine'); assert.deepEqual(r.C.mine && r.C.mine.dmg, 1);
+  r = await useItem('smoke'); assert.equal(r.A.noWrong, true);
+  r = await useItem('rope'); assert.equal(r.B.barrier, 1); assert.equal(r.A.hp, r.A.maxHp - 1);
+  r = await useItem('drink', { setup: (G, A) => { A.hp = 2; } }); assert.equal(r.A.maxHp, 8); assert.equal(r.A.hp, 3);
+  r = await useItem('bento', { setup: (G, A) => { A.hp = 1; } }); assert.equal(r.A.hp, 4); assert.equal(r.A.restNow, true);
+  r = await useItem('candy', { setup: (G, A) => { A.hp = 1; A.poison = 2; } }); assert.deepEqual([r.A.hp, r.A.poison], [2, 0]);
 });

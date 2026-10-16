@@ -7,7 +7,35 @@ const alive = u => u.alive;
 const foe = a => u => u.alive && u.side !== a.side;
 const ally = a => u => u.alive && u.side === a.side;
 
+const notIn = f => (u, picked) => f(u) && !picked.includes(u);
+const hurtSelf = (ctx, a, n) => ctx.applyEvents([{ src: null, to: a, amt: n }]);
+
 const EFFECTS = {
+  jerky(ctx, a) { return { prompts: [P('回復する人', ally(a))], run: async ([t]) => { ctx.heal(t, 1); } }; },
+  candy(ctx, a) { return { prompts: [], run: async () => { a.poison = 0; a.poisonSkip = false; ctx.heal(a, 1); } }; },
+  holy(ctx, a) { return { prompts: [P('清める味方', ally(a))], run: async ([t]) => { t.poison = 0; t.poisonSkip = false; ctx.heal(t, 1); } }; },
+  bento(ctx, a) { return { prompts: [], run: async () => { ctx.heal(a, 3); ctx.setRest(a); } }; },
+  drink(ctx, a) { return { prompts: [], run: async () => { a.maxHp++; ctx.heal(a, 1); ctx.fxUnit(a.id, 'grow'); } }; },
+  blood(ctx, a) { return { prompts: [P('回復する味方', u => u.alive && u.side === a.side && u !== a)], run: async ([t]) => { await hurtSelf(ctx, a, 1); ctx.heal(t, 3); } }; },
+  fang(ctx, a) { return { prompts: [P('牙を立てる相手', foe(a))], run: async ([t]) => { await ctx.dmgTo(a, [t], 1); ctx.heal(a, 1); } }; },
+  doll(ctx, a) { return { prompts: [P('呪う相手', foe(a))], run: async ([t]) => { await ctx.applyEvents([{ src: null, to: a, amt: 1 }, { src: a, to: t, amt: 1 }]); } }; },
+  shuriken(ctx, a) { return { disabled: ctx.G.units.filter(foe(a)).length < 2, prompts: [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], run: async ([x, y]) => { await ctx.dmgTo(a, [x, y], 1); } }; },
+  firework(ctx, a) { return { prompts: [], run: async () => { await ctx.dmgTo(a, ctx.G.units.filter(u => u.alive && u !== a), 1); } }; },
+  landmine(ctx, a) { return { prompts: [P('地雷を仕掛ける相手', foe(a))], run: async ([t]) => { t.mine = { by: a.id, dmg: 1 }; ctx.log('💣 誰かが何かを仕掛けた…', 'sys'); } }; },
+  shackle(ctx, a) { return { prompts: [P('足かせをはめる相手', foe(a))], run: async ([t]) => { t.delayQ = ctx.G.q + 1; ctx.fxUnit(t.id, 'delay'); ctx.log(`⛓ ${t.name} の次のボタンにディレイがつく`, 'sys'); } }; },
+  smoke(ctx, a) { return { prompts: [], run: async () => { a.noWrong = true; ctx.fxUnit(a.id, 'guard'); ctx.log(`🌫 ${a.name} は次の誤答ダメージを受けない`, 'sys'); } }; },
+  rope(ctx, a) { return { prompts: [P('命綱を渡す味方', u => u.alive && u.side === a.side && u !== a)], run: async ([t]) => { await hurtSelf(ctx, a, 1); t.barrier = 1; ctx.fxUnit(t.id, 'barrier'); ctx.log(`🔰 ${t.name} にバリアが付いた`, 'sys'); } }; },
+  coin(ctx, a) {
+    return { prompts: [], run: async () => {
+      const heads = ctx.rand() < 0.5;
+      ctx.log(`🪙 コインは${heads ? '表' : '裏'}！`, 'sys');
+      ctx.event({ kind: 'coin', heads, who: a.name });
+      await ctx.wait(1700);
+      if (heads) ctx.heal(a, 3); else await hurtSelf(ctx, a, 1);
+    } };
+  },
+  map(ctx, a) { return { prompts: [], run: async () => { await ctx.pickGenre(); } }; },
+
   bandage(ctx, a) { return { prompts: [], run: async () => { ctx.heal(a, 1); } }; },
   potion(ctx, a) { return { prompts: [P('回復する人', alive)], run: async ([t]) => { ctx.heal(t, 2); } }; },
   water(ctx, a) { return { prompts: [], run: async () => { for (const u of ctx.G.units.filter(ally(a))) ctx.heal(u, 1); } }; },
