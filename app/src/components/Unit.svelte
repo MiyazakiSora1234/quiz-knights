@@ -2,7 +2,7 @@
   import { icon } from '../lib/icons.js';
   import { jobName } from '../lib/engine.js';
 
-  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false } = $props();
+  let { u, sel = false, can = false, ribbon = '', onpick = null, seat = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false, fxs = [] } = $props();
   const label = $derived(jobLabel ?? jobName(u));
 
   let floats = $state([]);
@@ -12,6 +12,18 @@
   let anim = $state('');
   // svelte-ignore state_referenced_locally
   let prev = u.hp;
+  // 毒・バリア・休み・成長など、このユニットに起きた出来事の演出（エンジンが fxs に積む）
+  // svelte-ignore state_referenced_locally
+  let seenFx = Math.max(0, ...fxs.map(f => f.id));
+  $effect(() => {
+    const fresh = fxs.filter(f => f.id > seenFx);
+    if (!fresh.length) return;
+    seenFx = Math.max(...fresh.map(f => f.id));
+    for (const f of fresh) {
+      fx.push({ id: 'u' + f.id, kind: 'st-' + f.kind });
+      setTimeout(() => { fx = fx.filter(x => x.id !== 'u' + f.id); }, 1500);
+    }
+  });
   // svelte-ignore state_referenced_locally
   let prevEdit = u.edit ?? 0;
   // 体力の変化・倒れた・復活した瞬間の演出。進行役が職業や体力を手直ししたとき（u.edit が増える）は出さない
@@ -64,7 +76,20 @@
     {/if}
   </div>
   {#each fx as f (f.id)}
-    {#if f.kind === 'ko'}
+    {#if f.kind.startsWith('st-')}
+      <div class="fx st {f.kind}" aria-hidden="true">
+        {#if f.kind === 'st-poison'}<i class="flash pz"></i><b class="p p1">☠</b><b class="p p2">●</b><b class="p p3">●</b>
+        {:else if f.kind === 'st-barrier'}<i class="ring"></i><b class="big">🔰</b>
+        {:else if f.kind === 'st-shield'}<i class="ring"></i><b class="big">🛡</b>
+        {:else if f.kind === 'st-guard'}<i class="ring"></i><b class="big">📜</b>
+        {:else if f.kind === 'st-rest'}<b class="z z1">Z</b><b class="z z2">z</b><b class="z z3">Z</b>
+        {:else if f.kind === 'st-grow'}<i class="flash"></i><b class="stamp up sm">成長！</b><b class="p p1">✦</b><b class="p p3">✦</b>
+        {:else if f.kind === 'st-ghost'}<b class="big ghostup">👻</b>
+        {:else if f.kind === 'st-copy'}<i class="ring"></i><b class="big">❖</b>
+        {:else if f.kind === 'st-delay'}<i class="ring"></i><b class="big">⏱</b>
+        {/if}
+      </div>
+    {:else if f.kind === 'ko'}
       <div class="fx ko" aria-hidden="true"><i class="flash dark"></i><b class="stamp">戦闘不能</b></div>
     {:else if f.kind === 'revive'}
       <div class="fx heal" aria-hidden="true"><i class="flash"></i><b class="stamp up">復活！</b><b class="p p1">✦</b><b class="p p2">✚</b><b class="p p3">✦</b></div>
@@ -95,6 +120,16 @@
   .stamp{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) rotate(-8deg);font-size:1.5rem;font-weight:900;letter-spacing:.1em;color:#ff7b86;border:3px solid #ff7b86;border-radius:8px;padding:2px 10px;background:#0009;white-space:nowrap;animation:stamp 1.3s ease-out forwards}
   .stamp.up{color:#b8ffd0;border-color:#6dff9a}
   @keyframes stamp{0%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(2.2)}18%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}80%{opacity:1}100%{opacity:0}}
+  .fx.st .big{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font-size:2.6rem;filter:drop-shadow(0 0 10px #fff8);animation:pop 1.2s ease-out forwards}
+  .ring{position:absolute;left:50%;top:40%;width:20px;height:20px;margin:-10px;border-radius:50%;border:4px solid #7fd6e8;animation:ring 1s ease-out forwards}
+  .st-delay .ring,.st-copy .ring{border-color:#c9a0ff}.st-guard .ring{border-color:#ffe08a}.st-shield .ring{border-color:#ffd27f}
+  .flash.pz{background:radial-gradient(circle at 50% 50%,#b06cffaa,#7a3cc855 55%,#0000 75%)}
+  .z{position:absolute;left:30%;bottom:25%;font-size:1.3rem;font-weight:900;color:#bfe0ff;text-shadow:0 0 8px #5ba8ff;opacity:0;animation:rise .9s ease-out forwards}.z2{left:50%;animation-delay:.2s;font-size:1.6rem}.z3{left:66%;animation-delay:.4s}
+  .stamp.sm{font-size:1rem;top:30%}
+  .ghostup{animation:ghost 1.4s ease-out forwards!important}
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}25%{transform:translate(-50%,-50%) scale(1.3);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+  @keyframes ring{0%{transform:scale(1);opacity:1}100%{transform:scale(9);opacity:0}}
+  @keyframes ghost{0%{transform:translate(-50%,-30%) scale(.6);opacity:0}30%{opacity:1}100%{transform:translate(-50%,-160%) scale(1.2);opacity:0}}
   .shake{animation:shake .45s}.glow{animation:glow .7s}
   @keyframes flash{0%{opacity:1}100%{opacity:0}}
   @keyframes cut{to{stroke-dashoffset:0}}

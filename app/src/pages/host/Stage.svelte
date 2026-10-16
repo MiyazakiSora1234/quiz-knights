@@ -31,7 +31,7 @@
 
 {#snippet card(u, seat)}
   <div class="cw">
-  <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} {seat} bubble={bubbles[u.id] ?? ''} acting={G.acting === u.id} answering={G.sel === u.id} dim={G.sel != null && G.sel !== u.id} />
+  <Unit {u} sel={G.sel === u.id} can={canPick(u)} onpick={() => host.select(u.id)} ribbon={G.sel === u.id ? '回答中' : ''} tags={tagsOf(u)} {seat} bubble={bubbles[u.id] ?? ''} acting={G.acting === u.id} fxs={(G.fxs ?? []).filter(f => f.uid === u.id)} answering={G.sel === u.id} dim={G.sel != null && G.sel !== u.id} />
   <button class="edit" onclick={() => (host.editing = u.id)} disabled={host.busy} title="職業・HPなどを調整" aria-label="{u.name}を調整">✎</button>
   </div>
 {/snippet}

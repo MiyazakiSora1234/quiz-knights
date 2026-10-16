@@ -50,7 +50,7 @@ export function createBattle(ui) {
       if (!u.alive || !(u.poison > 0)) continue;
       if (u.poisonSkip) { u.poisonSkip = false; continue; }
       u.poison--;
-      events.push({ src: null, to: u, amt: 1 });
+      events.push({ src: null, to: u, amt: 1 }); ctx.fxUnit(u.id, 'poison');
     }
     if (events.length) { log('☠ 毒のダメージ', 'sys'); await applyEvents(events); }
   }
@@ -157,6 +157,7 @@ export function createBattle(ui) {
     G.wrongOn = [];
     if (!correct) G.streak = 0;
     G.q++; G.sel = null;
+    ctx.event({ kind: 'round', q: G.q });
     log(`── 第${G.q}問 ──`, 'sys');
     checkEnd();
   }
@@ -170,6 +171,7 @@ export function createBattle(ui) {
     const by = G.units.find(u => u.id === a.mine.by), dmg = a.mine.dmg;
     a.mine = null;
     log(`💥 ${a.name} は地雷を踏んだ！`, 'sys');
+    ctx.event({ kind: 'bomb', who: a.name, mine: true });
     await applyEvents([{ src: by || null, to: a, amt: dmg }]);
     return !a.alive;
   }
@@ -182,6 +184,7 @@ export function createBattle(ui) {
       const h = JOB.hero;
       a.job = 'hero'; a.atk = h.atk; a.maxHp = h.hp; a.hp = h.hp;
       log(`🎲→👑 ${a.name} は連答で勇者に転職！体力リセット (HP ${a.hp})`, 'sys');
+      ctx.event({ kind: 'job', who: a.name, from: '遊び人', to: '勇者' });
     }
     if (a.isBoss && a.bossId === 3 && a.hp === 1) heal(a, 5);
   }
@@ -244,7 +247,7 @@ export function createBattle(ui) {
     if (a.job === 'thief' && a.alive && !G.over) await pickGenre();
     if (a.job === 'apprentice' && a.alive && a.atk < 5) {
       a.atk++; a.maxHp++; a.hp++;
-      log(`🌱 ${a.name} は成長した！ (攻撃${a.atk} / 体力${a.hp}/${a.maxHp})`, 'sys');
+      log(`🌱 ${a.name} は成長した！ (攻撃${a.atk} / 体力${a.hp}/${a.maxHp})`, 'sys'); ctx.fxUnit(a.id, 'grow');
     }
     if (a.ghost) { a.ghost = false; a.ghostUsed = true; log(`👻 ${a.name} は成仏した`, 'sys'); }
   }
@@ -256,6 +259,8 @@ export function createBattle(ui) {
   async function doCorrectBody(a) {
     stat(a, 'correct');
     log(`⭕ ${nm(a)} 正解！`, 'sys');
+    ctx.event({ kind: 'answer', ok: true, who: a.name });
+    await wait(700);
     if (await stepOnMine(a)) { await endQuestion(a); return; }
     gainFromCorrect(a);
     await chooseAndRunAction(a);
@@ -289,6 +294,8 @@ export function createBattle(ui) {
   async function doWrongBody(a, retry) {
     stat(a, 'wrong');
     log(`❌ ${nm(a)} 誤答`, 'sys');
+    ctx.event({ kind: 'answer', ok: false, who: a.name });
+    await wait(700);
     await wrongPenalty(a);
     if (retry) {
       (G.wrongOn ??= []).push(a.id);

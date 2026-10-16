@@ -34,7 +34,7 @@ const SPECIALS = {
   },
   bm(ctx, a, add) {
     add('必殺の一撃', '1人に8ダメージ（バトル中1度だけ）', [P('対象', alive)],
-      async ([t]) => { a.used = true; await ctx.dmgTo(a, [t], ctx.dm(a, 8)); }, { disabled: a.used });
+      async ([t]) => { a.used = true; ctx.event({ kind: 'special', who: a.name, text: '必殺の一撃！' }); await ctx.wait(900); await ctx.dmgTo(a, [t], ctx.dm(a, 8)); }, { disabled: a.used });
   },
   hero(ctx, a, add) {
     add('勇者の剣', '自身を3回復し、他1人に4ダメージ', [P('対象', other(a))],
@@ -51,22 +51,22 @@ const SPECIALS = {
   },
   tactician(ctx, a, add) {
     add('作戦指示', '味方1人の次の誤答ダメージを無効にする', [P('指示する味方', ally(a))],
-      async ([t]) => { t.noWrong = true; ctx.log(`📜 ${t.name} は次の誤答ダメージを受けない`, 'sys'); });
+      async ([t]) => { t.noWrong = true; ctx.fxUnit(t.id, 'guard'); ctx.log(`📜 ${t.name} は次の誤答ダメージを受けない`, 'sys'); });
   },
   cleric(ctx, a, add) {
     add('守護のバリア', '味方1人に、次のダメージ1回を無効にするバリアを付ける', [P('守る味方', ally(a))],
-      async ([t]) => { t.barrier = 1; ctx.log(`🔰 ${t.name} にバリアが付いた`, 'sys'); });
+      async ([t]) => { t.barrier = 1; ctx.fxUnit(t.id, 'barrier'); ctx.log(`🔰 ${t.name} にバリアが付いた`, 'sys'); });
   },
   poisoner(ctx, a, add) {
     add('毒', '1人に毒。次の2問が終わるたびに1ダメージ', [P('対象', alive)], async ([t]) => {
       if (!(t.poison > 0)) t.poisonSkip = true; // すでに毒なら、今の問題の終わりもそのまま数える
-      t.poison = 2;
+      t.poison = 2; ctx.fxUnit(t.id, 'poison');
       ctx.log(`☠ ${t.name} は毒を受けた`, 'sys');
     });
   },
   oracle(ctx, a, add) {
     add('予言のディレイ', '敵1人の次の問題のボタンにディレイをつける', [P('対象', foe(a))], async ([t]) => {
-      t.delayQ = ctx.G.q + 1;
+      t.delayQ = ctx.G.q + 1; ctx.fxUnit(t.id, 'delay');
       ctx.log(`🔮 ${t.name} の次のボタンにディレイがつく`, 'sys');
     });
   },
@@ -91,6 +91,7 @@ const SPECIALS = {
     const src = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
     const copyable = src && !src.isBoss && src.id !== a.id && src.job !== 'mimic';
     if (!copyable) { add('模倣', '直前に正解した人の能力をコピーする（コピー元なし）', [], async () => {}, { disabled: true }); return; }
+    ctx.fxUnit(a.id, 'copy');
     const copied = buildActions(ctx, a, src.job).slice(1);   // 通常攻撃は除く（模倣者自身の攻撃力で別に出る）
     for (const x of copied) add(`模倣：${x.label}`, x.desc, x.prompts, x.run, { disabled: x.disabled });
     if (src.job === 'thief') add('模倣：ジャンル選択', '次の問題のジャンルを選ぶ', [], async () => { await ctx.pickGenre(); });
@@ -132,7 +133,7 @@ const BOSS_SKILLS = {
   4(ctx, a, add) {
     add('技1', '敵1人に毒（次の2問が終わるたびに1ダメージ）', [P('対象', foe(a))], async ([t]) => {
       if (!(t.poison > 0)) t.poisonSkip = true;
-      t.poison = 2;
+      t.poison = 2; ctx.fxUnit(t.id, 'poison');
       ctx.log(`☠ ${t.name} は毒を受けた`, 'sys');
     });
     const poisoned = ctx.G.units.filter(u => u.alive && u.side !== a.side && u.poison > 0).length;

@@ -1,12 +1,14 @@
 <script>
   import { fade, scale } from 'svelte/transition';
   import ScoreTable from '../../components/ScoreTable.svelte';
+  import Confetti from '../../components/Confetti.svelte';
   import { RESULT_TEXT, RESULT_TEXT_CPU } from './gameView.js';
 
   let { host, G } = $props();
 </script>
 
 <div class="over" transition:fade={{ duration: 200 }}>
+  {#if G.over !== 'lose' && !(G.cpu && G.over === 'teame')}<Confetti />{/if}
   <div class="in" in:scale={{ start: .9, duration: 260 }}>
     <h2 class:lose={G.over === 'lose'}>{(G.cpu ? RESULT_TEXT_CPU : RESULT_TEXT)[G.over] ?? 'バトル終了'}</h2>
     <div class="sub">{G.q - 1}問で決着</div>

@@ -5,6 +5,7 @@
   import Unit from '../../components/Unit.svelte';
   import MePanel from './MePanel.svelte';
   import ScoreTable from '../../components/ScoreTable.svelte';
+  import Confetti from '../../components/Confetti.svelte';
   import BuzzButton from './BuzzButton.svelte';
   import { sfx, vib } from '../../lib/sound.svelte.js';
 
@@ -92,7 +93,7 @@
       <div class="grp {g.cls}">{g.label}</div>
       <div class="strip">
         {#each g.units as u (u.id)}
-          <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} me={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
+          <Unit {u} compact ribbon={u.id === gs.sel ? (u.id === p.mine ? 'あなた・回答中' : '回答中') : (u.id === p.mine ? 'あなた' : '')} me={u.id === p.mine} jobLabel={u.jobName} tags={tagsOf(u)} bubble={bubbles[u.id] ?? ''} acting={gs.acting === u.id} fxs={(gs.fxs ?? []).filter(f => f.uid === u.id)} answering={gs.sel === u.id} dim={gs.sel != null && gs.sel !== u.id} />
         {/each}
       </div>
     {/each}
@@ -115,6 +116,7 @@
 
 {#if gs.over}
   <div class="over" transition:fade={{ duration: 200 }}>
+    {#if !p.lost}<Confetti />{/if}
     <div class="ov-in" in:scale={{ start: .9, duration: 260 }}>
       <h2 class:lose={p.lost}>{p.overText}</h2>
       <div class="sub">{gs.q - 1}問で決着</div>

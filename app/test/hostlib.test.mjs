@@ -483,3 +483,33 @@ test('手直し: 職業・体力を直すと、そのユニットの edit が増
   assert.equal(a().edit, 1);
   assert.equal(b.G.units.find(u => u.name === 'B').edit ?? 0, 0, 'ほかのユニットは変わらない');
 });
+
+/* ================= 演出イベント ================= */
+test('演出: 正解・誤答・コイントス・毒・バリア・成長などの演出がエンジンから出る（公開状態にも載る）', async () => {
+  const { publicState } = await import('../src/lib/publish.js');
+  const events = [];
+  let bb = null;
+  const b = bb = createBattle({ ask: async (t, o) => (o.find(x => !x.disabled && /コイン|毒|バリア/.test(x.label)) ?? o.find(x => !x.disabled && x.value !== '__back__')).value, toast() {}, changed() {}, random: () => 0.1,
+    pause: async () => { if (bb?.G?.event) events.push(bb.G.event.kind); } });      // 演出のあと待つ瞬間に、出ている演出を記録する
+  b.start({ players: [{ name: 'G', job: 'gambler' }, { name: 'P', job: 'poisoner' }, { name: 'C', job: 'cleric' }, { name: 'A', job: 'apprentice' }], mode: 'cpu', foes: ['warrior'] });
+  const sel = n => b.select(b.G.units.find(u => u.name === n).id);
+  sel('G'); await b.correct();                              // コイントス（乱数0.1=表）
+  sel('P'); await b.correct();                              // 毒
+  sel('C'); await b.correct();                              // バリア
+  sel('A'); await b.correct();                              // 成長
+  for (const k of ['answer', 'coin']) assert.ok(events.includes(k), `演出 ${k}`);
+  const fxk = (b.G.fxs ?? []).map(f => f.kind);
+  for (const k of ['poison', 'barrier', 'grow']) assert.ok(fxk.includes(k), `ユニットの演出 ${k}`);
+  assert.ok(publicState(b.G).fxs.length > 0 && publicState(b.G).event);
+  sel('G'); await b.wrong();
+  assert.ok(events.filter(k => k === 'answer').length >= 5, '誤答の演出も出る');
+});
+test('演出: 先読み（CPUの頭脳）の最中は、演出も画面の更新も出ない', async () => {
+  const events = [];
+  const b = createBattle({ ask: async (t, o) => o.find(x => !x.disabled).value, toast() {}, changed: g => { if (g?.event) events.push(g.event.id); }, random: () => 0.1 });
+  b.start({ players: [{ name: 'A', job: 'warrior' }, { name: 'B', job: 'monk' }], mode: 'cpu', foes: ['gambler', 'bomb'], cpuAuto: true });
+  await b.skip();
+  await Promise.resolve();
+  // 先読みで何十通りも試しても、画面に出た演出は本当に起きた分（回答・コイントス・ラウンドなど）だけ
+  assert.ok(new Set(events).size <= 8, `演出の数が多すぎる: ${new Set(events).size}`);
+});

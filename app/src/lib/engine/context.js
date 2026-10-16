@@ -17,6 +17,8 @@ export function createContext({ ui, getG, emit }) {
   const setSim = v => { sim = v; };
   /** 画面に出す演出（コイントスなど）。全員の画面に同じ演出が出る。先読み中は出さない */
   const event = e => { if (sim) return; const G = getG(); G.eventSeq = (G.eventSeq || 0) + 1; G.event = { id: G.eventSeq, ...e }; emit(); };
+  /** 特定のユニットに出す短い演出（毒・バリア・休み・成長など）。unit の kind で画面が見た目を決める */
+  const fxUnit = (uid, kind) => { if (sim) return; const G = getG(); G.fxSeq = (G.fxSeq || 0) + 1; (G.fxs ||= []).push({ id: G.fxSeq, uid, kind }); if (G.fxs.length > 16) G.fxs.shift(); emit(); };
   const wait = ms => (sim || !ui.pause ? null : ui.pause(ms));
   const ask = (title, options, opts = {}) => {
     if (sim && title.startsWith('🛡')) return Promise.resolve(null);
@@ -83,7 +85,7 @@ export function createContext({ ui, getG, emit }) {
   function setRest(t) {
     if (!t.alive) return;
     if (t.restNow) { log(`${t.name} は今回すでに休みなので連続では休みにならない`); return; }
-    t.restNext = true;
+    t.restNext = true; fxUnit(t.id, 'rest');
     log(`${t.name} は次の問題休み`, 'sys');
   }
 
@@ -130,7 +132,7 @@ export function createContext({ ui, getG, emit }) {
     const G = getG();
     const genres = G.genres && G.genres.length ? G.genres : GENRES;
     const g = await ask('💰 次の問題のジャンルを選択', [...genres.map(x => ({ label: x, value: x })), { label: '選ばない', value: null, cls: 'ghost' }]);
-    if (g) { G.genre = g; G.genreFor = G.q + 1; log(`次の問題のジャンル：${g}`, 'sys'); }
+    if (g) { event({ kind: 'genre', genre: g }); G.genre = g; G.genreFor = G.q + 1; log(`次の問題のジャンル：${g}`, 'sys'); }
   }
 
   /* ---------- ダメージ処理 ---------- */
@@ -148,7 +150,7 @@ export function createContext({ ui, getG, emit }) {
           const c = await ask(`🛡 ${e.to.name} への ${e.amt} ダメージ（${e.src.name}）`, opts, { sub: 'タンクが庇いますか？', actor: tanks.length === 1 ? tanks[0].id : null });
           if (c !== null) {
             const t = G.units.find(x => x.id === c);
-            t.guards--;
+            t.guards--; fxUnit(t.id, 'shield');
             log(`🛡 ${t.name} が ${e.to.name} を庇った (守り残り ${t.guards})`, 'sys');
             ev = { src: e.src, to: t, amt: e.amt };
           }
@@ -165,7 +167,7 @@ export function createContext({ ui, getG, emit }) {
     const slayer = {};
     for (const e of events) {
       if (!startAlive.has(e.to.id) || e.amt <= 0) continue;
-      if (e.to.barrier > 0) { e.to.barrier--; log(`🔰 ${e.to.name} のバリアがダメージを防いだ`, 'sys'); continue; }
+      if (e.to.barrier > 0) { e.to.barrier--; fxUnit(e.to.id, 'barrier'); log(`🔰 ${e.to.name} のバリアがダメージを防いだ`, 'sys'); continue; }
       const wasAlive = e.to.hp > 0;
       dealt += Math.min(e.amt, Math.max(e.to.hp, 0));
       e.to.hp -= e.amt;
@@ -181,6 +183,7 @@ export function createContext({ ui, getG, emit }) {
     k.form++;
     k.maxHp = k.hp = bossHp(k.S, k.bossId);
     log(`${k.name} は ${BOSS[k.bossId].forms[k.form]} に変身した！ (HP ${k.hp})`, 'sys');
+    event({ kind: 'transform', who: k.name, form: BOSS[k.bossId].forms[k.form] });
     return true;
   }
 
@@ -192,12 +195,13 @@ export function createContext({ ui, getG, emit }) {
     log(`${nm(k)} は倒れた…`, 'sys');
     if (k.job === 'ghost' && !k.ghostUsed) {
       k.ghost = true; k.ghostUsed = true;
-      log(`👻 ${k.name} は幽霊になった（あと1回だけ答えられる）`, 'sys');
+      log(`👻 ${k.name} は幽霊になった（あと1回だけ答えられる）`, 'sys'); fxUnit(k.id, 'ghost');
     }
     if (k.job === 'bomb') {
       // 爆発: 自分以外の全員（敵も味方も）に2ダメージ。庇うことはできない
       for (const n of G.units) if (n !== k && (n.alive || startAlive.has(n.id))) next.push({ src: k, to: n, amt: 2, blast: true });
       log('💥 ばくだんいわが爆発！', 'sys');
+      event({ kind: 'bomb', who: k.name });
     }
     // 魔王2の第3形態に倒されると、体力1で魔王の仲間として復活し、敵全体に1ダメージ
     if (slayer && slayer.isBoss && slayer.bossId === 2 && slayer.form === 2 && !k.isBoss && k.side !== slayer.side) {
@@ -234,6 +238,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    BACK, event, wait, ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    BACK, event, fxUnit, wait, ask, setActor, setAuto, setSim, rand, log, row, neighbors, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }
