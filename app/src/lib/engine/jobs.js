@@ -106,17 +106,21 @@ const BOSS_SKILLS = {
     add('技2', '指定1人に2ダメージ、その両隣に1ダメージ', [P('指定する人', foe(a))], async ([t]) => {
       await ctx.applyEvents([{ src: a, to: t, amt: ctx.dm(a, 2) }, ...ctx.neighbors(t).map(n => ({ src: a, to: n, amt: ctx.dm(a, 1) }))]);
     });
+    add('技3', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, 1)); });
   },
   2(ctx, a, add) {
     if (a.form === 0) {
       add('技1', '2人に1ダメージ。その2人は次のターン休み', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))],
         async ([x, y]) => { await ctx.dmgTo(a, [x, y], 1); ctx.setRest(x); ctx.setRest(y); });
       add('技2', '1人に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 3); });
+      add('技3', '敵1人を次の問題休みにする', [P('対象', foe(a))], async ([t]) => { ctx.setRest(t); });
     } else if (a.form === 1) {
       add('技1', '自分を2回復', [], async () => { ctx.heal(a, 2); });
       add('技2', '敵に1ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 1); });
+      add('技3', '敵1人に1ダメージ、自分を1回復', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 1); ctx.heal(a, 1); });
     } else {
       add('技1', '1人に2ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 2); });
+      add('技2', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), 1); });
     }
   },
   3(ctx, a, add) {
@@ -129,6 +133,9 @@ const BOSS_SKILLS = {
       const t = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
       if (t && t.alive && t.side !== a.side) await ctx.dmgTo(a, [t], 4); else ctx.log('直前の正解者がいないため不発');
     }, { disabled: !(prev && prev.alive && prev.side !== a.side) });
+    add('技3', '自分にバリア（次のダメージ1回を無効）。すでにバリアがあるときは使えない', [], async () => {
+      a.barrier = 1; ctx.fxUnit(a.id, 'barrier'); ctx.log(`🔰 ${a.name} にバリアが付いた`, 'sys');
+    }, { disabled: a.barrier > 0 });
   },
   4(ctx, a, add) {
     add('技1', '敵1人に毒（次の2問が終わるたびに1ダメージ）', [P('対象', foe(a))], async ([t]) => {
@@ -139,6 +146,9 @@ const BOSS_SKILLS = {
     const poisoned = ctx.G.units.filter(u => u.alive && u.side !== a.side && u.poison > 0).length;
     const amt = poisoned >= 3 ? 2 : 1;
     add(`技2（敵全体に${amt}）`, '敵全体に1ダメージ（毒を受けている敵が3人以上なら2ダメージ）', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, amt)); });
+    add('技3', '敵2人に毒（次の2問が終わるたびに1ダメージ）', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
+      for (const t of [x, y]) { if (!(t.poison > 0)) t.poisonSkip = true; t.poison = 2; ctx.fxUnit(t.id, 'poison'); ctx.log(`☠ ${t.name} は毒を受けた`, 'sys'); }
+    });
   },
   5(ctx, a, add) {
     const prev = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
@@ -153,6 +163,10 @@ const BOSS_SKILLS = {
       const t = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
       if (t && t.alive && t.side !== a.side) await ctx.dmgTo(a, [t], ctx.dm(a, 2)); else ctx.log('直前の正解者がいないため不発');
     }, { disabled: !ok });
+    add(`封印${ok ? `（${prev.name}）` : ''}`, '直前に正解した敵を、次の問題休みにする', [], async () => {
+      const t = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
+      if (t && t.alive && t.side !== a.side) ctx.setRest(t); else ctx.log('直前の正解者がいないため不発');
+    }, { disabled: !ok });
   },
   6(ctx, a, add) {
     add('技1', '敵1人に5ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 5)); });
@@ -161,6 +175,7 @@ const BOSS_SKILLS = {
       if (a.hp > 1) evs.push({ src: null, to: a, amt: 1 });
       await ctx.applyEvents(evs);
     });
+    add('技3', '敵2人に2ダメージ', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => { await ctx.dmgTo(a, [x, y], ctx.dm(a, 2)); });
   },
 };
 

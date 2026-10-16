@@ -54,11 +54,13 @@
   const level = $derived(pct <= 25 ? 'crit' : pct <= 50 ? 'low' : '');
 </script>
 
-<button
+<!-- 選べるカードだけボタンにする（無効なボタンの中では、子要素（職業名・アイテム名）のクリックが効かないため） -->
+<svelte:element
+  this={onpick ? 'button' : 'div'}
+  role={onpick ? undefined : 'group'}
   class="unit {u.side === 'e' ? 'foe' : u.side === 'c' ? 'third' : 'ally'} {anim}"
   class:can class:sel class:dead={!u.alive} class:compact class:acting class:answering class:dim class:me
   tabindex={can ? 0 : -1}
-  disabled={!onpick}
   onclick={() => can && onpick?.(u)}
   aria-label="{u.name} {label} HP {u.hp}/{u.maxHp}"
   data-id={u.id}
@@ -104,7 +106,7 @@
   {#each floats as f (f.id)}
     <div class="float {f.d < 0 ? 'd' : 'h'}">{f.d > 0 ? '+' : ''}{f.d}</div>
   {/each}
-</button>
+</svelte:element>
 
 <style>
   .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
@@ -151,7 +153,7 @@
   @keyframes act{0%,100%{box-shadow:0 0 0 0 #ff4d5e00;transform:scale(1)}50%{box-shadow:0 0 34px 8px #ff4d5eaa;transform:scale(1.06)}}
   .bubble{margin-top:8px;max-width:100%;background:var(--gold);color:#2a1c06;font-weight:800;font-size:.85rem;line-height:1.35;padding:4px 9px;border-radius:10px;text-align:center;overflow-wrap:anywhere;word-break:break-word;box-shadow:0 3px 10px #0008}
   .seat{position:absolute;top:3px;left:8px;z-index:3;font-size:.7rem;color:var(--mut);font-family:var(--display);font-weight:800;line-height:1.3}
-  button:disabled{cursor:default;opacity:1}
+  .unit{text-align:center}
   .compact .u-in{padding:24px 8px 20px}
   .compact .nm{font-size:.92rem}
 </style>
