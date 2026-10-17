@@ -677,14 +677,27 @@ test('[進行役] CPUの早押し: 確定ポイントまで読まれるとCPUが
   const mods = await loadStores(); const env = fakeEnv();
   const rnd = Math.random; Math.random = () => 0.5;      // 当てずっぽうにも押さないにも入らない
   try {
-    const { h } = await hostReady(env, mods);
+    const { h, ws } = await hostReady(env, mods);
     h.level = 'strong';
     h.quiz.importFrom(BANK); h.start(); await tick(30);
     const qz = h.quiz;
+    const cpuWins = async (n) => {       // 偽のサーバー: CPUの押下を受け取って、勝者として返す
+      for (let i = 0; i < 100 && ws.of('cpu_buzz').length < n; i++) await tick(20);
+      const cb = ws.of('cpu_buzz')[n - 1];
+      assert.ok(cb, 'CPUの押下がサーバーに送られる');
+      assert.match(cb.name, /魔王/); assert.equal(typeof cb.ts, 'number');
+      const r = [{ pid: 'cpu:' + cb.id, name: cb.name, ms: 0 }];
+      ws.recv({ t: 'winner', q: h.G.q, pid: 'cpu:' + cb.id, name: cb.name, at: cb.ts, ranking: r, all: r });
+      await tick(20);
+    };
     assert.equal(qz.plans.length, 1, '魔王が押す予定');
     const at = qz.plans[0].at; assert.ok(at >= 5 && qz.plans[0].ok);
     qz.advance(); assert.equal(h.G.q, 1, '確定ポイントの手前では押さない');
     qz.setSpeed(20); qz.start();
+    for (let i = 0; i < 100 && !ws.of('cpu_buzz').length; i++) await tick(20);
+    assert.equal(qz.reading, false, 'CPUが押した時点で問読みは止まる');
+    assert.equal(h.G.q, 1, '勝者が決まるまでは進まない');
+    await cpuWins(1);
     for (let i = 0; i < 100 && h.G.q === 1; i++) await tick(20);
     assert.equal(h.G.q, 2, 'CPUが正解して次の問題へ');
     assert.equal(h.G.stats[h.G.units.find(u => u.isBoss).id].correct, 1, 'CPUの成績に数えられる');
@@ -698,10 +711,44 @@ test('[進行役] CPUの早押し: 確定ポイントまで読まれるとCPUが
     qz.plans = [{ id: qz.plans[0].id, name: '魔王1', at: 2, ok: false, used: false }];
     h.battle.G.cfg.bossPenalty = true;
     const hp = h.G.units.find(u => u.isBoss).hp;
-    qz.advance(); await tick(60);
+    const opens = ws.of('open').length;
+    qz.advance(); await cpuWins(2); await tick(60);
     assert.equal(h.G.q, 2, '誤答なら問題は続く'); assert.equal(h.G.units.find(u => u.isBoss).hp, hp - 2);
+    assert.equal(ws.of('open').length, opens + 1, '参加者がもう一度早押しできるよう、受付を出し直す');
     qz.advance(); qz.advance(); await tick(40);
-    assert.equal(h.G.units.find(u => u.isBoss).hp, hp - 2, '同じ予定は1回だけ');
+    assert.equal(ws.of('cpu_buzz').length, 2, '同じ予定は1回だけ');
+    assert.equal(h.G.units.find(u => u.isBoss).hp, hp - 2);
+    h.destroy();
+  } finally { Math.random = rnd; env.restore(); }
+});
+test('[進行役] CPUが押したあとでも、人間の押下のほうが早ければ人間が回答者になる（CPUは回答しない）', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  const rnd = Math.random; Math.random = () => 0.5;
+  try {
+    const { h, ws } = await hostReady(env, mods);
+    h.level = 'strong'; h.quiz.importFrom(BANK); h.start(); await tick(30);
+    h.quiz.setSpeed(20); h.quiz.start();
+    for (let i = 0; i < 100 && !ws.of('cpu_buzz').length; i++) await tick(20);
+    assert.ok(ws.of('cpu_buzz').length);
+    const cb = ws.of('cpu_buzz')[0];
+    const all = [{ pid: 'p0', name: 'P0', ms: 0 }, { pid: 'cpu:' + cb.id, name: cb.name, ms: 30 }];
+    ws.recv({ t: 'winner', q: 1, pid: 'p0', name: 'P0', at: cb.ts - 30, ranking: all, all });
+    await tick(40);
+    assert.equal(h.G.q, 1); assert.equal(h.G.sel, h.G.pids.p0, '人間が回答者');
+    assert.equal(h.G.stats?.[cb.id]?.correct ?? 0, 0, 'CPUは回答していない');
+    h.destroy();
+  } finally { Math.random = rnd; env.restore(); }
+});
+test('[進行役] サーバーにつながっていないときは、CPUがすぐに回答する', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  const rnd = Math.random; Math.random = () => 0.5;
+  try {
+    const { h, ws } = await hostReady(env, mods);
+    h.level = 'strong'; h.quiz.importFrom(BANK); h.start(); await tick(30);
+    ws.readyState = 3;                                          // 切断
+    h.quiz.revealAll();
+    for (let i = 0; i < 100 && h.G.q === 1; i++) await tick(20);
+    assert.equal(h.G.q, 2);
     h.destroy();
   } finally { Math.random = rnd; env.restore(); }
 });

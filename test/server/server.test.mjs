@@ -242,6 +242,38 @@ test('早押し: あとから届いても押した時刻が早い人が勝つ（
   host.send({ t: 'close' });
 });
 
+test('早押し: CPUの押下も参加者と同じ順位表に入り、いちばん早い者が勝つ。全員に名前つきで届く', async () => {
+  const { host, players, open } = await buzzRoom(2);
+  open(1);
+  await Promise.all(players.map(p => p.wait('open')));
+  const t = Date.now();
+  host.send({ t: 'cpu_buzz', id: 'u7', name: '魔王1', ts: t - 30 });      // CPUが30ms早く押した
+  players[0].send({ t: 'buzz', ts: t });
+  const w = await host.wait('winner');
+  assert.equal(w.pid, 'cpu:u7'); assert.equal(w.name, '魔王1');
+  assert.ok(Math.abs(w.at - (t - 30)) <= 5);
+  assert.deepEqual(w.ranking.map(x => x.name), ['魔王1', 'P1']);
+  assert.ok(w.ranking[1].ms >= 25 && w.ranking[1].ms <= 35);
+  for (const p of players) { const m = await p.wait('winner'); assert.equal(m.name, '魔王1'); assert.equal(m.pid, 'cpu:u7'); }
+  host.send({ t: 'close' });
+});
+
+test('早押し: 参加者のほうが早ければ参加者が勝つ。受付前・二重のCPU押下は無視される', async () => {
+  const { host, players, open } = await buzzRoom(2);
+  host.send({ t: 'cpu_buzz', id: 'u7', name: '魔王1', ts: Date.now() });   // 受付前
+  open(1);
+  await Promise.all(players.map(p => p.wait('open')));
+  const t = Date.now();
+  players[1].send({ t: 'buzz', ts: t - 30 });
+  host.send({ t: 'cpu_buzz', id: 'u7', name: '魔王1', ts: t });
+  host.send({ t: 'cpu_buzz', id: 'u7', name: '魔王1', ts: t - 60 });       // 同じCPUの二重押し
+  host.send({ t: 'cpu_buzz', name: 'x', ts: t });                           // ID なし
+  const w = await host.wait('winner');
+  assert.equal(w.pid, players[1].pid);
+  assert.deepEqual(w.ranking.map(x => x.name), ['P2', '魔王1']);
+  host.send({ t: 'close' });
+});
+
 test('早押し: 押せない人・受付前・受付終了後・二重押しは無視される', async () => {
   const { host, players, eligible } = await buzzRoom(3);
   players[0].send({ t: 'buzz', ts: Date.now() });                    // 受付前

@@ -70,7 +70,7 @@
     ...(rankTagOf(u) ? [rankTagOf(u)] : []),
   ];
   /** この問題で押した順位（1着・2着 +〇ms）。pid から自分のユニットに結び付ける */
-  const pidOf = u => Object.keys(gs.pids ?? {}).find(k => gs.pids[k] === u.id);
+  const pidOf = u => Object.keys(gs.pids ?? {}).find(k => gs.pids[k] === u.id) ?? 'cpu:' + u.id;      // CPUの順位は、cpu:ID で届く
   const rankTagOf = u => p.ranks[pidOf(u)] ?? null;
 </script>
 

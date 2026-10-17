@@ -18,6 +18,7 @@ export class Room extends DurableObject {
     this.R = null;                 // {id,name,password,hostKey,players:{pid:{...}},hostGone}
     this.state = null;             // 進行役が送ってくる表示用の状態
     this.battle = null;            // 進行役が送ってくるバトルの全状態（進行役が替わっても続きから進められるように、サーバーが預かる）
+    this.cpuNames = {};            // CPUの pid（cpu:…） -> 名前（メモリのみ）
     this.rtts = new Map();         // pid -> 往復遅延(ms)。参加者が自己申告（メモリのみ）
     this.chat = [];                // 直近のチャット（メモリのみ）
     this.lastWinner = null;        // 直近の早押しの勝者（進行役が戻ったとき用）
@@ -95,6 +96,8 @@ export class Room extends DurableObject {
 
   /* ================================= 早押し ================================= */
   persistRound() { return this.ctx.storage.put('buzz', this.round.toJSON()); }
+  /** 順位表に出す名前。CPU（pid が cpu: で始まる）は、進行役が知らせた名前 */
+  nameOf = pid => this.R?.players[pid]?.name ?? this.cpuNames[pid] ?? (pid.startsWith('cpu:') ? 'CPU' : undefined);
 
   /** 遅れて届く押下を待つ時間が過ぎたら勝者を確定する */
   scheduleResolve() {
@@ -105,7 +108,7 @@ export class Room extends DurableObject {
   async resolve() {
     this.timer = null;
     const round = this.round;
-    const ranking = round.ranking(pid => this.R?.players[pid]?.name);
+    const ranking = round.ranking(this.nameOf);
     round.decided();
     await this.persistRound();
     if (!ranking.length) return;
@@ -233,6 +236,20 @@ export class Room extends DurableObject {
         await this.persistRound();
         this.toPlayers({ t: 'open', q: m.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
+      case 'cpu_buzz': {                                // CPU（魔王など）が押した。参加者と同じ順位表に入れて、いちばん早い者が勝つ
+        const pid = typeof m.id === 'string' || typeof m.id === 'number' ? 'cpu:' + m.id : '';
+        if (!pid || !(this.round.open || this.round.backup)) return;
+        if (!(pid in this.round.eligible)) this.round.eligible[pid] = 0;
+        this.cpuNames[pid] = String(m.name || 'CPU').slice(0, 12);
+        if (!this.round.record(pid, m.ts, Date.now())) return;
+        if (this.round.open) this.scheduleResolve();
+        else {
+          const all = this.round.ranking(this.nameOf);
+          const msg = { t: 'ranking', q: this.round.q, all };
+          this.toHost(msg); this.toPlayers(msg);
+        }
+        return;
+      }
       case 'add_eligible': {                            // 途中参戦した人を、いまの受付に加える（ほかの人の受付は変えない）
         const pid = m.pid;
         if (!this.R.players[pid] || !(this.round.open || this.round.backup) || pid in this.round.eligible) return;
@@ -242,9 +259,9 @@ export class Room extends DurableObject {
         return;
       }
       case 'next': {                                    // 連チャン: 誤答のあと、次の順位の人に回答権を移す
-        const list = this.round.ranking(pid => this.R?.players[pid]?.name, Array.isArray(m.exclude) ? m.exclude : []);
+        const list = this.round.ranking(this.nameOf, Array.isArray(m.exclude) ? m.exclude : []);
         if (!list.length) return this.toHost({ t: 'nobody', q: this.round.q });
-        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, at: this.round.raws[list[0].pid], ranking: list, all: this.round.ranking(pid => this.R?.players[pid]?.name) };
+        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, at: this.round.raws[list[0].pid], ranking: list, all: this.round.ranking(this.nameOf) };
         this.lastWinner = msg;
         this.toHost(msg); this.toPlayers(msg);
         return;
@@ -333,7 +350,7 @@ export class Room extends DurableObject {
         send(ws, { t: 'ack' });
         if (this.round.open) this.scheduleResolve();
         else {                                            // 勝者が決まったあとの押下（連チャンの2着以降）は記録して、順位を全員に知らせる
-          const all = this.round.ranking(p2 => this.R?.players[p2]?.name);
+          const all = this.round.ranking(this.nameOf);
           const msg = { t: 'ranking', q: this.round.q, all };
           this.toHost(msg); this.toPlayers(msg);
         }

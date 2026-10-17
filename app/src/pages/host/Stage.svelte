@@ -16,7 +16,7 @@
   // 参加者（端末を持つ人）は早押しで決まるので、進行役は選べない。魔王・CPUだけ進行役が選ぶ
   // 接続が切れている参加者のカードには印を付ける（戻ってこられるので、ユニットは残る）
   const offlineIds = $derived(new Set(Object.entries(G.pids ?? {}).filter(([pid]) => !host.lobby.find(l => l.pid === pid)?.online).map(([, id]) => id)));
-  const pidOf = u => Object.keys(G.pids ?? {}).find(k => G.pids[k] === u.id);
+  const pidOf = u => Object.keys(G.pids ?? {}).find(k => G.pids[k] === u.id) ?? 'cpu:' + u.id;      // CPUの順位は、cpu:ID で届く
   const tagsOf = u => [...tagsFor(u, G), ...(offlineIds.has(u.id) ? [{ t: '📴 切断中', cls: 'warn' }] : []), ...(host.ranks[pidOf(u)] ? [host.ranks[pidOf(u)]] : [])];
   // チャット回答（今の問題）を、その人のカードに吹き出しで出す
   const bubbles = $derived.by(() => {

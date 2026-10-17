@@ -156,6 +156,9 @@ export class HostStore {
     this.ranks = rankTags(m.all ?? m.ranking);
     this.rank = m.ranking.map((x, i) => `${i + 1}. ${x.name}${i ? ` (+${Math.round(x.ms)}ms)` : ''}`).join('　');
     this.quiz.freezeAt(m.at, this.conn?.offset);              // 押された位置で問読みを止める
+    const cpu = typeof m.pid === 'string' && m.pid.startsWith('cpu:') ? this.#cpuPending.get(m.pid) : null;
+    this.#cpuPending.clear();
+    if (cpu) { this.#cpuResolve(cpu); return; }              // CPUが最初に押していた
     const G = this.battle.G;
     if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid]);
   }
@@ -168,13 +171,28 @@ export class HostStore {
     const cpus = G.cpu && G.cfg?.cpuAuto ? G.units.filter(u => (u.isBoss || u.cpu) && !u.human && u.alive && !u.restNow).map(u => ({ id: u.id, name: u.name })) : [];
     this.quiz.sync(G.q, cpus, this.level);
   }
-  /** 問読みが確定ポイントに達する前後で、CPUが先に押した */
-  async #cpuBuzz(p) {
+  #cpuPending = new Map();           // サーバーに押下を送ったCPU { 'cpu:ID' → { id, name, ok, answer, question } }（勝者が決まるまで）
+  /**
+   * 問読みが、CPUの押す位置に達した。CPUも参加者と同じように、サーバーに押下を送り、いちばん早い者が回答権を取る
+   * （遅れて届く参加者の押下も、押した時刻で比べられる）。問読みは、押された時点で止める
+   */
+  #cpuBuzz(p) {
     const G = this.battle.G;
     if (!G || G.over || G.sel != null || this.battle.busy) return;
+    const pid = 'cpu:' + p.id;
+    this.#cpuPending.set(pid, p);
+    this.quiz.pause();
+    if (!this.conn?.send({ t: 'cpu_buzz', id: p.id, name: p.name, ts: this.conn.stamp(performance.now()) })) {
+      this.#cpuPending.delete(pid);       // 通信できないときは、すぐにCPUの回答にする
+      this.#cpuResolve(p);
+    }
+  }
+  /** CPUが回答権を取った。正解なら問題が終わり、誤答ならCPUが罰を受けて、参加者がもう一度早押しする */
+  async #cpuResolve(p) {
     const wrong = !p.ok && p.question?.wrong?.length ? p.question.wrong[Math.floor(Math.random() * p.question.wrong.length)] : null;
     toast(p.ok ? `🤖 ${p.name} が先に押して正解（${p.answer}）` : `🤖 ${p.name} が先に押して誤答${wrong ? `（${wrong}）` : ''}`, 3500);
-    await this.battle.cpuBuzz(p.id, p.ok);
+    const done = await this.battle.cpuBuzz(p.id, p.ok);
+    if (done && !p.ok) this.reopen();
   }
 
   /* ---------- 選択ダイアログ（回答者の端末へ送る） ---------- */
@@ -334,6 +352,7 @@ export class HostStore {
     }
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {
       this.#openedFor = G.q;
+      this.#cpuPending.clear();
       this.ranks = {};
       this.conn.send({ t: 'open', q: G.q, chain: this.buzzRule === 'chain', eligible: eligibleDelays(G) });
     }
