@@ -162,6 +162,20 @@ test('入室: IDを失って戻った人は、同じ名前で接続が切れた�
   host.send({ t: 'close' });
 });
 
+test('早押し: 受付中に接続し直した人にも、いまの受付が届く', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'たろう');
+  host.send({ t: 'open', q: 1, eligible: { [p.pid]: 0 } });
+  await p.wait('open');
+  p.ws.close();
+  await sleep(100);
+  const again = await client(id);
+  again.send({ t: 'join', id, name: 'たろう', pid: p.pid });
+  const o = await again.wait('open');
+  assert.deepEqual(o.eligible, [p.pid]);
+  host.send({ t: 'close' });
+});
+
 test('参加者の増減・プロフィール変更が進行役に届く', async () => {
   const { id, host } = await makeRoom();
   host.clear();

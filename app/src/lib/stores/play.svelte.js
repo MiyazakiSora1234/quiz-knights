@@ -144,7 +144,7 @@ export class PlayStore {
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
         return;
       case 'locked': return;     // 回答者が決まったあとも押せる（順位の表示のため。連チャンでは回答権の移り先にもなる）
-      case 'ack': this.sent = true; return;
+      case 'ack': this.sent = true; this.#acked = true; return;
       case 'ranking': if (m.q === this.gs?.q || this.gs == null) this.ranks = rankTags(m.all); return;
       case 'winner':
         this.ranks = rankTags(m.all ?? m.ranking);
@@ -180,9 +180,13 @@ export class PlayStore {
     if (!this.canBuzz) return;
     const ts = this.conn.stamp(e?.timeStamp ?? performance.now());
     unlockAudio(); sfx.press(); vib(25);
-    this.conn.send({ t: 'buzz', ts, rtt: this.conn.rtt != null ? Math.round(this.conn.rtt) : undefined });
+    if (!this.conn.send({ t: 'buzz', ts, rtt: this.conn.rtt != null ? Math.round(this.conn.rtt) : undefined })) { toast('通信が切れています。つながるまで少しお待ちください'); return; }
     this.sent = true;   // 通信を待たずに押した感触を返す
+    this.#acked = false;
+    // 受け付けた合図（ack）が来ないときは、届いていないので押し直せるようにする
+    setTimeout(() => { if (this.sent && !this.#acked && !this.hasWinner) { this.sent = false; toast('届いていないかもしれません。もう一度押してください'); } }, 1800);
   }
+  #acked = false;
 
   /* ---------- ロビー ---------- */
   #sendProfile() { this.conn.send({ t: 'profile', job: this.myJob, team: this.myTeam }); }

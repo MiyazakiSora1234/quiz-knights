@@ -199,6 +199,12 @@ export class Room extends DurableObject {
     send(ws, { t: 'joined', pid: p.pid, room: this.R.id, roomName: this.R.name, name: p.name, flavor: p.flavor, job: p.job, team: p.team, delay: p.delay || 0 });
     for (const e of this.chat) send(ws, e);
     if (this.state) send(ws, { t: 'state', state: this.state });
+    // 受付中に入り直した人にも、いまの受付を知らせる（押せないまま次の問題まで待たされないように）
+    if ((this.round.open || this.round.backup) && p.pid in this.round.eligible) {
+      send(ws, { t: 'open', q: this.round.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
+      if (p.pid in this.round.buzzes) send(ws, { t: 'ack' });
+    }
+    if (this.lastWinner && this.lastWinner.q === this.round.q && !this.round.open) send(ws, this.lastWinner);
     if (isNew) this.say({ sys: true, text: `${p.name} が入室しました。` });
     this.lobby();
   }
