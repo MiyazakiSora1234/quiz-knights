@@ -73,7 +73,7 @@
 {/if}
 
 <style>
-  .qp{position:sticky;top:60px;z-index:20;background:var(--s1);border:1px solid var(--line2);border-radius:14px;padding:10px 14px 12px;margin-bottom:14px;box-shadow:0 6px 20px #0008}
+  .qp{position:relative;z-index:1;background:var(--s1);border:1px solid var(--line2);border-radius:14px;padding:10px 14px 12px;margin-bottom:14px;box-shadow:0 6px 20px #0008}
   .top{display:flex;align-items:center;gap:6px}
   .no{font-family:var(--display);font-weight:800;color:var(--gold)}.of{color:var(--mut);font-size:.8em;font-weight:500}
   .grow{flex:1}
@@ -96,5 +96,5 @@
   .lnk:focus-visible{outline:2px solid var(--gold)}
   .plans{margin-top:6px;font-size:.8rem;color:var(--mut);display:flex;flex-direction:column;gap:2px}
   .plans .used{opacity:.55}
-  @media(max-width:900px){.text{font-size:1.25rem}.qp{top:56px}}
+  @media(max-width:900px){.text{font-size:1.15rem;line-height:1.6}.next{min-width:130px;padding:10px 14px}}
 </style>
