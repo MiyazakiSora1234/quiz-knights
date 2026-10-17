@@ -336,6 +336,19 @@ export function createBattle(ui) {
     await endQuestion(null);
   }
 
+  /* ---------- CPUの早押し ---------- */
+  /** CPU（魔王・CPUの職業）が先に押した。正解なら誰も得をせずに問題が終わり、誤答ならCPUが罰を受けて、受付は続く */
+  const doCpuBuzz = (u, ok) => asActor(u, () => doCpuBuzzBody(u, ok));
+  async function doCpuBuzzBody(u, ok) {
+    stat(u, ok ? 'correct' : 'wrong');
+    log(`🤖 ${nm(u)} が先に押して${ok ? '正解' : '誤答'}`, 'sys');
+    ctx.event({ kind: 'answer', ok, who: u.name });
+    await wait(ok ? 900 : 700);
+    if (ok) { await endQuestion(null); return; }
+    await wrongPenalty(u);
+    checkEnd();
+  }
+
   /* ---------- スルー ---------- */
   async function doThrow() {
     log('問題スルー', 'sys');
@@ -521,6 +534,12 @@ export function createBattle(ui) {
       return true;
     },
     skip() { return transact(doThrow); },
+    /** CPUの早押し。回答者が決まっていない間だけ（ok: 正解したか） */
+    cpuBuzz(id, ok) {
+      const u = G && G.units.find(x => x.id === id);
+      if (!u || G.sel != null || G.over || !(u.isBoss || u.cpu) || u.human || !u.alive || u.restNow) return false;
+      return transact(() => doCpuBuzz(u, !!ok));
+    },
     undo() {
       if (busy || !undoStack.length) return false;
       redoStack.push(JSON.stringify(G));

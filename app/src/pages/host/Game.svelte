@@ -1,6 +1,7 @@
 <script>
   import GameHeader from './GameHeader.svelte';
   import Stage from './Stage.svelte';
+  import QuestionPanel from './QuestionPanel.svelte';
   import ControlPanel from './ControlPanel.svelte';
   import GameOver from './GameOver.svelte';
   import UnitEditor from './UnitEditor.svelte';
@@ -48,7 +49,7 @@
 <GameHeader bind:this={header} {host} {G} bind:chatOpen {answerCount} />
 
 <div class="layout">
-  <Stage {host} {G} />
+  <div class="mainc"><QuestionPanel {host} {G} /><Stage {host} {G} /></div>
   <aside class="side">
     <ControlPanel {host} {G} />
     {#if chatOpen}<div class="chatdock"><ChatPanel {host} {G} /></div>{/if}
@@ -76,6 +77,7 @@
   .wait{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--gold);border-radius:999px;padding:6px 8px 6px 16px;box-shadow:0 8px 24px #000a;font-weight:700}
   .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
+  .mainc{min-width:0}
   .chatdock{display:block}
   .sheet{position:fixed;inset:0;background:#0009;z-index:60;display:flex;justify-content:flex-end;align-items:flex-start;padding:64px 14px 14px}
   .sheet-in{width:min(100%,420px);max-height:calc(100dvh - 80px);overflow:auto;display:flex;flex-direction:column;gap:6px}

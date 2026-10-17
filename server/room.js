@@ -109,7 +109,7 @@ export class Room extends DurableObject {
     round.decided();
     await this.persistRound();
     if (!ranking.length) return;
-    const msg = { t: 'winner', q: round.q, pid: ranking[0].pid, name: ranking[0].name, ranking, all: ranking };
+    const msg = { t: 'winner', q: round.q, pid: ranking[0].pid, name: ranking[0].name, at: round.raws[ranking[0].pid], ranking, all: ranking };
     this.lastWinner = msg;                // 進行役が不在でも、戻ってきたときに伝えられるよう覚えておく
     this.toHost(msg);
     this.toPlayers(msg);
@@ -244,7 +244,7 @@ export class Room extends DurableObject {
       case 'next': {                                    // 連チャン: 誤答のあと、次の順位の人に回答権を移す
         const list = this.round.ranking(pid => this.R?.players[pid]?.name, Array.isArray(m.exclude) ? m.exclude : []);
         if (!list.length) return this.toHost({ t: 'nobody', q: this.round.q });
-        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, ranking: list, all: this.round.ranking(pid => this.R?.players[pid]?.name) };
+        const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, at: this.round.raws[list[0].pid], ranking: list, all: this.round.ranking(pid => this.R?.players[pid]?.name) };
         this.lastWinner = msg;
         this.toHost(msg); this.toPlayers(msg);
         return;

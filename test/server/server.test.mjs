@@ -226,6 +226,7 @@ test('早押し: 最初に押した人が勝ち、順位とms差が全員に届�
   assert.equal(w.pid, players[1].pid);
   assert.deepEqual(w.ranking.map(x => x.name), ['P2', 'P1']);
   assert.ok(w.ranking[1].ms >= 39 && w.ranking[1].ms <= 41);
+  assert.ok(Math.abs(w.at - (t - 40)) <= 5, '勝者が押した時刻（ディレイを足す前）が届く: 問読みの位置を決めるのに使う');
   for (const p of players) assert.equal((await p.wait('winner')).pid, players[1].pid);
   host.send({ t: 'close' });
 });

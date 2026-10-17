@@ -36,6 +36,7 @@
         <div class="menu" transition:fly={{ y: -6, duration: 120 }}>
           <button class="mi" onclick={() => { panel.log = true; menu = false; }}>📜 バトルログ</button>
           <button class="mi" onclick={() => { panel.rules = true; menu = false; }}>📖 職業・ルール一覧</button>
+          <button class="mi" onclick={() => { panel.bank = true; menu = false; }}>📚 問題集{host.quiz.has ? `（${host.quiz.questions.length}問）` : ''}</button>
           <button class="mi" onclick={() => { host.copyUrl(); menu = false; }}>🔗 参加用URLをコピー</button>
           <button class="mi" onclick={() => { host.buzzRule = ({ next: 'retry', retry: 'chain', chain: 'next' })[host.buzzRule]; }}>{host.buzzRule === 'chain' ? '⛓ 誤答：連チャン（次の順位へ）' : host.buzzRule === 'retry' ? '🔁 誤答：誤答者を除いて再受付' : '⏭ 誤答：次の問題へ'}</button>
           <button class="mi" onclick={toggleSound}>{sound.on ? '🔊 効果音：オン' : '🔇 効果音：オフ'}</button>

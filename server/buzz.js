@@ -10,6 +10,7 @@ export class BuzzRound {
     this.chain = chain;        // 連チャン: 勝者が決まったあとの押下（2着・3着…）も記録する
     this.backup = backup;      // 勝者が決まったあと、2着以降を受け付けている状態
     this.buzzes = {};          // pid -> 実効時刻 e（押した時刻 + ディレイ）
+    this.raws = {};            // pid -> ディレイを足す前の、押した時刻（問読みの位置を決めるのに使う）
   }
 
   /** 次の問題の受付を始める */
@@ -27,6 +28,7 @@ export class BuzzRound {
   record(pid, ts, arrival) {
     if (!this.canBuzz(pid)) return false;
     const claimed = Math.min(arrival, Math.max(arrival - TS_MAX_PAST_MS, +ts || arrival));
+    this.raws[pid] = claimed;
     this.buzzes[pid] = claimed + (this.eligible[pid] || 0);
     return true;
   }

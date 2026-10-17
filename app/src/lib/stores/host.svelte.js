@@ -7,6 +7,7 @@ import { store, session, KEY } from '../storage.js';
 import { syncRoster, startBlock } from '../roster.js';
 import { publicState, eligibleDelays } from '../publish.js';
 import { rankTags } from '../ranks.js';
+import { QuizStore } from './quiz.svelte.js';
 
 let rowKey = 0;
 const nextKey = () => ++rowKey;
@@ -35,11 +36,13 @@ export class HostStore {
   ranks = $state({});                // この問題の早押しの順位 pid → 表示用のタグ
   rtt = $state(null);
   saved = $state(null);              // 途中のバトル（再開できる）
+  quiz = new QuizStore();            // 問題集と問読みの進み具合
   #openedFor = null;                 // 早押しを受け付け済みの問題番号
   #lobbyInit = false;
 
   constructor(id) {
     this.id = id;
+    this.quiz.onCpu = p => this.#cpuBuzz(p);
     this.battle = createBattle({
       ask: (title, options, o) => this.#ask(title, options, o), toast,
       pause: ms => new Promise(r => setTimeout(r, ms)),
@@ -152,8 +155,26 @@ export class HostStore {
     sfx.buzz();
     this.ranks = rankTags(m.all ?? m.ranking);
     this.rank = m.ranking.map((x, i) => `${i + 1}. ${x.name}${i ? ` (+${Math.round(x.ms)}ms)` : ''}`).join('　');
+    this.quiz.freezeAt(m.at, this.conn?.offset);              // 押された位置で問読みを止める
     const G = this.battle.G;
     if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid]);
+  }
+
+  /* ---------- 問読み・CPUの早押し ---------- */
+  /** バトルの問題番号に合わせて、問題集の出題とCPUの押し方を更新する */
+  syncQuiz() {
+    const G = this.battle.G;
+    if (!G || !this.quiz.has) return;
+    const cpus = G.cpu && G.cfg?.cpuAuto ? G.units.filter(u => (u.isBoss || u.cpu) && !u.human && u.alive && !u.restNow).map(u => ({ id: u.id, name: u.name })) : [];
+    this.quiz.sync(G.q, cpus, this.level);
+  }
+  /** 問読みが確定ポイントに達する前後で、CPUが先に押した */
+  async #cpuBuzz(p) {
+    const G = this.battle.G;
+    if (!G || G.over || G.sel != null || this.battle.busy) return;
+    const wrong = !p.ok && p.question?.wrong?.length ? p.question.wrong[Math.floor(Math.random() * p.question.wrong.length)] : null;
+    toast(p.ok ? `🤖 ${p.name} が先に押して正解（${p.answer}）` : `🤖 ${p.name} が先に押して誤答${wrong ? `（${wrong}）` : ''}`, 3500);
+    await this.battle.cpuBuzz(p.id, p.ok);
   }
 
   /* ---------- 選択ダイアログ（回答者の端末へ送る） ---------- */
@@ -302,6 +323,7 @@ export class HostStore {
   #publish(force = false) {
     const G = this.battle.G;
     if (!G || !this.conn) return;
+    this.syncQuiz();
     this.conn.send({ t: 'state', state: publicState(G) });
     for (const [pid, uid] of Object.entries(G.pids)) {          // 持ち物は、本人と、同じ陣営の仲間にだけ教える（相手には個数だけ）
       const u = G.units.find(x => x.id === uid);

@@ -18,6 +18,7 @@
     <div class="logo">QUIZ KNIGHTS <span class="sub">／ 進行役：バトルの準備</span></div>
     <div class="acts">
       <button class="btn sm" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
+      <button class="btn sm" onclick={() => (panel.bank = true)}>📚 問題集{host.quiz.has ? `（${host.quiz.questions.length}問）` : ''}</button>
       <button class="btn sm" onclick={() => (panel.rules = true)}>職業・ルール一覧</button>
       <button class="btn sm" onclick={() => host.release()}>進行役をやめる</button>
       <button class="btn sm danger" onclick={async () => (await confirmAsk('部屋を閉じますか？', '参加者は全員退室になります。', '部屋を閉じる')) && host.closeRoom()}>部屋を閉じる</button>

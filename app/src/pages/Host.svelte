@@ -5,6 +5,7 @@
   import Setup from './host/Setup.svelte';
   import Game from './host/Game.svelte';
   import QuizSettings from '../components/QuizSettings.svelte';
+  import QuestionBank from '../components/QuestionBank.svelte';
 
   let { id } = $props();
   // svelte-ignore state_referenced_locally
@@ -19,6 +20,7 @@
 {/if}
 
 <QuizSettings who={host} />
+<QuestionBank who={host} />
 
 {#if host.status === 'replaced'}
   <div class="rep" transition:fade={{ duration: 150 }}>
