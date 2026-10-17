@@ -24,6 +24,21 @@ async function joined(env, mods, { pid = 'me', joinedMsg = {} } = {}) {
 }
 
 /* ======================= PlayStore（参加者） ======================= */
+test('[参加者] CPUが先に押したら、「🤖 魔王1 が先に押した！」と知らせ、順位に載る', async () => {
+  const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
+  try {
+    const { p, ws } = await joined(env, mods);
+    ws.recv({ t: 'state', state: gstate() });
+    ws.recv({ t: 'open', q: 1, eligible: ['me'] });
+    const r = [{ pid: 'cpu:7', name: '魔王1', ms: 0 }, { pid: 'me', name: 'たろう', ms: 40 }];
+    ws.recv({ t: 'winner', q: 1, pid: 'cpu:7', name: '魔王1', ranking: r, all: r });
+    assert.ok(mods.ui.toasts.some(t => /魔王1 が先に押した/.test(t.msg)));
+    assert.equal(p.ranks['cpu:7'].t, '🥇 1着'); assert.equal(p.ranks.me.t, '2着 +40ms');
+    assert.equal(p.myWin, false);
+    p.conn.close();
+  } finally { env.restore(); }
+});
+
 test('[参加者] 部屋が存在しなければ、お知らせを出して部屋一覧へ戻る。存在すれば参加ダイアログ', async () => {
   const mods = await loadStores();
   let env = fakeEnv({ rooms: [] });

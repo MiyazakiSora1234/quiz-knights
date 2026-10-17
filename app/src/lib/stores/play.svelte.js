@@ -151,6 +151,7 @@ export class PlayStore {
         // 受付は閉じない: 後から押した人の順位も、全員に表示する
         this.winner = m;
         if (m.pid === this.pid) { sfx.win(); vib([120, 60, 200]); } else sfx.other();
+        if (typeof m.pid === 'string' && m.pid.startsWith('cpu:')) toast(`🤖 ${m.name} が先に押した！`, 2200);      // CPUは回答中の印が付かないので、押したことを知らせる
         return;
       case 'closed':
         this.#forgetPid();
