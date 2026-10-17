@@ -1,33 +1,30 @@
 <script>
   import { untrack } from 'svelte';
   import { panel, modal } from '../../lib/stores/ui.svelte.js';
+  import { SPEED_MIN, SPEED_MAX } from '../../lib/stores/quiz.svelte.js';
 
-  // 問読みの画面（進行役だけに出る）。1塊ずつ送ると文字の色が進み、早押しがあるとその位置で止まる
+  // 問読みの画面（進行役だけに出る）。一定の速さで1文字ずつ読み進み、カラオケの歌詞のように読んだ部分の色が変わる。早押しがあるとその位置で止まる
   let { host, G } = $props();
   const quiz = $derived(host.quiz);
   const q = $derived(quiz.cur);
   const total = $derived(quiz.questions.length);
   const stopped = $derived(quiz.frozen != null);
+  const chars = $derived(q ? [...q.q] : []);
   let detail = $state(false);
 
   // 問題の番号や問題集が変わったときに、出題とCPUの押し方を合わせる
   $effect(() => { G.q; quiz.has; quiz.offset; untrack(() => host.syncQuiz()); });
 
-  /** → / Space: 次の塊　← : 1つ戻す */
+  /** Space: 読み始める／一時停止　→ : 次の塊まで進める　← : 前の塊に戻す */
   function onkey(e) {
     if (!q || G.over || modal.req || panel.rules || panel.log || panel.bank || panel.quiz || host.editing != null) return;
     const t = document.activeElement?.tagName;
     if (/INPUT|TEXTAREA|SELECT/.test(t) || e.metaKey || e.altKey || e.ctrlKey) return;
-    if (e.key === 'ArrowRight' || (e.key === ' ' && t !== 'BUTTON')) { e.preventDefault(); quiz.advance(); }
+    if (e.key === ' ' && t !== 'BUTTON') { e.preventDefault(); quiz.toggle(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); quiz.advance(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); quiz.back(); }
   }
-  /** 確定ポイント（文字数）が、何塊目の途中・終わりにあたるか */
-  const sureIn = $derived.by(() => {
-    if (!q?.sure) return -1;
-    let n = 0;
-    for (let i = 0; i < quiz.chunks.length; i++) { n += quiz.chunks[i].length; if (n >= q.sure) return i; }
-    return -1;
-  });
+  const label = $derived(quiz.reading ? '一時停止' : quiz.done ? '最後まで読みました' : stopped ? '続きを読む' : quiz.chars === 0 ? '読み始める' : '再開');
 </script>
 
 <svelte:window onkeydown={onkey} />
@@ -42,8 +39,8 @@
       <button class="btn sm ghost" onclick={() => (panel.bank = true)}>問題集</button>
     </div>
 
-    <div class="text" aria-live="polite">
-      {#each quiz.chunks as c, i}<span class="ch" class:read={i < quiz.shown} class:last={i === quiz.shown - 1 && stopped} class:sure={i === sureIn}>{c}</span>{#if i === quiz.shown - 1 && stopped}<span class="hand" title="ここで押されました">✋</span>{/if}{/each}
+    <div class="text" aria-live="off">
+      {#each chars as ch, i}<span class="c" class:read={i < quiz.chars} class:sure={i === (q.sure ?? 0) - 1}>{ch}</span>{#if stopped && i === quiz.frozen - 1}<span class="hand" title="ここで押されました">✋</span>{/if}{/each}
     </div>
 
     <div class="ans">
@@ -52,10 +49,18 @@
     </div>
 
     <div class="ctl">
-      <button class="btn primary next" disabled={quiz.done} onclick={() => quiz.advance()}>{quiz.shown === 0 ? '読み始める' : quiz.done ? '最後まで表示' : stopped ? '続きを表示' : '次へ'}<kbd>→</kbd></button>
-      <button class="btn sm" disabled={quiz.shown === 0} onclick={() => quiz.back()} title="1つ戻す">← 戻す</button>
-      <button class="btn sm ghost" disabled={quiz.done} onclick={() => quiz.revealAll()}>全部</button>
-      <button class="btn sm ghost" disabled={quiz.shown === 0} onclick={() => quiz.restart()}>最初から</button>
+      <button class="btn primary next" class:run={quiz.reading} disabled={quiz.done} onclick={() => quiz.toggle()}>{label}<kbd>Space</kbd></button>
+      <button class="btn sm" disabled={quiz.chars === 0} onclick={() => quiz.back()} title="前の塊に戻す">← 戻す</button>
+      <button class="btn sm" disabled={quiz.done} onclick={() => quiz.advance()} title="次の塊まで進める">進める →</button>
+      <button class="btn sm ghost" disabled={quiz.chars === 0 && !quiz.reading} onclick={() => quiz.restart()}>最初から</button>
+    </div>
+
+    <div class="spd">
+      <span>読む速さ</span>
+      <button class="btn sm ghost" aria-label="遅くする" disabled={quiz.speed <= SPEED_MIN} onclick={() => quiz.setSpeed(quiz.speed - 1)}>−</button>
+      <b>{quiz.speed}<small>字/秒</small></b>
+      <button class="btn sm ghost" aria-label="速くする" disabled={quiz.speed >= SPEED_MAX} onclick={() => quiz.setSpeed(quiz.speed + 1)}>＋</button>
+      <span class="bar" aria-hidden="true"><i style="width:{q.q.length ? (quiz.chars / q.q.length) * 100 : 0}%"></i></span>
     </div>
 
     <div class="cpu">
@@ -77,11 +82,10 @@
   .top{display:flex;align-items:center;gap:6px}
   .no{font-family:var(--display);font-weight:800;color:var(--gold)}.of{color:var(--mut);font-size:.8em;font-weight:500}
   .grow{flex:1}
-  .text{font-size:1.5rem;line-height:1.7;margin:6px 0 4px;font-weight:600;letter-spacing:.03em}
-  .ch{color:#6f665a;transition:color .12s}
-  .ch.read{color:var(--tx)}
-  .ch.last{color:var(--gold);text-shadow:0 0 12px #e8c46a66}
-  .ch.sure{border-bottom:2px dotted #ffffff40}
+  .text{font-size:1.5rem;line-height:1.7;margin:6px 0 4px;font-weight:700;letter-spacing:.03em}
+  .c{color:#6f665a}
+  .c.read{color:var(--tx)}
+  .c.sure{border-right:2px dotted #ffffff55}
   .hand{margin:0 4px;animation:pop .25s}
   @keyframes pop{from{transform:scale(.4)}to{transform:scale(1)}}
   .ans{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:.92rem;margin-bottom:8px}
@@ -90,6 +94,11 @@
   .sure-note{margin-left:auto;font-size:.76rem;color:var(--mut)}.sure-note.off{color:var(--gold)}
   .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .next{flex:1;min-width:150px;padding:12px 18px;font-size:1.1rem;font-weight:800}
+  .next.run{filter:saturate(.7) brightness(.95)}
+  .spd{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.84rem;color:var(--mut)}
+  .spd b{color:var(--tx);min-width:4.2em;text-align:center}.spd small{font-weight:400;color:var(--mut);margin-left:2px}
+  .bar{flex:1;height:6px;border-radius:3px;background:#0006;overflow:hidden;margin-left:6px}
+  .bar i{display:block;height:100%;background:var(--gold)}
   .cpu{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:.84rem;color:var(--mut)}
   .tgl{display:flex;align-items:center;gap:6px;cursor:pointer}
   .lnk{all:unset;cursor:pointer;color:var(--gold);font-size:.8rem;text-decoration:underline}

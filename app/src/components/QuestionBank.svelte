@@ -64,7 +64,7 @@
             <button class="btn sm ghost" onclick={() => { quiz.addSample(); toast('サンプルを入れました'); }}>サンプルを入れる</button>
             {#if quiz.has}<button class="btn sm ghost" onclick={download}>⬇ 書き出し</button><button class="btn sm ghost danger" onclick={clearAll}>全部消す</button>{/if}
           </div>
-          <textarea class="input ta" bind:value={text} rows="4" placeholder={'JSON を貼るか、1行1問で書きます:\n日本で/一番高い/山は/何でしょう？  ||  富士山  ||  7\n（問題文は / で区切る　||　正解　||　確定ポイント(文字数・省略可)）'}></textarea>
+          <textarea class="input ta" bind:value={text} rows="4" placeholder={'JSON を貼るか、1行1問で書きます:\n日本で/一番高い｜/山は/何でしょう？  ||  富士山\n（/ は読みの区切り、｜ は確定ポイント（答えが絞れる位置）。 || のあとが正解）'}></textarea>
           <div class="acts"><button class="btn sm primary" disabled={!text.trim()} onclick={() => run(text, true)}>置き換えて取り込む</button><button class="btn sm" disabled={!text.trim()} onclick={() => run(text, false)}>末尾に追加</button></div>
           {#if report}
             <div class="report" class:bad={report.errors.length}>

@@ -11,6 +11,13 @@ test('スラッシュ: 文 ⇄ 位置の変換。端・連続・全角も扱う'
   assert.equal(toSlashed('日本で一番高い山は', [3, 7]), '日本で/一番高い/山は');
   for (const s of ['あ/いう/えお', 'a/b/c/d']) { const p = parseSlashed(s); assert.equal(toSlashed(p.q, p.cuts), s); }
   assert.deepEqual(parseSlashed(''), { q: '', cuts: [] });
+  // 「｜」は確定ポイントの印
+  assert.deepEqual(parseSlashed('日本で/一番高い｜/山は'), { q: '日本で一番高い山は', cuts: [3, 7], sure: 7 });
+  assert.deepEqual(parseSlashed('｜あい'), { q: 'あい', cuts: [] }, '先頭の印は無視');
+  const m = normalizeQuestion({ q: 'あい/うえ｜/お', a: 'x', sure: 1 }, 1).q;
+  assert.deepEqual([m.q, m.cuts, m.sure], ['あいうえお', [2, 4], 4], '問題文の印が、sure の指定より優先される');
+  assert.equal(normalizeQuestion({ q: 'あいう/えお', a: 'x', sure: 3 }, 1).q.sure, 3, '印が無ければ sure の指定を使う');
+  assert.equal(importText('あい/うえ｜/お || 答え').questions[0].sure, 4, '1行1問でも印が使える');
 });
 
 test('1問の検査: 必須項目・範囲外の位置・確定ポイント', () => {

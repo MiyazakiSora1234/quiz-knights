@@ -574,13 +574,16 @@ test('[引き継ぎ] 参加者: 進行役が替わったら、途中だった選
 });
 
 /* ======================= 問題集・問読み・CPUの早押し ======================= */
-/** 登場の演出(busy)が終わるまで待ってから、問題をスルーする */
-async function skipQ(h) { for (let i = 0; i < 100; i++) { if (!h.busy && (await h.skip())) { await tick(30); return; } await tick(20); } throw new Error('スルーできない'); }
+/** 実時間で待つ（偽の環境では200ms以上の待ちが即座に終わるため、100msずつ待つ） */
+const wait = async ms => { for (let t = 0; t < ms; t += 100) await tick(100); };
 const BANK = JSON.stringify({ questions: [
   { q: 'あいうえおかきくけこ', a: '答え1', cuts: [2, 5, 8], sure: 5, wrong: ['誤1'] },
   { q: 'さしすせそたちつてと', a: '答え2', cuts: [3, 6], sure: 6 },
 ] });
-test('[進行役] 問題集: 取り込み・保存・手動送り。バトルの第N問に合わせて出題が進む', async () => {
+/** 登場の演出(busy)が終わるまで待ってから、問題をスルーする */
+async function skipQ(h) { for (let i = 0; i < 100; i++) { if (!h.busy && (await h.skip())) { await tick(30); return; } await tick(20); } throw new Error('スルーできない'); }
+
+test('[進行役] 問題集: 取り込み・保存・塊ごとの移動。バトルの第N問に合わせて出題が進む', async () => {
   const mods = await loadStores(); const env = fakeEnv();
   try {
     const { h } = await hostReady(env, mods);
@@ -591,50 +594,86 @@ test('[進行役] 問題集: 取り込み・保存・手動送り。バトルの
     h.start(); await tick(30);
     const qz = h.quiz;
     assert.equal(qz.index, 0); assert.equal(qz.cur.a, '答え1');
-    assert.equal(qz.shown, 0);
-    assert.equal(qz.advance(), true); assert.equal(qz.shown, 1); assert.equal(qz.chars, 2);
+    assert.equal(qz.chars, 0); assert.equal(qz.reading, false);
+    assert.equal(qz.advance(), true); assert.equal(qz.chars, 2, '次の塊の終わりまで進む');
     qz.advance(); assert.equal(qz.chars, 5);
-    qz.back(); assert.equal(qz.shown, 1);
+    qz.back(); assert.equal(qz.chars, 2, '前の塊の初めに戻る');
+    qz.back(); assert.equal(qz.chars, 0);
     qz.revealAll(); assert.equal(qz.done, true); assert.equal(qz.advance(), false);
-    qz.restart(); assert.equal(qz.shown, 0);
+    qz.restart(); assert.equal(qz.chars, 0);
     qz.jump(1); assert.equal(qz.cur.a, '答え2', '手動で次の問題へ');
     qz.jump(-1);
     // 第2問になると2問目が出て、読み始めに戻る。第3問は1問目に戻る（周回）
     qz.advance();
     await skipQ(h);
-    assert.equal(h.G.q, 2); assert.equal(qz.cur.a, '答え2'); assert.equal(qz.shown, 0);
+    assert.equal(h.G.q, 2); assert.equal(qz.cur.a, '答え2'); assert.equal(qz.chars, 0);
     await skipQ(h);
     assert.equal(qz.cur.a, '答え1');
     // 新しい進行役の画面でも、保存した問題集が読める
-    const h2 = new mods.host.HostStore(3);
-    assert.equal(h2.quiz.questions.length, 2);
+    assert.equal(new mods.host.HostStore(3).quiz.questions.length, 2);
     // 壊れた保存は無視して空で始まる
     env.local.setItem('qk_bank', '{broken'); assert.equal(new mods.host.HostStore(3).quiz.has, false);
     h.destroy();
   } finally { env.restore(); }
 });
-test('[進行役] 早押しで問読みが止まる: 勝者の押した時刻から、読み済みの塊を決める', async () => {
+test('[進行役] 問読み: 一定の速さで進み、一時停止・再開・速さの変更ができる。速さは保存される', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const { h } = await hostReady(env, mods);
+    h.quiz.importFrom(BANK); h.quiz.setCpuOn(false); h.start(); await tick(30);
+    const qz = h.quiz;
+    assert.equal(qz.speed, 7);
+    qz.setSpeed(20); assert.equal(env.local.getItem('qk_read_speed'), '20');
+    assert.equal(new mods.host.HostStore(3).quiz.speed, 20, '次回も同じ速さ');
+    qz.setSpeed(999); assert.equal(qz.speed, 20, '範囲外は上限に丸める');
+    qz.setSpeed(1); assert.equal(qz.speed, 2);
+    qz.setSpeed(20);
+    assert.equal(qz.start(), true); assert.equal(qz.reading, true);
+    await wait(250);
+    qz.pause();
+    const p1 = qz.chars;
+    assert.ok(p1 >= 2 && p1 <= 9, `250ms で ${p1} 字（20字/秒なら約5字）`);
+    assert.equal(qz.reading, false);
+    await wait(150); assert.equal(qz.chars, p1, '停止中は進まない');
+    qz.start(); await wait(600);
+    assert.equal(qz.done, true, '最後まで読むと自動で止まる'); assert.equal(qz.reading, false); assert.equal(qz.chars, 10);
+    assert.equal(qz.start(), false, '読み終えたら始められない');
+    qz.restart(); assert.equal(qz.chars, 0);
+    // 読み進めている最中に塊を飛ばしても、そこから読み続ける
+    qz.setSpeed(2); qz.start(); qz.advance(); assert.equal(qz.chars, 2); assert.equal(qz.reading, true);
+    qz.toggle(); assert.equal(qz.reading, false);
+    h.destroy();
+  } finally { env.restore(); }
+});
+test('[進行役] 早押しで問読みが止まる: 勝者の押した時刻の位置（文字）で止まり、続きを読める', async () => {
   const mods = await loadStores(); const env = fakeEnv();
   try {
     const { h, ws } = await hostReady(env, mods);
     h.quiz.importFrom(BANK); h.quiz.setCpuOn(false); h.start(); await tick(30);
     const qz = h.quiz, off = h.conn.offset;
+    qz.setSpeed(10); qz.start();
     const t0 = performance.now();
-    qz.advance(); await tick(60); const t1 = performance.now(); qz.advance(); await tick(60); qz.advance();
-    // 2塊目を出した直後に押された（3塊目を出す前）→ 2塊で止まる
-    ws.recv({ t: 'winner', q: 1, pid: 'p0', name: 'P0', at: t1 + 20 + off, ranking: [{ pid: 'p0', name: 'P0', ms: 0 }], all: [] });
+    const pressAt = t0 + 250;                                   // 250ms 時点（約2〜3字）に押された
+    await wait(600);                                            // その後も読み進めて約6字まで進んでいた
+    assert.ok(qz.chars >= 5, `進んでいる: ${qz.chars}`);
+    ws.recv({ t: 'winner', q: 1, pid: 'p0', name: 'P0', at: pressAt + off, ranking: [{ pid: 'p0', name: 'P0', ms: 0 }], all: [] });
     await tick(20);
-    assert.equal(qz.frozen, 2); assert.equal(qz.shown, 2);
-    // 続きを表示すると止まりが解ける
-    qz.advance(); assert.equal(qz.frozen, null); assert.equal(qz.shown, 3);
-    // 時刻が無い（古い形式）ときは、いま表示している位置で止まる
+    assert.equal(qz.reading, false);
+    assert.ok(qz.frozen >= 2 && qz.frozen <= 3, `押した時刻の位置: ${qz.frozen}`);
+    assert.equal(qz.chars, qz.frozen);
+    // 続きを読む
+    assert.equal(qz.start(), true); assert.equal(qz.frozen, null); assert.equal(qz.reading, true);
+    qz.pause();
+    // 時刻が無い（古い形式）ときは、いま読んでいる位置で止まる
+    const here = qz.chars;
     ws.recv({ t: 'winner', q: 1, pid: 'p0', name: 'P0', ranking: [{ pid: 'p0', name: 'P0', ms: 0 }], all: [] });
-    assert.equal(qz.frozen, 3);
+    assert.equal(qz.frozen, here);
+    // 止まっている間に押された（停止中の位置）なら、その位置のまま
+    qz.restart(); qz.advance(); qz.freezeAt(performance.now() + off, off); assert.equal(qz.frozen, 2);
     h.destroy();
-    void t0;
   } finally { env.restore(); }
 });
-test('[進行役] CPUの早押し: 確定ポイントを過ぎるとCPUが先に押し、正解なら問題が終わる／誤答なら続く／オフなら押さない', async () => {
+test('[進行役] CPUの早押し: 確定ポイントまで読まれるとCPUが先に押し、正解なら問題が終わる／誤答なら続く／オフなら押さない', async () => {
   const mods = await loadStores(); const env = fakeEnv();
   const rnd = Math.random; Math.random = () => 0.5;      // 当てずっぽうにも押さないにも入らない
   try {
@@ -644,12 +683,12 @@ test('[進行役] CPUの早押し: 確定ポイントを過ぎるとCPUが先に
     const qz = h.quiz;
     assert.equal(qz.plans.length, 1, '魔王が押す予定');
     const at = qz.plans[0].at; assert.ok(at >= 5 && qz.plans[0].ok);
-    // 確定ポイントの手前では押さない
-    qz.advance(); qz.advance(); assert.equal(h.G.q, 1);
-    while (qz.chars < at && qz.advance()) { /* 送る */ }
-    await tick(60);
+    qz.advance(); assert.equal(h.G.q, 1, '確定ポイントの手前では押さない');
+    qz.setSpeed(20); qz.start();
+    for (let i = 0; i < 100 && h.G.q === 1; i++) await tick(20);
     assert.equal(h.G.q, 2, 'CPUが正解して次の問題へ');
     assert.equal(h.G.stats[h.G.units.find(u => u.isBoss).id].correct, 1, 'CPUの成績に数えられる');
+    assert.equal(qz.reading, false, '次の問題では読み始めに戻る');
     // オフにすれば押さない
     qz.setCpuOn(false); assert.equal(env.local.getItem('qk_cpu_buzz'), '0');
     qz.revealAll(); await tick(40);

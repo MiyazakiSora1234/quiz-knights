@@ -8,15 +8,19 @@ export const MAX_Q_LEN = 400;
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const strList = (v, max = 8) => (Array.isArray(v) ? v.map(x => str(x, 60)).filter(Boolean).slice(0, max) : []);
 
-/** スラッシュ入りの文 → { q, cuts }。「日本で/一番高い/山は」→ q=日本で一番高い山は, cuts=[3,7] */
+/**
+ * 印入りの文 → { q, cuts, sure? }。「日本で/一番高い/山は」→ q=日本で一番高い山は, cuts=[3,7]
+ * 「｜」（全角の縦棒）は確定ポイントの印: 「日本で/一番高い｜/山は」→ sure=7
+ */
 export function parseSlashed(text) {
-  let q = '', cuts = [];
+  let q = '', cuts = [], sure = null;
   for (const ch of String(text ?? '').replace(/[\r\n]+/g, '')) {
     if (ch === '/' || ch === '／') { if (q.length && cuts[cuts.length - 1] !== q.length) cuts.push(q.length); }
+    else if (ch === '｜') { if (q.length) sure = q.length; }
     else q += ch;
   }
   cuts = cuts.filter(c => c > 0 && c < q.length);
-  return { q, cuts };
+  return sure != null ? { q, cuts, sure } : { q, cuts };
 }
 /** { q, cuts } → スラッシュ入りの文 */
 export function toSlashed(q, cuts = []) {
@@ -30,13 +34,16 @@ export function normalizeQuestion(raw, no) {
   if (!raw || typeof raw !== 'object') return { q: null, error: '問題の形式が正しくありません' };
   let q = str(raw.q, MAX_Q_LEN), a = str(raw.a, 60);
   let cuts = Array.isArray(raw.cuts) ? raw.cuts : [];
-  if (/[\/／]/.test(q)) { const p = parseSlashed(q); q = p.q; cuts = [...new Set([...cuts, ...p.cuts])]; }   // 問題文にスラッシュが混ざっていたら区切りとして読む
+  let sure = raw.sure;
+  if (/[\/／｜]/.test(q)) {                                  // 問題文に / や ｜ が混ざっていたら、区切り・確定ポイントの印として読む
+    const p = parseSlashed(q); q = p.q; cuts = [...new Set([...cuts, ...p.cuts])];
+    if (p.sure != null) sure = p.sure;
+  }
   if (!q) return { q: null, error: '問題文が空です' };
   if (!a) return { q: null, error: '正解が空です' };
   const clean = [...new Set(cuts.map(Number).filter(Number.isInteger))].sort((x, y) => x - y);
   const cs = clean.filter(c => c > 0 && c < q.length);
   if (cs.length !== clean.length) warn.push('範囲外のスラッシュの位置を除きました');
-  let sure = raw.sure;
   if (sure == null || sure === '') sure = null;
   else {
     sure = Math.round(Number(sure));
@@ -88,7 +95,7 @@ export function parseLines(text) {
     const parts = line.split(/\t|\|\|/).map(s => s.trim());
     if (parts.length < 2) { out.push({ q: line.trim(), a: '' }); continue; }
     const p = parseSlashed(parts[0]);
-    out.push({ q: p.q, cuts: p.cuts, a: parts[1], sure: parts[2] ? Number(parts[2]) : null });
+    out.push({ q: p.q, cuts: p.cuts, a: parts[1], sure: p.sure ?? (parts[2] ? Number(parts[2]) : null) });
   }
   return out;
 }

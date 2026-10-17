@@ -72,7 +72,7 @@ export class HostStore {
     });
     this.conn.connect();
   }
-  destroy() { this.conn?.close(); }
+  destroy() { this.conn?.close(); this.quiz.dispose(); }
   /** 別の画面に奪われた進行役を、この画面で引き継ぐ */
   takeOver() { this.status = 'connecting'; this.conn.connect(); }
 

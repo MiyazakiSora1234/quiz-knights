@@ -1,21 +1,30 @@
 // 問題集と、問読みの進み具合（進行役の画面だけが持つ。問題文はサーバーにも参加者にも送らない）
+// 問読みは、一定の速さ（字/秒）で1文字ずつ進む。カラオケの歌詞のように、読んだ部分の色が変わる
 import { store } from '../storage.js';
-import { importText, normalizeQuestion, chunksOf, readChars, chunksAt, cpuPlan, exportBank, SAMPLE_BANK, MAX_QUESTIONS } from '../questions.js';
+import { importText, normalizeQuestion, chunksOf, cpuPlan, exportBank, SAMPLE_BANK, MAX_QUESTIONS } from '../questions.js';
 
 const KEY_BANK = 'qk_bank';
 const KEY_CPU = 'qk_cpu_buzz';
+const KEY_SPEED = 'qk_read_speed';
+export const SPEED_MIN = 2;
+export const SPEED_MAX = 20;
+export const SPEED_DEFAULT = 7;
+const TICK_MS = 50;
 
 export class QuizStore {
   title = $state('');
   questions = $state([]);            // 問題集
   offset = $state(0);                // 何問目の問題を出すか（バトルの第N問に足してずらす。手動で前後に動かせる）
   qno = $state(0);                   // いま読んでいるバトルの問題番号
-  shown = $state(0);                 // 表示済みの塊の数
-  frozen = $state(null);             // 早押しで止まった位置（塊の数）。止まっていなければ null
+  pos = $state(0);                   // 読み済みの文字数（小数。表示は切り捨て）
+  speed = $state(SPEED_DEFAULT);     // 読む速さ（字/秒）
+  reading = $state(false);           // 読み進めている最中
+  frozen = $state(null);             // 早押しで止まった位置（文字数）。止まっていなければ null
   plans = $state([]);                // この問題でのCPUの押し方 [{ id, name, at, ok, used }]
   cpuOn = $state(true);              // CPUも早押しする
   onCpu = null;                      // CPUが押したときの処理（持ち主が設定する）
-  #times = [];                       // 各塊を表示した時刻（performance.now）
+  #segs = [];                        // 読み進めた区間 { t0, p0, v, t1 }（t0〜t1 の間、p0 から速さ v で進んだ）。押した時刻から位置を求めるのに使う
+  #timer = null;
 
   constructor() {
     try {
@@ -23,7 +32,10 @@ export class QuizStore {
       if (d?.questions) { this.title = d.title ?? ''; this.questions = importText(JSON.stringify(d)).questions; }
     } catch { /* 保存が壊れていても使えるように */ }
     this.cpuOn = store.get(KEY_CPU) !== '0';
+    const v = Number(store.get(KEY_SPEED));
+    if (v >= SPEED_MIN && v <= SPEED_MAX) this.speed = v;
   }
+  dispose() { this.#stop(); }
 
   /* ---------- 導出値 ---------- */
   get has() { return this.questions.length > 0; }
@@ -32,9 +44,12 @@ export class QuizStore {
     return n ? (((this.qno - 1 + this.offset) % n) + n) % n : -1;
   }
   get cur() { return this.questions[this.index] ?? null; }
+  get len() { return this.cur?.q.length ?? 0; }
+  get chars() { return Math.min(this.len, Math.floor(this.pos + 1e-9)); }
+  get done() { return !!this.cur && this.chars >= this.len; }
   get chunks() { return this.cur ? chunksOf(this.cur) : []; }
-  get chars() { return this.cur ? readChars(this.cur, this.shown) : 0; }
-  get done() { return this.shown >= this.chunks.length; }
+  /** 塊の終わりの位置の一覧（文字数） */
+  get ends() { let n = 0; return this.chunks.map(c => (n += c.length)); }
 
   /* ---------- 問題集の編集 ---------- */
   #save() { store.set(KEY_BANK, JSON.stringify({ title: this.title, questions: this.questions })); }
@@ -73,13 +88,14 @@ export class QuizStore {
     this.#reset(cpus, level);
     this.#planned = true;
   }
-  #invalidate() { this.#planned = false; this.#reset(); }
   #planned = false;
   #lastCpus = [];
   #lastLevel = 'normal';
+  #invalidate() { this.#planned = false; this.#reset(); }
   #reset(cpus = this.#lastCpus, level = this.#lastLevel) {
     this.#lastCpus = cpus; this.#lastLevel = level;
-    this.shown = 0; this.frozen = null; this.#times = [];
+    this.#stop(); this.reading = false;
+    this.pos = 0; this.frozen = null; this.#segs = [];
     this.plans = [];
     const q = this.cur;
     if (!q) return;
@@ -90,25 +106,78 @@ export class QuizStore {
   /** 出す問題を前後にずらす（読み始めに戻る） */
   jump(d) { this.offset += d; this.#invalidate(); }
 
-  /* ---------- 問読み（手動送り） ---------- */
-  /** 次の塊を表示する */
-  advance() {
-    if (!this.cur || this.shown >= this.chunks.length) return false;
-    this.shown++; this.#times.push(performance.now());
-    this.frozen = null;
-    this.#checkCpu();
+  /* ---------- 問読み（一定の速さで進む） ---------- */
+  #now() { return performance.now(); }
+  #stop() { clearInterval(this.#timer); this.#timer = null; }
+  /** いまの区間を閉じる（読み進めている間だけ開いている） */
+  #closeSeg() { const s = this.#segs.at(-1); if (s && s.t1 == null) s.t1 = this.#now(); }
+  #openSeg(t = this.#now()) { this.#segs.push({ t0: t, p0: this.pos, v: this.speed, t1: null }); }
+  /** 読み始める／続きを読む（止まっていた位置から） */
+  start() {
+    if (!this.cur || this.reading || this.done) return false;
+    this.frozen = null; this.reading = true;
+    this.#openSeg();
+    this.#timer = setInterval(() => this.#tick(), TICK_MS);
     return true;
   }
-  /** 1つ戻す */
-  back() { if (this.shown > 0) { this.shown--; this.#times.pop(); this.frozen = null; } }
-  revealAll() { while (this.advance()) { /* 全部出す */ } }
-  restart() { this.shown = 0; this.frozen = null; this.#times = []; this.plans = this.plans.map(p => ({ ...p, used: false })); }
+  /** 一時停止 */
+  pause() {
+    if (!this.reading) return;
+    this.#tick(); this.#closeSeg(); this.reading = false; this.#stop();
+  }
+  toggle() { return this.reading ? (this.pause(), true) : this.start(); }
+  #tick() {
+    const s = this.#segs.at(-1);
+    if (!this.reading || !s || s.t1 != null) return;
+    this.pos = Math.min(this.len, s.p0 + ((this.#now() - s.t0) * s.v) / 1000);
+    if (this.pos >= this.len) { this.#closeSeg(); this.reading = false; this.#stop(); }
+    this.#checkCpu();
+  }
+  /** 位置を飛ばす（手動の操作）。読み進めている最中なら、そこから続ける */
+  #moveTo(p) {
+    this.#closeSeg();
+    this.pos = Math.max(0, Math.min(this.len, p)); this.frozen = null;
+    if (this.reading && this.pos < this.len) this.#openSeg();
+    else { this.reading = false; this.#stop(); this.#segs.push({ t0: this.#now(), p0: this.pos, v: this.speed, t1: this.#now() }); }
+    this.#checkCpu();
+  }
+  /** 次の塊の終わりまで進める */
+  advance() {
+    if (!this.cur || this.done) return false;
+    this.#moveTo(this.ends.find(e => e > this.chars) ?? this.len);
+    return true;
+  }
+  /** 前の塊の初めまで戻す */
+  back() {
+    if (!this.cur || this.chars === 0) return;
+    const starts = [0, ...this.ends.slice(0, -1)];
+    this.#moveTo([...starts].reverse().find(s => s < this.chars) ?? 0);
+  }
+  revealAll() { if (this.cur && !this.done) this.#moveTo(this.len); }
+  restart() { this.#stop(); this.reading = false; this.pos = 0; this.frozen = null; this.#segs = []; this.plans = this.plans.map(p => ({ ...p, used: false })); }
+  setSpeed(v) {
+    const n = Math.max(SPEED_MIN, Math.min(SPEED_MAX, Math.round(Number(v) || SPEED_DEFAULT)));
+    if (n === this.speed) return;
+    if (this.reading) { this.#tick(); this.#closeSeg(); this.speed = n; this.#openSeg(); } else this.speed = n;
+    store.set(KEY_SPEED, String(n));
+  }
+  /** 押した時刻（performance.now 基準）の読み済みの文字数 */
+  posAt(t) {
+    for (let i = this.#segs.length - 1; i >= 0; i--) {
+      const s = this.#segs[i];
+      if (t >= s.t0) return Math.min(this.len, s.p0 + ((Math.min(t, s.t1 ?? t) - s.t0) * s.v) / 1000);
+    }
+    return 0;
+  }
   /** 誰かが押して回答権が決まった。serverAt=勝者が押した時刻（サーバー時刻）、offset=この端末とサーバーの時計のずれ */
   freezeAt(serverAt, offset) {
     if (!this.cur) return;
-    let n = this.shown;
-    if (typeof serverAt === 'number' && Number.isFinite(offset)) n = Math.min(this.shown, chunksAt(this.#times, serverAt - offset));
-    this.frozen = n; this.shown = n; this.#times = this.#times.slice(0, n);
+    if (this.reading) this.#tick();
+    let p = this.pos;
+    if (typeof serverAt === 'number' && Number.isFinite(offset)) p = Math.min(this.pos, this.posAt(serverAt - offset));
+    this.#closeSeg(); this.reading = false; this.#stop();
+    this.pos = Math.floor(p + 1e-9); this.frozen = this.pos;
+    this.#segs.push({ t0: this.#now(), p0: this.pos, v: this.speed, t1: this.#now() });
   }
   #checkCpu() {
     if (!this.cpuOn || this.frozen != null || !this.onCpu) return;
