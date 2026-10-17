@@ -24,6 +24,7 @@
     else if (e.key === 'ArrowRight') { e.preventDefault(); quiz.advance(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); quiz.back(); }
   }
+  const KIND = { know: 'わかって押す・正解', guess: '先走り', trap: '引っかけに乗って誤答', bluff: '知ったかぶりで誤答' };
   const label = $derived(quiz.reading ? '一時停止' : quiz.done ? '最後まで読みました' : stopped ? '続きを読む' : quiz.chars === 0 ? '読み始める' : '再開');
 </script>
 
@@ -71,7 +72,7 @@
     </div>
     {#if detail}
       <div class="plans">
-        {#each quiz.plans as p}<div class:used={p.used}>🤖 {p.name}：{p.at}字で押す（{p.ok ? '正解' : '誤答'}）{p.used ? ' ✓' : ''}</div>{/each}
+        {#each quiz.plans as p}<div class:used={p.used}>🤖 {p.name}（{p.persona}）：{p.at}字で押す・反応{p.react}ms（{KIND[p.kind] ?? (p.ok ? '正解' : '誤答')}）{p.used ? ' ✓' : ''}</div>{/each}
       </div>
     {/if}
   </section>

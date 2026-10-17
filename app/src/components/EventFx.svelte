@@ -25,7 +25,7 @@
   {#key shown.id}
     <div class="stage" role="status" aria-live="polite" transition:fade={{ duration: 160 }}>
       {#if shown.kind === 'answer'}
-        <div class="ans" class:ok={shown.ok} class:ng={!shown.ok}><span class="mark">{shown.ok ? '⭕' : '❌'}</span><b>{shown.who} {shown.ok ? '正解！' : '誤答…'}</b></div>
+        <div class="ans" class:ok={shown.ok} class:ng={!shown.ok}><span class="mark">{shown.ok ? '⭕' : '❌'}</span><b>{shown.who}{#if shown.text}「{shown.text}」{/if} {shown.ok ? '正解！' : '誤答…'}</b></div>
       {:else if shown.kind === 'bomb'}
         <div class="boom"><i class="bf"></i><span class="bomb">💥</span><b>{shown.mine ? `${shown.who} は地雷を踏んだ！` : `${shown.who} が爆発！`}</b></div>
       {:else if shown.kind === 'job'}

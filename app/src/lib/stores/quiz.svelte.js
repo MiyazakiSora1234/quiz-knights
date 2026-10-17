@@ -1,7 +1,7 @@
 // 問題集と、問読みの進み具合（進行役の画面だけが持つ。問題文はサーバーにも参加者にも送らない）
 // 問読みは、一定の速さ（字/秒）で1文字ずつ進む。カラオケの歌詞のように、読んだ部分の色が変わる
 import { store } from '../storage.js';
-import { importText, normalizeQuestion, chunksOf, cpuPlan, exportBank, SAMPLE_BANK, MAX_QUESTIONS } from '../questions.js';
+import { importText, normalizeQuestion, chunksOf, cpuPlan, personaFor, PERSONAS, exportBank, SAMPLE_BANK, MAX_QUESTIONS } from '../questions.js';
 
 const KEY_BANK = 'qk_bank';
 const KEY_CPU = 'qk_cpu_buzz';
@@ -25,6 +25,7 @@ export class QuizStore {
   onCpu = null;                      // CPUが押したときの処理（持ち主が設定する）
   #segs = [];                        // 読み進めた区間 { t0, p0, v, t1 }（t0〜t1 の間、p0 から速さ v で進んだ）。押した時刻から位置を求めるのに使う
   #timer = null;
+  #mood = {};                        // CPUの気分 { id → { cautious: 慎重になっている問題数, streak: 連続正解 } }。誤答すると慎重になり、正解が続くと強気になる
 
   constructor() {
     try {
@@ -84,6 +85,7 @@ export class QuizStore {
   /** バトルの問題番号が変わったら、読み始めに戻して、CPUの押し方を決める。cpus: 押す可能性のあるCPU [{id,name}] */
   sync(qno, cpus = [], level = 'normal') {
     if (qno === this.qno && this.#planned) return;
+    if (qno !== this.qno) for (const m of Object.values(this.#mood)) if (m.cautious > 0) m.cautious--;
     this.qno = qno;
     this.#reset(cpus, level);
     this.#planned = true;
@@ -100,7 +102,11 @@ export class QuizStore {
     const q = this.cur;
     if (!q) return;
     const plans = [];
-    for (const c of cpus) { const p = cpuPlan(q, level); if (p) plans.push({ id: c.id, name: c.name, at: p.at, ok: p.ok, used: false }); }
+    for (const c of cpus) {
+      const persona = personaFor(c.name);
+      const p = cpuPlan(q, level, Math.random, persona, this.#mood[c.id]);
+      if (p) plans.push({ id: c.id, name: c.name, persona: PERSONAS[persona].label, ...p, used: false });
+    }
     this.plans = plans.sort((a, b) => a.at - b.at);
   }
   /** 出す問題を前後にずらす（読み始めに戻る） */
@@ -184,6 +190,11 @@ export class QuizStore {
     const p = this.plans.find(x => !x.used && x.at <= this.chars);
     if (!p) return;
     this.plans = this.plans.map(x => (x.id === p.id ? { ...x, used: true } : x));
-    this.onCpu({ id: p.id, name: p.name, ok: p.ok, answer: p.ok ? this.cur.a : null, question: this.cur });
+    this.onCpu({ id: p.id, name: p.name, ok: p.ok, kind: p.kind, react: p.react, answer: p.ok ? (p.answer ?? this.cur.a) : p.answer, question: this.cur });
+  }
+  /** CPUが回答した結果を、気分に反映する（誤答すると慎重になり、正解が続くと強気になる） */
+  noteResult(id, ok) {
+    const m = (this.#mood[id] ??= { cautious: 0, streak: 0 });
+    if (ok) m.streak++; else { m.streak = 0; m.cautious = 2; }
   }
 }

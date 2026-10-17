@@ -752,6 +752,56 @@ test('[進行役] サーバーにつながっていないときは、CPUがす�
     h.destroy();
   } finally { Math.random = rnd; env.restore(); }
 });
+test('[進行役] CPUは「わかって」から反応の遅れ（ms）のあとで押す。その間に人間が押していたら、CPUは押さない', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const { h, ws } = await hostReady(env, mods);
+    h.quiz.importFrom(BANK); h.start(); await tick(30);
+    const qz = h.quiz, id = h.G.units.find(u => u.isBoss).id;
+    qz.plans = [{ id, name: '魔王1', persona: '慎重', kind: 'know', at: 2, ok: true, answer: null, react: 150, used: false }];
+    qz.advance();                                              // 2文字に達した（CPUが「わかった」）
+    await tick(30);
+    assert.equal(ws.of('cpu_buzz').length, 0, '反応の遅れの間は、まだ押していない');
+    await wait(300);
+    assert.equal(ws.of('cpu_buzz').length, 1, '遅れのあとで押す');
+    // 人間が先に押した場合: 反応している間に勝者が決まったら、CPUは押さない
+    ws.sent.length = 0;
+    qz.restart();
+    qz.plans = [{ id, name: '魔王1', persona: '慎重', kind: 'know', at: 2, ok: true, answer: null, react: 150, used: false }];
+    h.reopen(); await tick(20);
+    qz.advance(); await tick(20);
+    ws.recv({ t: 'winner', q: 1, pid: 'p0', name: 'P0', ranking: [{ pid: 'p0', name: 'P0', ms: 0 }], all: [] });
+    await wait(300);
+    assert.equal(ws.of('cpu_buzz').length, 0, '人間が押したので、CPUは押さない');
+    h.destroy();
+  } finally { env.restore(); }
+});
+test('[進行役] CPUの誤答は答えが演出に出る。誤答するとCPUは慎重になり、次の問題の押し方に反映される', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  const rnd = Math.random; Math.random = () => 0.5;
+  try {
+    const { h, ws } = await hostReady(env, mods);
+    h.level = 'strong'; h.quiz.importFrom(BANK); h.start(); await tick(30);
+    const qz = h.quiz, id = h.G.units.find(u => u.isBoss).id;
+    h.battle.G.cfg.bossPenalty = true;
+    qz.plans = [{ id, name: '魔王1', persona: 'せっかち', kind: 'trap', at: 2, ok: false, answer: '罠の答え', react: 0, used: false }];
+    qz.advance();
+    for (let i = 0; i < 100 && !ws.of('cpu_buzz').length; i++) await tick(20);
+    const cb = ws.of('cpu_buzz')[0];
+    ws.recv({ t: 'winner', q: 1, pid: 'cpu:' + cb.id, name: cb.name, at: cb.ts, ranking: [{ pid: 'cpu:' + cb.id, name: cb.name, ms: 0 }], all: [] });
+    await tick(80);
+    assert.equal(h.G.event?.kind, 'answer'); assert.equal(h.G.event.text, '罠の答え'); assert.equal(h.G.event.ok, false);
+    assert.ok(h.G.log.some(l => /「罠の答え」と答え、誤答/.test(l.m)));
+    // 次の問題へ（スルー）。慎重になっているので、先走り・知ったかぶりが出ない
+    await skipQ(h);
+    for (let i = 0; i < 30; i++) {
+      h.quiz.sync(h.G.q + i + 1, [{ id, name: '魔王1' }], 'weak');
+      const p = h.quiz.plans[0];
+      if (i === 0) assert.ok(!p || p.kind === 'know', `慎重な直後: ${p?.kind}`);
+    }
+    h.destroy();
+  } finally { Math.random = rnd; env.restore(); }
+});
 test('[進行役] 人間が先に押していたら、CPUは押さない（回答者が決まっている間）', async () => {
   const mods = await loadStores(); const env = fakeEnv();
   const rnd = Math.random; Math.random = () => 0.5;

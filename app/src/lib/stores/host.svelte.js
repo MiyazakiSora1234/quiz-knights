@@ -72,7 +72,7 @@ export class HostStore {
     });
     this.conn.connect();
   }
-  destroy() { this.conn?.close(); this.quiz.dispose(); }
+  destroy() { this.conn?.close(); this.quiz.dispose(); this.#cancelCpuTimers(); }
   /** 別の画面に奪われた進行役を、この画面で引き継ぐ */
   takeOver() { this.status = 'connecting'; this.conn.connect(); }
 
@@ -157,7 +157,7 @@ export class HostStore {
     this.rank = m.ranking.map((x, i) => `${i + 1}. ${x.name}${i ? ` (+${Math.round(x.ms)}ms)` : ''}`).join('　');
     this.quiz.freezeAt(m.at, this.conn?.offset);              // 押された位置で問読みを止める
     const cpu = typeof m.pid === 'string' && m.pid.startsWith('cpu:') ? this.#cpuPending.get(m.pid) : null;
-    this.#cpuPending.clear();
+    this.#cpuPending.clear(); this.#cancelCpuTimers();
     if (cpu) { this.#cpuResolve(cpu); return; }              // CPUが最初に押していた
     const G = this.battle.G;
     if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid]);
@@ -176,22 +176,31 @@ export class HostStore {
    * 問読みが、CPUの押す位置に達した。CPUも参加者と同じように、サーバーに押下を送り、いちばん早い者が回答権を取る
    * （遅れて届く参加者の押下も、押した時刻で比べられる）。問読みは、押された時点で止める
    */
+  #cpuTimers = new Set();            // CPUが「わかった」あと、実際に押すまでの反応の遅れ（人間らしい間）
+  #cancelCpuTimers() { for (const t of this.#cpuTimers) clearTimeout(t); this.#cpuTimers.clear(); }
   #cpuBuzz(p) {
     const G = this.battle.G;
     if (!G || G.over || G.sel != null || this.battle.busy) return;
-    const pid = 'cpu:' + p.id;
-    this.#cpuPending.set(pid, p);
-    this.quiz.pause();
-    if (!this.conn?.send({ t: 'cpu_buzz', id: p.id, name: p.name, ts: this.conn.stamp(performance.now()) })) {
-      this.#cpuPending.delete(pid);       // 通信できないときは、すぐにCPUの回答にする
-      this.#cpuResolve(p);
-    }
+    const q0 = G.q;
+    const timer = setTimeout(() => {
+      this.#cpuTimers.delete(timer);
+      const g = this.battle.G;
+      if (!g || g.over || g.q !== q0 || g.sel != null || this.battle.busy || this.quiz.frozen != null) return;     // 反応している間に、人間が押していた
+      const pid = 'cpu:' + p.id;
+      this.#cpuPending.set(pid, p);
+      this.quiz.pause();
+      if (!this.conn?.send({ t: 'cpu_buzz', id: p.id, name: p.name, ts: this.conn.stamp(performance.now()) })) {
+        this.#cpuPending.delete(pid);       // 通信できないときは、すぐにCPUの回答にする
+        this.#cpuResolve(p);
+      }
+    }, Math.max(0, Math.min(1500, p.react ?? 0)));
+    this.#cpuTimers.add(timer);
   }
   /** CPUが回答権を取った。正解なら問題が終わり、誤答ならCPUが罰を受けて、参加者がもう一度早押しする */
   async #cpuResolve(p) {
-    const wrong = !p.ok && p.question?.wrong?.length ? p.question.wrong[Math.floor(Math.random() * p.question.wrong.length)] : null;
-    toast(p.ok ? `🤖 ${p.name} が先に押して正解（${p.answer}）` : `🤖 ${p.name} が先に押して誤答${wrong ? `（${wrong}）` : ''}`, 3500);
-    const done = await this.battle.cpuBuzz(p.id, p.ok);
+    toast(p.ok ? `🤖 ${p.name} が先に押して正解（${p.answer}）` : `🤖 ${p.name} が先に押して誤答${p.answer ? `（${p.answer}）` : ''}`, 3500);
+    const done = await this.battle.cpuBuzz(p.id, p.ok, p.answer ?? '');
+    if (done) this.quiz.noteResult(p.id, p.ok);
     if (done && !p.ok) this.reopen();
   }
 
@@ -352,7 +361,7 @@ export class HostStore {
     }
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {
       this.#openedFor = G.q;
-      this.#cpuPending.clear();
+      this.#cpuPending.clear(); this.#cancelCpuTimers();
       this.ranks = {};
       this.conn.send({ t: 'open', q: G.q, chain: this.buzzRule === 'chain', eligible: eligibleDelays(G) });
     }

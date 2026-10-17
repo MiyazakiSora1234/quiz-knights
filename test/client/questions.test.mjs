@@ -1,7 +1,7 @@
 // 問題集の検査・変換・CPUの押し方（純粋な関数）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBank, normalizeQuestion, parseSlashed, toSlashed, parseLines, importText, chunksOf, readChars, chunksAt, cpuPlan, cpuWrongAnswer, exportBank, SAMPLE_BANK, CPU_SKILL, MAX_QUESTIONS } from '../../app/src/lib/questions.js';
+import { normalizeBank, normalizeQuestion, parseSlashed, toSlashed, parseLines, importText, chunksOf, readChars, chunksAt, cpuPlan, cpuWrongAnswer, personaFor, PERSONAS, exportBank, SAMPLE_BANK, CPU_SKILL, MAX_QUESTIONS } from '../../app/src/lib/questions.js';
 
 const Q = { no: 1, q: '日本で一番高い山は何でしょう？', a: '富士山', cuts: [3, 7, 10], sure: 7 };
 
@@ -101,4 +101,59 @@ test('CPUの押し方: 確定ポイント基準・強さで変わる・押さな
   assert.ok(s.rate > w.rate, '強いほど正解する');
   assert.ok(cpuPlan(normalizeQuestion({ q: 'あ'.repeat(5), a: 'x', sure: 5 }, 1).q, 'weak', () => 0.99).at <= 5, '問題文の長さを超えない');
   assert.equal(cpuWrongAnswer(q, () => 0.99), 'b'); assert.equal(cpuWrongAnswer({ wrong: [] }), null);
+});
+
+test('1問の検査: 人間らしいCPU用の情報（genre・diff・guess・traps）。範囲外は直して知らせる', () => {
+  const r = normalizeQuestion({ q: 'あいう/えお/かき', a: 'x', genre: '歴史', diff: 4, guess: 2, traps: [{ chunk: 1, a: '誤1' }, { chunk: 3, a: '誤2' }] }, 1);
+  assert.deepEqual([r.q.genre, r.q.diff, r.q.guess, r.q.traps], ['歴史', 4, 2, [{ chunk: 1, a: '誤1' }, { chunk: 3, a: '誤2' }]]);
+  assert.equal(r.warn.length, 0);
+  const bad = normalizeQuestion({ q: 'あいう/えお', a: 'x', diff: 9, guess: 5, traps: [{ chunk: 5, a: 'y' }, { chunk: 1 }, 'z', { chunk: 2, a: '有効' }] }, 1);
+  assert.deepEqual([bad.q.diff, bad.q.guess, bad.q.traps], [null, null, [{ chunk: 2, a: '有効' }]]);
+  assert.ok(bad.warn.length >= 3);
+  const none = normalizeQuestion({ q: 'あいう', a: 'x' }, 1).q;
+  assert.deepEqual([none.genre, none.diff, none.guess, none.traps], [null, null, null, []]);
+  assert.equal(normalizeQuestion({ q: 'あ', a: 'x', traps: Array(9).fill({ chunk: 1, a: 'y' }) }, 1).q.traps.length, 4, '引っかけは4つまで');
+});
+
+test('CPUの性格: 名前で決まり（いつも同じ）、4種類にばらける。性格で押し方が変わる', () => {
+  assert.equal(personaFor('魔王1'), personaFor('魔王1'));
+  const kinds = new Set(['魔王1', '魔王2', '魔王3', '魔王4', '魔王5', '魔王6', '戦士', '僧侶', 'A', 'B', 'C', 'D'].map(personaFor));
+  assert.ok(kinds.size >= 3, [...kinds].join());
+  const q = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, wrong: ['a', 'b'] }, 1).q;
+  const avg = (persona, f) => { let n = 0, sum = 0; for (let i = 0; i < 4000; i++) { const p = cpuPlan(q, 'normal', Math.random, persona); if (p) { n++; sum += f(p); } } return sum / n; };
+  assert.ok(avg('hasty', p => p.at) < avg('careful', p => p.at), 'せっかちは早く押し、慎重は遅く押す');
+  assert.ok(avg('hasty', p => p.react) < avg('careful', p => p.react), 'せっかちは反応が速い');
+  assert.ok(avg('hasty', p => (p.ok ? 1 : 0)) < avg('careful', p => (p.ok ? 1 : 0)), 'せっかちは誤答が多い');
+  for (const k of Object.keys(PERSONAS)) assert.ok(PERSONAS[k].label);
+});
+
+test('CPUの押し方の種類: わかって押す・先走り（当たることも）・引っかけ・知ったかぶり。反応の遅れがある', () => {
+  const q = normalizeQuestion({ q: 'あいうえお/かきくけこ/さしすせそ/たちつてと', a: '正解', sure: 15, wrong: ['誤A', '誤B'], traps: [{ chunk: 1, a: '罠' }], guess: 2 }, 1).q;
+  const seen = {};
+  for (let i = 0; i < 6000; i++) {
+    const p = cpuPlan(q, 'weak', Math.random, ['hasty', 'careful', 'scholar', 'moody'][i % 4]);
+    if (!p) { seen.none = (seen.none ?? 0) + 1; continue; }
+    (seen[p.kind] ??= []).push(p);
+    assert.ok(p.at >= 1 && p.at <= q.q.length); assert.ok(p.react >= 50 && p.react <= 1500, `${p.react}`);
+    if (p.ok) assert.ok(p.answer == null || p.kind === 'know', '正解のときに誤答の文言がない');
+    else assert.ok(p.answer, '誤答には答えがある');
+  }
+  for (const k of ['none', 'know', 'guess', 'trap', 'bluff']) assert.ok(seen[k]?.length ?? seen[k], `${k} が出ない`);
+  assert.ok(seen.guess.some(p => p.ok) && seen.guess.some(p => !p.ok), '先走りは、当たることも外れることもある');
+  assert.ok(seen.trap.every(p => p.answer === '罠' && p.at === 5 && !p.ok), '引っかけは、その塊の終わりで、その答えを言う');
+  assert.ok(seen.guess.filter(p => p.at === 10 || p.at < 15).length === seen.guess.length, '先走りは確定ポイントの前');
+  assert.ok(seen.know.every(p => p.at >= 15 && p.ok), 'わかって押すのは確定ポイント以降');
+  assert.ok(seen.bluff.every(p => p.at >= 15 && !p.ok), '知ったかぶりも、見かけは確定ポイント以降');
+});
+
+test('CPUの気分: 誤答の直後は慎重（先走り・知ったかぶりが減り、押さない・反応が遅くなる）。難しい問題ほど押さない', () => {
+  const q = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, wrong: ['a'] }, 1).q;
+  const rate = (mood, qq = q, f = p => p.ok === false) => { let n = 0, hit = 0; for (let i = 0; i < 6000; i++) { n++; const p = cpuPlan(qq, 'normal', Math.random, 'moody', mood); if (p && f(p)) hit++; } return hit / n; };
+  assert.ok(rate({ cautious: 2 }) < rate({}), '慎重なときは、誤答が少ない');
+  assert.ok(rate({ cautious: 2 }, q, p => false) === 0);
+  let rt = (mood) => { let s = 0, n = 0; for (let i = 0; i < 3000; i++) { const p = cpuPlan(q, 'normal', Math.random, 'moody', mood); if (p) { s += p.react; n++; } } return s / n; };
+  assert.ok(rt({ cautious: 1 }) > rt({}) + 60, '慎重なときは反応が遅い');
+  const hard = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, diff: 5 }, 1).q, easy = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, diff: 1 }, 1).q;
+  const none = qq => { let n = 0; for (let i = 0; i < 6000; i++) if (!cpuPlan(qq, 'normal', Math.random, 'scholar')) n++; return n; };
+  assert.ok(none(hard) > none(easy) * 1.5, '難しい問題ほど押さない');
 });

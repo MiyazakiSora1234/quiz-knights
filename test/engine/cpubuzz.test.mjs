@@ -70,3 +70,15 @@ test('CPUの早押しも取り消せる', async () => {
   h.b.undo();
   assert.equal(JSON.stringify(h.b.G), snap);
 });
+
+test('CPUの答えが、演出とログに出る（正解・誤答とも）', async () => {
+  const h = harness(); start(h, { bossPenalty: true });
+  await h.b.cpuBuzz(boss(h).id, false, '北岳');
+  assert.equal(h.b.G.event.kind, 'answer'); assert.equal(h.b.G.event.text, '北岳'); assert.equal(h.b.G.event.ok, false);
+  assert.ok(h.b.G.log.some(l => /「北岳」と答え、誤答/.test(l.m)));
+  await h.b.cpuBuzz(boss(h).id, true, '富士山');
+  assert.ok(h.b.G.log.some(l => /「富士山」と答え、正解/.test(l.m)));
+  await h.b.cpuBuzz(boss(h).id, true);
+  assert.ok(h.b.G.log.some(l => /先に押して正解$/.test(l.m)), '答えの文言なしでも動く');
+  checkInvariants(h.b.G);
+});
