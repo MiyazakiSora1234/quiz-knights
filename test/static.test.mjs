@@ -105,7 +105,8 @@ test('[静的] どの部品・ライブラリも、どこかから使われて�
 
 test('[静的] サーバーのコードはブラウザ側の部品（Svelte・DOM）に依存せず、ブラウザ側はサーバーのコードを直接 import しない', () => {
   for (const f of files.filter(x => x.startsWith(SERVER))) {
-    for (const imp of importsOf(read(f))) assert.ok(!/\.svelte|app\/src/.test(imp.spec), `${rel(f)} がブラウザ側を import している`);
+    // 許すのは、画面にも通信にも依存しない、データ定義（職業・魔王の一覧。入力の検査に使う）だけ
+    for (const imp of importsOf(read(f))) assert.ok(!/\.svelte|app\/src/.test(imp.spec) || /app\/src\/lib\/engine\/data\.js$/.test(imp.spec), `${rel(f)} がブラウザ側を import している`);
   }
   for (const f of files.filter(x => x.startsWith(SRC))) {
     const src = f.endsWith('.svelte') ? [...read(f).matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n') : read(f);

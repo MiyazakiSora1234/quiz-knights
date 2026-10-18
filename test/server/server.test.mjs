@@ -40,8 +40,10 @@ after(async () => {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /** メッセージを溜めて待てる WebSocket クライアント */
-async function client(room) {
-  const ws = new WebSocket(`${wsBase}/ws?id=${room}`);
+/** 接続元（IP）を偽る道具。開発サーバーは接続元を付けてくれるので、ふつうのテストは接続ごとに別の接続元にして、荒らし対策の上限に当たらないようにする */
+const randomIp = () => `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`;
+async function client(room, { ip = randomIp(), headers = {} } = {}) {
+  const ws = new WebSocket(`${wsBase}/ws?id=${room}`, { headers: { 'CF-Connecting-IP': ip, ...headers } });
   const c = { ws, q: [], closed: null, waiters: [] };
   ws.addEventListener('message', e => {
     const m = JSON.parse(e.data);
@@ -56,7 +58,7 @@ async function client(room) {
     const i = c.q.findIndex(m => m.t === t && pred(m));
     if (i >= 0) return res(c.q.splice(i, 1)[0]);
     const w = { pred: m => m.t === t && pred(m), res: m => { clearTimeout(timer); const j = c.q.indexOf(m); if (j >= 0) c.q.splice(j, 1); res(m); } };
-    const timer = setTimeout(() => { c.waiters.splice(c.waiters.indexOf(w), 1); rej(new Error(`「${t}」が届かない。受信済み: ${c.q.map(m => m.t).join(',')}`)); }, ms);
+    const timer = setTimeout(() => { c.waiters.splice(c.waiters.indexOf(w), 1); rej(new Error(`「${t}」が届かない。受信済み: ${c.q.map(m => m.t + (m.t === 'error' ? `(${m.msg}/${m.code ?? ''})` : '')).join(',')}`)); }, ms);
     c.waiters.push(w);
   });
   c.has = t => c.q.some(m => m.t === t);
@@ -64,7 +66,7 @@ async function client(room) {
   sockets.add(c);
   return c;
 }
-const api = async () => (await fetch(`${base}/api/rooms`)).json();
+const api = async (ip = randomIp()) => (await fetch(`${base}/api/rooms`, { headers: { 'CF-Connecting-IP': ip } })).json();
 /** 空いている枠（1〜16）を1つ選ぶ。閉じた直後は反映を少し待つ */
 async function newRoomId() {
   for (let i = 0; i < 60; i++) {
@@ -873,7 +875,7 @@ test('連チャン: 1着が誤答したら、押した順に2着・3着へ回答
 });
 
 /* ================= 表形式の入力検査（1ケース = 1テスト） ================= */
-for (const [name, want] of [['', '名無し'], ['あ', 'あ'], ['あいうえおかきくけこさし', 'あいうえおかきくけこさし'], ['x'.repeat(13), 'x'.repeat(12)], ['x'.repeat(200), 'x'.repeat(12)], ['  空白  ', '  空白  '.slice(0, 12)], ['<b>タグ</b>', '<b>タグ</b>'], ['😀絵文字', '😀絵文字'.slice(0, 12)]]) {
+for (const [name, want] of [['', '名無し'], ['あ', 'あ'], ['あいうえおかきくけこさし', 'あいうえおかきくけこさし'], ['x'.repeat(13), 'x'.repeat(12)], ['x'.repeat(200), 'x'.repeat(12)], ['  空白  ', '空白'], ['<b>タグ</b>', '<b>タグ</b>'], ['😀絵文字', '😀絵文字'.slice(0, 12)]]) {
   test(`入力検査: 名前「${name.slice(0, 10)}」(${name.length}文字) は「${want.slice(0, 10)}」になる`, async () => {
     const { id, host } = await makeRoom();
     const p = await joinPlayer(id, name);
@@ -881,7 +883,7 @@ for (const [name, want] of [['', '名無し'], ['あ', 'あ'], ['あいうえお
     host.send({ t: 'close' });
   });
 }
-for (const [pw, tryPw, ok] of [['', '', true], ['', 'x', true], ['abc', 'abc', true], ['abc', 'ABC', false], ['abc', '', false], ['abc', 'abcd', false], ['あいう', 'あいう', true], ['a'.repeat(25), 'a'.repeat(20), true], ['a'.repeat(25), 'a'.repeat(25), false]]) {
+for (const [pw, tryPw, ok] of [['', '', true], ['', 'x', true], ['abc', 'abc', true], ['abc', 'ABC', false], ['abc', '', false], ['abc', 'abcd', false], ['あいう', 'あいう', true], ['a'.repeat(25), 'a'.repeat(20), true], ['a'.repeat(25), 'a'.repeat(25), true], ['a'.repeat(25), 'a'.repeat(19), false]]) {
   test(`入力検査: パスワード「${pw.slice(0, 6)}」(${pw.length}) に「${tryPw.slice(0, 6)}」(${tryPw.length}) で入る → ${ok ? '入れる' : '拒否'}`, async () => {
     const { id, host } = await makeRoom({ password: pw });
     const c = await client(id);
@@ -907,7 +909,7 @@ for (const [job, team, wantJob, wantTeam] of [['mage', 'e', 'mage', 'e'], ['', '
     host.send({ t: 'close' });
   });
 }
-for (const [text, want] of [['こんにちは', 'こんにちは'], ['  前後の空白  ', '前後の空白'], ['a'.repeat(250), 'a'.repeat(200)], ['改行\nあり', '改行\nあり'], ['<script>alert(1)</script>', '<script>alert(1)</script>']]) {
+for (const [text, want] of [['こんにちは', 'こんにちは'], ['  前後の空白  ', '前後の空白'], ['a'.repeat(250), 'a'.repeat(200)], ['改行\nあり', '改行 あり'], ['<script>alert(1)</script>', '<script>alert(1)</script>']]) {
   test(`入力検査: チャット「${text.slice(0, 8).replace('\n', '↵')}」(${text.length}文字)`, async () => {
     const { id, host } = await makeRoom();
     const p = await joinPlayer(id, 'A');
@@ -1218,4 +1220,231 @@ test('バトルの預かり: 壊れた・大きすぎる状態は預からない
   const h3 = await client(id); h3.send({ t: 'host_resume', id, hostKey: key });
   assert.equal((await h3.wait('created')).battle, null, 'バトルを終えたら消える');
   h3.send({ t: 'close' });
+});
+
+/* ================= 荒らし・不正への備え（認証なしで公開するための防御） ================= */
+const refused = async (room, opts) => { try { const c = await client(room, opts); c.ws.close(); return false; } catch { return true; } };
+const createAs = async (id, ip, name = 'r') => { const c = await client(id, { ip }); c.send({ t: 'create', id, name }); return c; };
+
+test('防御: 別のサイトの Origin からの WebSocket は断る。同じサイトからは通る', async () => {
+  const { id, host } = await makeRoom();
+  assert.equal(await refused(id, { headers: { Origin: 'https://evil.example' } }), true);
+  assert.equal(await refused(id, { headers: { Origin: 'null' } }), true);
+  assert.equal(await refused(id, { headers: { Origin: base } }), false);
+  assert.equal(await refused(id, {}), false, 'Origin が無い（アプリ以外の道具）は通す');
+  host.send({ t: 'close' });
+});
+
+test('防御: 大きすぎるメッセージは接続ごと切る（参加者は4KBまで・進行役は256KBまで）。文字列以外は無視', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'A');
+  p.ws.send(new Uint8Array([1, 2, 3]));                         // バイナリは無視される（切られない）
+  p.send({ t: 'chat', text: 'こんにちは' });
+  assert.equal((await host.wait('chat', 3000, x => !x.sys)).text, 'こんにちは');
+  p.send({ t: 'chat', text: 'a'.repeat(5000) });
+  await sleep(400);
+  assert.ok(p.closed, '参加者の大きすぎるメッセージで切られる');
+  host.send({ t: 'state', state: { pad: 'x'.repeat(50000) } });  // 進行役は、大きめの状態を送れる
+  await sleep(200);
+  assert.equal(host.closed, null);
+  host.send({ t: 'state', state: { pad: 'x'.repeat(300000) } });
+  await sleep(500);
+  assert.ok(host.closed, '進行役でも、上限を超えたら切られる');
+});
+
+test('防御: メッセージの連打は捨てられ、やりすぎると切られる', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'A');
+  host.clear();
+  for (let i = 0; i < 150; i++) p.send({ t: 'profile', flavor: 'f' + i });
+  await sleep(1200);
+  const got = host.q.filter(m => m.t === 'lobby').length;
+  assert.ok(got >= 20 && got <= 80, `一部だけが処理される: ${got}`);
+  assert.equal(p.closed, null, 'この程度では切られない');
+  for (let i = 0; i < 700; i++) p.send({ t: 'rtt', rtt: 50 });
+  await sleep(1200);
+  assert.ok(p.closed, '連打し続けると切られる');
+  host.send({ t: 'close' });
+});
+
+test('防御: チャットの連投は、1人あたり数件を超えた分が捨てられる', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'A');
+  const other = await joinPlayer(id, 'B');
+  for (let i = 0; i < 12; i++) p.send({ t: 'chat', text: 'm' + i });
+  other.send({ t: 'chat', text: '別の人は影響を受けない' });
+  await sleep(600);
+  const texts = host.q.filter(m => m.t === 'chat' && !m.sys).map(m => m.text);
+  assert.ok(texts.filter(t => /^m\d+$/.test(t)).length <= 7, `連投は数件だけ: ${texts.join(',')}`);
+  assert.ok(texts.filter(t => /^m\d+$/.test(t)).length >= 5);
+  assert.ok(texts.includes('別の人は影響を受けない'));
+  host.send({ t: 'close' });
+});
+
+test('防御: 参加パスワードの総当たりは、失敗が続くとロックされる（同じ接続元だけ）', async () => {
+  const { id, host } = await makeRoom({ password: 'secret' });
+  const ip = randomIp();
+  for (let i = 0; i < 6; i++) {
+    const c = await client(id, { ip });
+    c.send({ t: 'join', id, name: 'A', password: 'bad' + i });
+    assert.equal((await c.wait('error')).code, 'pw');
+    c.ws.close();
+  }
+  const locked = await client(id, { ip });
+  locked.send({ t: 'join', id, name: 'A', password: 'secret' });
+  assert.equal((await locked.wait('error')).code, 'locked', '正しいパスワードでも、しばらく受け付けない');
+  const other = await client(id, { ip: randomIp() });
+  other.send({ t: 'join', id, name: 'B', password: 'secret' });
+  assert.ok((await other.wait('joined')).pid, '別の接続元は入れる');
+  host.send({ t: 'close' });
+});
+
+test('防御: 進行役の鍵の総当たりも、失敗が続くとロックされる', async () => {
+  const { id, host, key } = await makeRoom();
+  const ip = randomIp();
+  for (let i = 0; i < 6; i++) {
+    const c = await client(id, { ip });
+    c.send({ t: 'host_resume', id, hostKey: 'bad' + i });
+    assert.equal((await c.wait('error')).code, 'gone');
+    c.ws.close();
+  }
+  const locked = await client(id, { ip });
+  locked.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await locked.wait('error')).code, 'locked');
+  const other = await client(id, { ip: randomIp() });
+  other.send({ t: 'host_resume', id, hostKey: key });
+  assert.equal((await other.wait('created')).room, String(id));
+  other.send({ t: 'close' });
+});
+
+test('防御: __proto__ などの特別な名前で、参加者・設定を操作できない（Object の汚染・乗っ取りの防止）', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'A');
+  host.clear();
+  for (const bad of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'prototype']) {
+    host.send({ t: 'set_profile', pid: bad, job: 'mage', name: 'ぽ', team: 'e' });
+    host.send({ t: 'set_delay', pid: bad, delay: 5 });
+    host.send({ t: 'add_eligible', pid: bad, delay: 0 });
+    host.send({ t: 'transfer', pid: bad, name: 'x' });
+    host.send({ t: 'kick', pid: bad });
+  }
+  host.send({ t: 'open', q: 1, eligible: { __proto__: 0, constructor: 0, toString: 0, [p.pid]: 0 } });
+  assert.deepEqual((await p.wait('open')).eligible, [p.pid], '押せる人に、特別な名前は入らない');
+  // 入室: pid に特別な名前を指定しても、新しい参加者として入る
+  const x = await client(id);
+  x.send({ t: 'join', id, name: 'B', pid: '__proto__' });
+  const j = await x.wait('joined');
+  assert.match(j.pid, /^[a-z0-9]{8}$/);
+  // 職業・戦う相手: 知らない名前は受け付けない
+  for (const bad of ['constructor', '__proto__', 'toString', 'boss9', 'x'.repeat(30), '']) p.send({ t: 'profile', job: bad });
+  host.send({ t: 'set_foes', foes: ['constructor', '__proto__', 'boss1', 'mage', 'nope', 'toString'] });
+  const lob = await host.wait('lobby', 3000, m => JSON.stringify(m.foes) === '["boss1","mage"]');
+  assert.deepEqual(lob.players.map(q => q.job), ['warrior', 'warrior'], '職業は変わらない');
+  assert.equal(lob.players.length, 2, '参加者が増減していない');
+  assert.equal(({}).job, undefined); assert.equal(({}).name, undefined);
+  host.send({ t: 'close' });
+});
+
+test('防御: 名前・チャット・部屋名から、制御文字や向きを変える文字を除く', async () => {
+  const bad = String.fromCodePoint(0x202e), nul = String.fromCodePoint(0), zw = String.fromCodePoint(0x200b);
+  const id = await newRoomId();
+  const h = await client(id);
+  h.send({ t: 'create', id, name: `部${bad}屋${nul}` });
+  assert.equal((await h.wait('created')).name, '部屋');
+  const p = await client(id);
+  p.send({ t: 'join', id, name: `A${bad}B${zw}`, flavor: `ひ${bad}と${nul}こと` });
+  const j = await p.wait('joined');
+  assert.equal(j.name, 'AB'); assert.equal(j.flavor, 'ひとこと');
+  p.send({ t: 'chat', text: `x${bad}y${nul}z` });
+  assert.equal((await h.wait('chat', 3000, c => !c.sys && c.name === 'AB')).text, 'xyz');
+  p.send({ t: 'profile', name: `C${bad}D` });
+  assert.equal((await h.wait('lobby', 3000, m => m.players[0]?.name === 'CD')).players[0].name, 'CD');
+  h.send({ t: 'close' });
+});
+
+test('防御: 同じ接続元は、部屋を3つまでしか同時に持てない。閉じればまた作れる。別の接続元は作れる', async () => {
+  const ip = randomIp(), mine = [];
+  for (let i = 0; i < 3; i++) { const id = await newRoomId(); const c = await createAs(id, ip, 'r' + i); await c.wait('created'); mine.push(c); }
+  const id4 = await newRoomId();
+  const c4 = await createAs(id4, ip);
+  assert.equal((await c4.wait('error')).code, 'limit');
+  const o = await createAs(id4, randomIp());
+  await o.wait('created');
+  o.send({ t: 'close' });
+  mine[0].send({ t: 'close' });
+  await sleep(400);
+  const id5 = await newRoomId();
+  const c5 = await createAs(id5, ip);
+  await c5.wait('created');
+  for (const c of [...mine.slice(1), c5]) c.send({ t: 'close' });
+});
+
+test('防御: 同じ接続元は、1時間に作れる部屋の数にも上限がある（作っては閉じるを繰り返しても）', async () => {
+  const ip = randomIp();
+  for (let i = 0; i < 6; i++) {
+    const id = await newRoomId(); const c = await createAs(id, ip);
+    await c.wait('created'); c.send({ t: 'close' }); await sleep(120);
+  }
+  const id = await newRoomId();
+  const c = await createAs(id, ip);
+  assert.equal((await c.wait('error')).code, 'limit');
+});
+
+test('防御: 同じ接続元から入れる参加者は20人まで', async () => {
+  const { id, host } = await makeRoom();
+  const ip = randomIp(), socks = [];
+  for (let i = 0; i < 20; i++) { const c = await client(id, { ip }); c.send({ t: 'join', id, name: 'P' + i }); await c.wait('joined'); socks.push(c); }
+  const c21 = await client(id, { ip });
+  c21.send({ t: 'join', id, name: 'P21' });
+  assert.equal((await c21.wait('error')).code, 'full');
+  const other = await client(id, { ip: randomIp() });
+  other.send({ t: 'join', id, name: 'Q' });
+  assert.ok((await other.wait('joined')).pid, '別の接続元は入れる');
+  host.send({ t: 'close' });
+});
+
+test('防御: 同じ接続元からの接続数・短時間の接続回数には上限がある（入口で断る）', async () => {
+  const { id, host } = await makeRoom();
+  const ip = randomIp(), socks = [];
+  for (let i = 0; i < 30; i++) socks.push(await client(id, { ip }));
+  assert.equal(await refused(id, { ip }), true, '31本目は断る');
+  assert.equal(await refused(id, { ip: randomIp() }), false, '別の接続元は通る');
+  for (const s of socks) s.ws.close();
+  host.send({ t: 'close' });
+});
+
+test('防御: 部屋一覧の取得にも、回数の上限がある。GET 以外は受け付けない', async () => {
+  const ip = randomIp();
+  let last = 0;
+  for (let i = 0; i < 61; i++) last = (await fetch(`${base}/api/rooms`, { headers: { 'CF-Connecting-IP': ip } })).status;
+  assert.equal(last, 429);
+  assert.equal((await fetch(`${base}/api/rooms`, { headers: { 'CF-Connecting-IP': randomIp() } })).status, 200);
+  const post = await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'CF-Connecting-IP': randomIp() }, body: '{}' });
+  assert.equal(post.status, 405);
+  assert.equal((await fetch(`${base}/api/rooms`, { headers: { 'CF-Connecting-IP': randomIp() } })).headers.get('x-content-type-options'), 'nosniff');
+});
+
+test('防御: 答えの番号・質問の番号が数字でないものは、進行役に届かない', async () => {
+  const { id, host } = await makeRoom();
+  const p = await joinPlayer(id, 'A');
+  host.clear();
+  for (const bad of [{ qid: 'x', i: 1 }, { qid: 1, i: 'a' }, { qid: 1, i: -1 }, { qid: 1, i: 1.5 }, { qid: 1, i: 9999 }, { qid: null, i: 0 }, { i: 0 }]) p.send({ t: 'answer', ...bad });
+  await sleep(300);
+  assert.equal(host.q.some(m => m.t === 'answer'), false);
+  p.send({ t: 'answer', qid: 1, i: 0 });
+  assert.equal((await host.wait('answer')).i, 0);
+  host.send({ t: 'close' });
+});
+
+test('防御: CPUの押下は、IDの文字を絞り、数にも上限がある', async () => {
+  const { id, host, players, open } = await buzzRoom(1);
+  open(1);
+  await players[0].wait('open');
+  const t = Date.now();
+  host.send({ t: 'cpu_buzz', id: '../a b<>', name: 'x'.repeat(40), ts: t });
+  for (let i = 0; i < 25; i++) host.send({ t: 'cpu_buzz', id: 'c' + i, name: 'C' + i, ts: t + i });
+  const w = await host.wait('winner');
+  assert.equal(w.pid, 'cpu:ab'); assert.equal(w.name.length, 12);
+  assert.ok(w.ranking.length <= 16, `CPUは16体まで: ${w.ranking.length}`);
+  host.send({ t: 'close' });
 });

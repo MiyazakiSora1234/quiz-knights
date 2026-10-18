@@ -45,7 +45,8 @@ const ACCENT = {
 I.boss = I.boss1;
 export const ICON_KEYS = Object.keys(I);
 export function icon(key) {
-  const g = I[key] || I.warrior;
-  const c = ACCENT[I[key] ? key : 'warrior'] ?? ACCENT.boss1;
+  const known = typeof key === 'string' && Object.hasOwn(I, key);        // 'constructor' や '__proto__' などで、Object の中身を取り出さない
+  const g = known ? I[key] : I.warrior;
+  const c = ACCENT[known ? key : 'warrior'] ?? ACCENT.boss1;
   return `<svg class="ic" viewBox="3 3 58 58" fill="currentColor" style="--a:${c}" aria-hidden="true">` + g + '</svg>';
 }

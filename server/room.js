@@ -1,10 +1,20 @@
 import { DurableObject } from 'cloudflare:workers';
-import { SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BATTLE_MAX_CHARS, BOSS_COUNT, PERSONAL_DELAY_MAX, OFFLINE_PRUNE_MS } from './config.js';
+import {
+  SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BATTLE_MAX_CHARS, BOSS_COUNT, PERSONAL_DELAY_MAX, OFFLINE_PRUNE_MS,
+  MAX_MSG_PLAYER, MAX_MSG_HOST, MAX_SOCKETS_PER_ROOM, MAX_SOCKETS_PER_IP, MAX_PLAYERS, MAX_PLAYERS_PER_IP,
+  RATE_PLAYER, RATE_HOST, RATE_STRIKES_MAX, RATE_CHAT, FAIL_MAX, FAIL_LOCK_MS,
+} from './config.js';
+import { clean, safeEq, own, ipTag, Bucket, FailLock } from './safe.js';
+import { JOB, BOSS } from '../app/src/lib/engine/data.js';
 import { BuzzRound, clampRtt } from './buzz.js';
 import { lobbyStub } from './lobby.js';
 
 const ID_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 const rnd = n => { const a = new Uint8Array(n); crypto.getRandomValues(a); return [...a].map(x => ID_CHARS[x % ID_CHARS.length]).join(''); };
+/** 職業・魔王として使ってよいキー（これ以外は、画面を壊すので受け付けない） */
+const ALLOWED_JOBS = new Set([...Object.keys(JOB), ...Object.keys(BOSS).map(id => 'boss' + id)]);
+const okJob = v => typeof v === 'string' && ALLOWED_JOBS.has(v);
+const cleanPw = v => clean(v, 20);
 const send = (ws, m) => { try { ws.send(JSON.stringify(m)); } catch { /* 切断済み */ } };
 const fail = (ws, msg, code) => send(ws, { t: 'error', msg, ...(code ? { code } : {}) });
 
@@ -24,6 +34,9 @@ export class Room extends DurableObject {
     this.lastWinner = null;        // 直近の早押しの勝者（進行役が戻ったとき用）
     this.round = new BuzzRound();  // 今の問題の早押し
     this.timer = null;             // 勝者を確定するタイマー
+    this.buckets = new WeakMap();  // 接続 -> メッセージの回数制限（メモリのみ）
+    this.chatBuckets = new Map();  // pid（進行役は 'host'）-> チャットの回数制限
+    this.fails = new FailLock(FAIL_MAX, FAIL_LOCK_MS);   // パスワード・鍵の総当たり対策（接続元ごと）
     ctx.blockConcurrencyWhile(async () => {
       this.R = (await ctx.storage.get('room')) || null;
       this.state = (await ctx.storage.get('state')) || null;
@@ -34,9 +47,31 @@ export class Room extends DurableObject {
 
   async fetch(request) {
     try { this.slot = new URL(request.url).searchParams.get('id'); } catch { /* noop */ }   // 接続先の部屋番号（作成時に照合する）
+    // 接続の数に上限を設ける（部屋全体・同じ接続元）。接続元が分からない開発環境では、接続元ごとの数は数えない
+    const tag = await ipTag(request.headers.get('CF-Connecting-IP') || '');
+    if (this.socks().length >= MAX_SOCKETS_PER_ROOM) return new Response('room is busy', { status: 503, headers: { 'Retry-After': '10' } });
+    if (tag && this.ctx.getWebSockets('ip:' + tag).length >= MAX_SOCKETS_PER_IP) return new Response('too many connections', { status: 429, headers: { 'Retry-After': '10' } });
     const [client, server] = Object.values(new WebSocketPair());
-    this.ctx.acceptWebSocket(server);
+    this.ctx.acceptWebSocket(server, tag ? ['ip:' + tag] : []);
     return new Response(null, { status: 101, webSocket: client });
+  }
+  /** この接続の接続元の印（IP そのものではない）。分からなければ空 */
+  tagOf(ws) { const t = this.ctx.getTags(ws).find(x => x.startsWith('ip:')); return t ? t.slice(3) : ''; }
+  /** 参加者を pid で探す（'__proto__' などで、Object の中身を取り出されないように、自分自身のものだけ） */
+  player(pid) { return this.R ? own(this.R.players, pid) : undefined; }
+  /** メッセージの回数制限。超えた分は捨てて、続けて超えるなら接続を切る */
+  allowMessage(ws, isHost) {
+    let b = this.buckets.get(ws);
+    if (!b) { const c = isHost ? RATE_HOST : RATE_PLAYER; b = new Bucket(c.cap, c.perSec); this.buckets.set(ws, b); }
+    if (b.allow()) return true;
+    if (b.strikes > RATE_STRIKES_MAX) { try { ws.close(1008, 'rate limit'); } catch { /* noop */ } }
+    return false;
+  }
+  /** チャットの回数制限（1人ごと） */
+  allowChat(key) {
+    let b = this.chatBuckets.get(key);
+    if (!b) { b = new Bucket(RATE_CHAT.cap, RATE_CHAT.perSec); this.chatBuckets.set(key, b); }
+    return b.allow();
   }
 
   /* ============================ 接続・配信のヘルパー ============================ */
@@ -120,7 +155,12 @@ export class Room extends DurableObject {
 
   /* ============================ WebSocket のメッセージ ============================ */
   async webSocketMessage(ws, raw) {
+    if (typeof raw !== 'string') return;                                  // 文字列（JSON）以外は受け付けない
+    const att0 = this.roleOf(ws), isHost = att0.role === 'host';
+    if (raw.length > (isHost ? MAX_MSG_HOST : MAX_MSG_PLAYER)) { try { ws.close(1009, 'message too big'); } catch { /* noop */ } return; }
+    if (!this.allowMessage(ws, isHost)) return;
     let m; try { m = JSON.parse(raw); } catch { return; }
+    if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
     if (m.t === 'ping') return send(ws, { t: 'pong', c: m.c, s: Date.now() });
     // 役割を持たない接続でできること
     if (m.t === 'create') return this.onCreate(ws, m);
@@ -140,7 +180,10 @@ export class Room extends DurableObject {
     if (!(Number.isInteger(+m.id) && +m.id >= 1 && +m.id <= SLOTS) || m.id === null || m.id === '') return fail(ws, '部屋番号が不正です');
     // host:false … 進行役を決めずに部屋だけ作る（作った人は参加者として入り、あとで誰かが進行役になる）
     const withHost = m.host !== false;
-    this.R = { id, name: String(m.name || `部屋${id}`).slice(0, 30), password: String(m.password || '').slice(0, 20), hostKey: withHost ? rnd(20) : null, players: {}, hostGone: null };
+    // 1つの接続元が、部屋をたくさん占領したり、作り続けたりしないように
+    if (!(await lobbyStub(this.env).reserve(this.tagOf(ws), id))) return fail(ws, '部屋を作りすぎです。しばらくしてから、もう一度お試しください', 'limit');
+    if (this.R) return fail(ws, 'その部屋はすでに使われています', 'taken');         // 待っている間に、ほかの人が作った
+    this.R = { id, name: clean(m.name, 30) || `部屋${id}`, password: cleanPw(m.password), hostKey: withHost ? rnd(20) : null, players: {}, hostGone: null };
     await this.save();
     if (withHost) ws.serializeAttachment({ role: 'host' });
     send(ws, { t: 'created', room: id, name: this.R.name, ...(withHost ? { hostKey: this.R.hostKey } : {}) });
@@ -148,12 +191,13 @@ export class Room extends DurableObject {
   }
 
   onChat(ws, m) {
-    const text = String(m.text || '').trim().slice(0, 200);
+    const text = clean(m.text, 200);
     if (!this.R || !text) return;
     const att = this.roleOf(ws);
-    if (att.role === 'host') return this.say({ name: '進行役', text, host: true });
-    if (att.role !== 'player' || !this.R.players[att.pid]) return;
-    const name = this.R.players[att.pid].name;
+    if (att.role === 'host') return this.allowChat('host') ? this.say({ name: '進行役', text, host: true }) : undefined;
+    if (att.role !== 'player' || !this.player(att.pid)) return;
+    if (!this.allowChat(att.pid)) return;                                   // 連投は捨てる
+    const name = this.player(att.pid).name;
     if (m.answer) {                                         // チャット回答: 問題番号を付けて全員に配る
       const q = this.round.q;
       this.say({ name, text, pid: att.pid, answer: true, q });
@@ -164,7 +208,10 @@ export class Room extends DurableObject {
   }
 
   async onHostResume(ws, m) {
-    if (!this.R || this.R.hostKey !== m.hostKey) return fail(ws, '部屋が見つかりません', 'gone');
+    const lockKey = 'h' + (this.tagOf(ws) || '-');
+    if (this.fails.locked(lockKey)) return fail(ws, '失敗が続いたため、しばらくお待ちください', 'locked');
+    if (!this.R || !safeEq(this.R.hostKey, m.hostKey)) { this.fails.fail(lockKey); return fail(ws, '部屋が見つかりません', 'gone'); }
+    this.fails.ok(lockKey);
     // 別の画面が進行役だったら、そちらに知らせて引き継ぐ
     for (const s of this.socks()) {
       if (s !== ws && this.roleOf(s).role === 'host') { send(s, { t: 'replaced' }); try { s.close(1000, 'replaced'); } catch { /* noop */ } }
@@ -181,19 +228,28 @@ export class Room extends DurableObject {
 
   async onJoin(ws, m) {
     if (!this.R) return fail(ws, 'その部屋は存在しません', 'gone');
-    let p = m.pid && this.R.players[m.pid];
+    const tag = this.tagOf(ws);
+    const lockKey = 'p' + (tag || '-');
+    let p = this.player(m.pid);
     // 参加者IDを失って戻ってきた人（別の端末・保存領域の消去）は、同じ名前で接続が切れたままの人を引き継ぐ
     if (!p && m.name) {
-      const name = String(m.name).trim().slice(0, 12);
+      const name = clean(m.name, 12);
       const same = Object.values(this.R.players).filter(x => x.name === name && !this.isOnline(x.pid));
-      if (same.length === 1 && (!this.R.password || this.R.password === String(m.password || ''))) p = same[0];
+      if (same.length === 1 && (!this.R.password || safeEq(this.R.password, cleanPw(m.password)))) p = same[0];
     }
-    if (!p && this.R.password && this.R.password !== String(m.password || '')) return fail(ws, 'パスワードが違います', 'pw');
+    if (!p && this.R.password) {
+      if (this.fails.locked(lockKey)) return fail(ws, 'パスワードの失敗が続いたため、しばらくお待ちください', 'locked');
+      if (!safeEq(this.R.password, cleanPw(m.password))) { this.fails.fail(lockKey); return fail(ws, 'パスワードが違います', 'pw'); }
+      this.fails.ok(lockKey);
+    }
     let isNew = false;
     if (!p) {
+      const all = Object.values(this.R.players);
+      if (all.length >= MAX_PLAYERS) return fail(ws, 'この部屋は満員です', 'full');
+      if (tag && all.filter(x => x.ip === tag).length >= MAX_PLAYERS_PER_IP) return fail(ws, 'この接続元からは、これ以上入室できません', 'full');
       isNew = true;
       const pid = rnd(8);
-      p = { pid, name: String(m.name || '名無し').slice(0, 12), flavor: String(m.flavor || '').slice(0, 20), job: 'warrior', team: 'p' };
+      p = { pid, name: clean(m.name, 12) || '名無し', flavor: clean(m.flavor, 20), job: 'warrior', team: 'p', ...(tag ? { ip: tag } : {}) };
       this.R.players[pid] = p;
       await this.save();
     }
@@ -216,6 +272,7 @@ export class Room extends DurableObject {
   async onHostMessage(m) {
     switch (m.t) {
       case 'state': {
+        if (!m.state || typeof m.state !== 'object') return;
         const first = !this.state;
         this.state = m.state;
         this.ctx.waitUntil(this.ctx.storage.put('state', m.state));
@@ -225,22 +282,27 @@ export class Room extends DurableObject {
       }
       case 'save': {                                    // バトルの全状態を預かる（進行役が替わったとき、新しい進行役に渡す）
         const G = m.G;
-        if (!G || !Array.isArray(G.units) || JSON.stringify(G).length > BATTLE_MAX_CHARS) return;
+        if (!G || typeof G !== 'object' || !Array.isArray(G.units) || JSON.stringify(G).length > BATTLE_MAX_CHARS) return;
         this.battle = G;
         this.ctx.waitUntil(this.ctx.storage.put('battle', G));
         return;
       }
       case 'open':                                      // 次の問題の早押し受付を始める
         clearTimeout(this.timer);
-        this.round = BuzzRound.start(m.q, this.withPersonalDelays(m.eligible), m.chain);
+        if (!Number.isFinite(+m.q)) return;
+        this.round = BuzzRound.start(+m.q, this.withPersonalDelays(m.eligible), !!m.chain);
         await this.persistRound();
-        this.toPlayers({ t: 'open', q: m.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
+        this.toPlayers({ t: 'open', q: this.round.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
       case 'cpu_buzz': {                                // CPU（魔王など）が押した。参加者と同じ順位表に入れて、いちばん早い者が勝つ
-        const pid = typeof m.id === 'string' || typeof m.id === 'number' ? 'cpu:' + m.id : '';
+        const cid = (typeof m.id === 'string' || typeof m.id === 'number') ? String(m.id).replace(/[^\w-]/g, '').slice(0, 16) : '';
+        const pid = cid ? 'cpu:' + cid : '';
         if (!pid || !(this.round.open || this.round.backup)) return;
-        if (!(pid in this.round.eligible)) this.round.eligible[pid] = 0;
-        this.cpuNames[pid] = String(m.name || 'CPU').slice(0, 12);
+        if (!Object.hasOwn(this.round.eligible, pid)) {
+          if (Object.keys(this.round.eligible).filter(k => k.startsWith('cpu:')).length >= 16) return;      // CPUの数に上限
+          this.round.eligible[pid] = 0;
+        }
+        this.cpuNames[pid] = clean(m.name, 12) || 'CPU';
         if (!this.round.record(pid, m.ts, Date.now())) return;
         if (this.round.open) this.scheduleResolve();
         else {
@@ -252,14 +314,14 @@ export class Room extends DurableObject {
       }
       case 'add_eligible': {                            // 途中参戦した人を、いまの受付に加える（ほかの人の受付は変えない）
         const pid = m.pid;
-        if (!this.R.players[pid] || !(this.round.open || this.round.backup) || pid in this.round.eligible) return;
-        this.round.eligible[pid] = Math.max(0, Math.min(2000, +m.delay || 0)) + (this.R.players[pid].delay || 0);
+        if (!this.player(pid) || !(this.round.open || this.round.backup) || Object.hasOwn(this.round.eligible, pid)) return;
+        this.round.eligible[pid] = Math.max(0, Math.min(2000, +m.delay || 0)) + (this.player(pid).delay || 0);
         await this.persistRound();
         for (const s of this.playerWs(pid)) send(s, { t: 'open', q: this.round.q, chain: this.round.chain, eligible: Object.keys(this.round.eligible) });
         return;
       }
       case 'next': {                                    // 連チャン: 誤答のあと、次の順位の人に回答権を移す
-        const list = this.round.ranking(this.nameOf, Array.isArray(m.exclude) ? m.exclude : []);
+        const list = this.round.ranking(this.nameOf, Array.isArray(m.exclude) ? m.exclude.filter(x => typeof x === 'string').slice(0, 100) : []);
         if (!list.length) return this.toHost({ t: 'nobody', q: this.round.q });
         const msg = { t: 'winner', q: this.round.q, pid: list[0].pid, name: list[0].name, at: this.round.raws[list[0].pid], ranking: list, all: this.round.ranking(this.nameOf) };
         this.lastWinner = msg;
@@ -273,7 +335,7 @@ export class Room extends DurableObject {
         this.toPlayers({ t: 'locked' });
         return;
       case 'kick': {
-        const p = this.R.players[m.pid];
+        const p = this.player(m.pid);
         if (!p) return;
         for (const s of this.playerWs(m.pid)) { send(s, { t: 'closed', why: '進行役に退室させられました' }); s.close(1000, 'kicked'); }
         delete this.R.players[m.pid];
@@ -284,11 +346,12 @@ export class Room extends DurableObject {
       case 'settings': return this.updateSettings(m);
       case 'ask': {                                      // 回答者の端末に選択ダイアログを出す
         const { to, qid, title, sub, options } = m;
+        if (typeof to !== 'string') return;
         for (const s of this.playerWs(to)) send(s, { t: 'ask', qid, title, sub, options });
         return;
       }
       case 'priv': {                                      // 本人だけに見せる情報（持ち物など）。その人の端末にだけ送る
-        if (!Array.isArray(m.items)) return;
+        if (!Array.isArray(m.items) || typeof m.to !== 'string') return;
         const clean = a => a.filter(x => typeof x === 'string').slice(0, 40);
         const allies = {};                                    // 仲間の持ち物 { ユニットid: [アイテム] }
         if (m.allies && typeof m.allies === 'object') for (const [k, v] of Object.entries(m.allies).slice(0, 40)) if (Array.isArray(v)) allies[k] = clean(v);
@@ -313,7 +376,7 @@ export class Room extends DurableObject {
 
   /* ---- 参加者のメッセージ ---- */
   async onPlayerMessage(ws, pid, m) {
-    const p = this.R.players[pid];
+    const p = this.player(pid);
     if (!p) return;
     switch (m.t) {
       case 'rtt': {
@@ -323,9 +386,9 @@ export class Room extends DurableObject {
         return;
       }
       case 'profile':
-        if (typeof m.name === 'string' && m.name.trim()) p.name = m.name.trim().slice(0, 12);
-        if (typeof m.flavor === 'string') p.flavor = m.flavor.trim().slice(0, 20);
-        if (typeof m.job === 'string' && m.job.length > 0 && m.job.length <= 20) p.job = m.job;
+        if (clean(m.name, 12)) p.name = clean(m.name, 12);
+        if (typeof m.flavor === 'string') p.flavor = clean(m.flavor, 20);
+        if (okJob(m.job)) p.job = m.job;
         if (m.team === 'p' || m.team === 'e' || m.team === 'c') p.team = m.team;
         if (m.delay != null) p.delay = this.cleanDelay(m.delay);
         await this.save();
@@ -341,7 +404,7 @@ export class Room extends DurableObject {
       case 'set_boss': if (!this.R.hostKey) return this.setBoss(m.boss); return;
       case 'set_foes': if (!this.R.hostKey) return this.setFoes(m.foes); return;
       case 'set_level': if (!this.R.hostKey) return this.setLevel(m.level); return;
-      case 'answer': this.toHost({ t: 'answer', pid, qid: m.qid, i: m.i }); return;
+      case 'answer': if (Number.isInteger(m.qid) && Number.isInteger(m.i) && m.i >= 0 && m.i < 200) this.toHost({ t: 'answer', pid, qid: m.qid, i: m.i }); return;
       case 'claim_host': return this.claimHost(ws, pid);
       case 'buzz':
         if (!this.round.canBuzz(pid)) return;
@@ -360,12 +423,12 @@ export class Room extends DurableObject {
   /** 部屋名・パスワードの変更（入室済みの人には影響しない） */
   /** 進行役が、参加者の職業・チーム・名前を変える。本人の画面にもすぐ反映する */
   async setProfile(m) {
-    const p = this.R.players[m.pid];
+    const p = this.player(m.pid);
     if (!p) return;
     const out = {};
-    if (typeof m.job === 'string' && m.job.length > 0 && m.job.length <= 20) { p.job = m.job; out.job = p.job; }
+    if (okJob(m.job)) { p.job = m.job; out.job = p.job; }
     if (m.team === 'p' || m.team === 'e' || m.team === 'c') { p.team = m.team; out.team = p.team; }
-    if (typeof m.name === 'string' && m.name.trim()) { p.name = m.name.trim().slice(0, 12); out.name = p.name; }
+    if (clean(m.name, 12)) { p.name = clean(m.name, 12); out.name = p.name; }
     if (!Object.keys(out).length) return;
     await this.save();
     for (const s of this.playerWs(p.pid)) send(s, { t: 'profile_set', ...out });
@@ -376,12 +439,12 @@ export class Room extends DurableObject {
   /** 進行役が決めた「押せる人とディレイ」に、各自のディレイ設定を足す */
   withPersonalDelays(eligible) {
     const out = {};
-    for (const [pid, d] of Object.entries(eligible || {})) out[pid] = (+d || 0) + (this.R.players[pid]?.delay || 0);
+    for (const [pid, d] of Object.entries(eligible && typeof eligible === 'object' ? eligible : {})) if (this.player(pid)) out[pid] = (+d || 0) + (this.player(pid).delay || 0);
     return out;
   }
   /** 進行役が、参加者のディレイを決める */
   async setDelay(pid, delay) {
-    const p = this.R.players[pid];
+    const p = this.player(pid);
     if (!p) return;
     p.delay = this.cleanDelay(delay);
     await this.save();
@@ -390,7 +453,7 @@ export class Room extends DurableObject {
   /** 戦う相手（魔王 'boss1'〜'boss6' と職業のキー。最大12体）。進行役も参加者も変えられる */
   async setFoes(list) {
     if (!Array.isArray(list)) return;
-    const ok = list.filter(f => typeof f === 'string' && new RegExp(`^(boss[1-${BOSS_COUNT}]|[a-z]{2,12})$`).test(f)).slice(0, 12);
+    const ok = list.filter(f => okJob(f)).slice(0, 12);
     if (JSON.stringify(ok) === JSON.stringify(this.R.foes ?? ['boss1'])) return;
     this.R.foes = ok;
     await this.save();
@@ -413,8 +476,8 @@ export class Room extends DurableObject {
   async updateSettings(m) {
     if (m.boss != null) await this.setBoss(m.boss);
     const room = typeof m.name === 'string' || typeof m.password === 'string';     // 魔王の選択だけのときは、部屋設定の通知を出さない
-    if (typeof m.name === 'string' && m.name.trim()) this.R.name = m.name.trim().slice(0, 30);
-    if (typeof m.password === 'string') this.R.password = m.password.slice(0, 20);
+    if (clean(m.name, 30)) this.R.name = clean(m.name, 30);
+    if (typeof m.password === 'string') this.R.password = cleanPw(m.password);
     await this.save();
     if (room) this.toHost({ t: 'settings', name: this.R.name, password: this.R.password });
     this.lobby();
@@ -448,13 +511,13 @@ export class Room extends DurableObject {
   /** 進行役をおりた接続を、そのまま参加者にする（部屋から出入りさせない）。新しい参加者の pid を返す */
   async demote(ws, name) {
     const pid = rnd(8);
-    this.R.players[pid] = { pid, name: String(name || '進行役').trim().slice(0, 12) || '進行役', flavor: '', job: 'warrior', team: 'p', delay: 0 };
+    this.R.players[pid] = { pid, name: clean(name, 12) || '進行役', flavor: '', job: 'warrior', team: 'p', delay: 0 };
     await this.save();
     send(ws, { t: 'demoted', pid, name: this.R.players[pid].name });
     ws.serializeAttachment({ role: 'player', pid });
   }
   async transferHost(pid, name) {
-    if (!this.R.players[pid] || !this.isOnline(pid)) return this.toHost({ t: 'notice', msg: 'その人はオンラインではありません' });
+    if (!this.player(pid) || !this.isOnline(pid)) return this.toHost({ t: 'notice', msg: 'その人はオンラインではありません' });
     const old = this.hostWs();
     await this.grantHost(pid);
     this.dropPendingAsks();
@@ -487,7 +550,7 @@ export class Room extends DurableObject {
       await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);
       this.lobby(ws);                                  // 参加者に「進行役が不在」と知らせる
     } else if (att.role === 'player') {
-      if (this.R.players[att.pid]) this.R.players[att.pid].lastSeen = Date.now();      // いつ切れたか（長いと名簿から外す）
+      if (this.player(att.pid)) this.player(att.pid).lastSeen = Date.now();      // いつ切れたか（長いと名簿から外す）
       // 進行役のいない部屋で、全員がいなくなったら猶予のあとに閉じる
       if (!this.R.hostKey && !this.R.hostGone && !Object.keys(this.R.players).some(pid => this.isOnline(pid, ws))) {
         this.R.hostGone = Date.now(); await this.save(); await this.ctx.storage.setAlarm(Date.now() + HOST_GRACE_MS);

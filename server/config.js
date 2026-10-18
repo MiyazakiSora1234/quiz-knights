@@ -19,3 +19,31 @@ export const BOSS_COUNT = 6;
 export const PERSONAL_DELAY_MAX = 3000;
 /** 接続が切れたままの参加者を名簿から外すまでの時間 */
 export const OFFLINE_PRUNE_MS = 6 * 3600e3;
+
+/* ---------- 荒らし・負荷への備え（認証なしで公開するための上限） ---------- */
+/** メッセージ1通の大きさの上限（文字数）。参加者は小さく、進行役は状態・バトルの預けがあるので大きく */
+export const MAX_MSG_PLAYER = 4096;
+export const MAX_MSG_HOST = 262144;
+/** 1つの部屋につなげる数・同じ接続元（IP）からつなげる数。接続元が分からない開発環境では数えない */
+export const MAX_SOCKETS_PER_ROOM = 150;
+export const MAX_SOCKETS_PER_IP = 30;
+/** 1つの部屋の参加者の数・同じ接続元から入れる参加者の数 */
+export const MAX_PLAYERS = 60;
+export const MAX_PLAYERS_PER_IP = 20;
+/** 1つの接続のメッセージの回数制限（たまる量・1秒に回復する量）。超えた分は捨て、続けて超えたら切る */
+export const RATE_PLAYER = { cap: 40, perSec: 20 };
+export const RATE_HOST = { cap: 600, perSec: 200 };
+export const RATE_STRIKES_MAX = 200;
+/** チャット: 1人あたり、この回数まで連続で送れて、1秒に回復する量 */
+export const RATE_CHAT = { cap: 5, perSec: 0.5 };
+/** パスワード・鍵の入力に、これだけ失敗したら、しばらく受け付けない */
+export const FAIL_MAX = 6;
+export const FAIL_LOCK_MS = 60 * 1000;
+/** 部屋を作る数: 同じ接続元が同時に持てる部屋・1時間に作れる部屋 */
+export const MAX_ROOMS_PER_IP = 3;
+export const MAX_CREATES_PER_HOUR = 6;
+/** 入口（Worker）での回数制限: 同じ接続元から、この時間にできる接続・部屋一覧の取得の数（Worker 1つあたり） */
+export const EDGE_WS_LIMIT = { limit: 30, windowMs: 10 * 1000 };
+export const EDGE_LIST_LIMIT = { limit: 60, windowMs: 10 * 1000 };
+/** 部屋一覧を、この時間だけ使い回す（Durable Object への問い合わせを減らす）。環境変数 LIST_CACHE_MS で変えられる */
+export const LIST_CACHE_MS = 1000;
