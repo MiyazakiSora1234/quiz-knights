@@ -72,7 +72,8 @@ export class HostStore {
     });
     this.conn.connect();
   }
-  destroy() { this.conn?.close(); this.quiz.dispose(); this.#cancelCpuTimers(); }
+  #gone = false;
+  destroy() { this.#gone = true; this.conn?.close();this.quiz.dispose(); this.#cancelCpuTimers(); }
   /** 別の画面に奪われた進行役を、この画面で引き継ぐ */
   takeOver() { this.status = 'connecting'; this.conn.connect(); }
 
@@ -200,7 +201,16 @@ export class HostStore {
     this.#cpuTimers.add(timer);
   }
   /** CPUが回答権を取った。正解なら問題が終わり、誤答ならCPUが罰を受けて、参加者がもう一度早押しする */
+  cpuThinkMs = 3000;                 // CPUが押してから答えるまでの「考えている時間」の目安（実際は±25%でばらつく）
   async #cpuResolve(p) {
+    const think = this.cpuThinkMs > 0 ? Math.round(this.cpuThinkMs * (0.75 + Math.random() * 0.5)) : 0;
+    if (think > 0) {
+      const q0 = this.battle.G?.q;
+      toast(`🤖 ${p.name} が先に押した！ 考え中…`, think);
+      await new Promise(res => setTimeout(res, think));
+      const g = this.battle.G;
+      if (this.#gone || !g || g.over || g.q !== q0) return;      // 考えている間に、進行役が問題を進めた・終えた
+    }
     toast(p.ok ? `🤖 ${p.name} が先に押して正解（${p.answer}）` : `🤖 ${p.name} が先に押して誤答${p.answer ? `（${p.answer}）` : ''}`, 3500);
     const done = await this.battle.cpuBuzz(p.id, p.ok, p.answer ?? '');
     if (done) this.quiz.noteResult(p.id, p.ok);

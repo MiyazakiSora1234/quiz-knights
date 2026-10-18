@@ -239,9 +239,10 @@ test('[参加者] 進行役の引き継ぎ: host_granted で鍵を保存して�
 /* ======================= HostStore（進行役） ======================= */
 const lobbyPlayers = (online = [true, true]) => online.map((o, i) => ({ pid: 'p' + i, name: 'P' + i, flavor: '', job: ['warrior', 'monk', 'mage'][i % 3], team: 'p', delay: 0, online: o, rtt: 20 }));
 
-async function hostReady(env, mods, { key = 'HK', players = lobbyPlayers() } = {}) {
+async function hostReady(env, mods, { key = 'HK', players = lobbyPlayers(), think = 0 } = {}) {
   env.local.setItem('qr_hk_3', key);
   const h = new mods.host.HostStore(3);
+  h.cpuThinkMs = think;
   h.connect();
   const ws = env.ws(); ws.open();
   ws.recv({ t: 'created', room: '3', name: '部屋', password: 'pw' });
@@ -751,6 +752,26 @@ test('[進行役] CPUが押したあとでも、人間の押下のほうが早�
     await tick(40);
     assert.equal(h.G.q, 1); assert.equal(h.G.sel, h.G.pids.p0, '人間が回答者');
     assert.equal(h.G.stats?.[cb.id]?.correct ?? 0, 0, 'CPUは回答していない');
+    h.destroy();
+  } finally { Math.random = rnd; env.restore(); }
+});
+test('[進行役] CPUが早押しに勝ったら、少し「考えている時間」をおいてから答える。その間に問題が進んだら答えない', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  const rnd = Math.random; Math.random = () => 0.5;
+  try {
+    const { h, ws } = await hostReady(env, mods, { think: 180 });
+    h.level = 'strong'; h.quiz.importFrom(BANK); h.start(); await tick(30);
+    h.quiz.setSpeed(20); h.quiz.start();
+    for (let i = 0; i < 100 && !ws.of('cpu_buzz').length; i++) await tick(20);
+    const cb = ws.of('cpu_buzz')[0];
+    const r = [{ pid: 'cpu:' + cb.id, name: cb.name, ms: 0 }];
+    ws.recv({ t: 'winner', q: 1, pid: 'cpu:' + cb.id, name: cb.name, at: cb.ts, ranking: r, all: r });
+    await tick(40);
+    assert.equal(h.G.q, 1, '考えている間は、まだ答えていない');
+    assert.equal(h.G.stats?.[cb.id]?.correct ?? 0, 0);
+    await wait(300);
+    for (let i = 0; i < 50 && h.G.q === 1; i++) await tick(20);
+    assert.equal(h.G.q, 2, '考えたあとで答える');
     h.destroy();
   } finally { Math.random = rnd; env.restore(); }
 });
