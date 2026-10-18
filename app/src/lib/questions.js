@@ -147,18 +147,18 @@ export function chunksAt(times, t) {
   return n;
 }
 
-/** CPUの強さ（難易度）ごとの基準。lag=確定ポイントを過ぎてから押すまでの文字数、early=確定前に先走って押す確率、never=押さない確率、react=反応の遅れの倍率 */
+/** CPUの強さ（難易度）ごとの基準。lag=確定ポイントを過ぎてから押すまでの文字数、early=確定前に先走って当てる確率、react=反応の遅れの倍率 */
 export const CPU_SKILL = {
-  weak: { lag: [4, 14], early: 0.06, never: 0.25, react: 1.3 },
-  normal: { lag: [1, 6], early: 0.03, never: 0.1, react: 1 },
-  strong: { lag: [0, 2], early: 0.01, never: 0.03, react: 0.8 },
+  weak: { lag: [4, 14], early: 0.06, react: 1.3 },
+  normal: { lag: [1, 6], early: 0.03, react: 1 },
+  strong: { lag: [0, 2], early: 0.01, react: 0.8 },
 };
-/** CPUの性格。lagMul=押す遅さの倍率、early/never=先走る・押さない確率の加減、bluff=知らないのに押してしまう確率、react=反応の遅れ(ms)の範囲 */
+/** CPUの性格。lagMul=押す遅さの倍率、early=先走る確率の加減、bluff=知らないのに押してしまう確率、react=反応の遅れ(ms)の範囲 */
 export const PERSONAS = {
-  hasty: { label: 'せっかち', lagMul: 0.6, early: 0.04, never: -0.03, bluff: 0.1, react: [120, 300] },
-  careful: { label: '慎重', lagMul: 1.3, early: -0.03, never: 0.05, bluff: 0.02, react: [250, 550] },
-  scholar: { label: '博識', lagMul: 0.9, early: -0.01, never: -0.07, bluff: 0.04, react: [180, 400] },
-  moody: { label: 'ムラっ気', lagMul: 1, early: 0.02, never: 0.03, bluff: 0.12, react: [150, 600] },
+  hasty: { label: 'せっかち', lagMul: 0.6, early: 0.04, bluff: 0.1, react: [120, 300] },
+  careful: { label: '慎重', lagMul: 1.3, early: -0.03, bluff: 0.02, react: [250, 550] },
+  scholar: { label: '博識', lagMul: 0.9, early: -0.01, bluff: 0.04, react: [180, 400] },
+  moody: { label: 'ムラっ気', lagMul: 1, early: 0.02, bluff: 0.12, react: [150, 600] },
 };
 const PERSONA_KEYS = Object.keys(PERSONAS);
 /** 名前から性格を決める（同じ名前なら、いつも同じ性格） */
@@ -167,6 +167,8 @@ export function personaFor(name) {
   for (const ch of String(name ?? '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
   return PERSONA_KEYS[h % PERSONA_KEYS.length];
 }
+/** CPUが押す問題での結果の割合（強さ・性格に関係なく一定）: スルー（押さない）・誤答・正解 */
+export const CPU_RATE = { skip: 0.15, wrong: 0.25, right: 0.6 };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /**
@@ -181,31 +183,33 @@ export function cpuPlan(question, level = 'normal', rand = Math.random, persona 
   if (!sure) return null;
   const k = CPU_SKILL[level] ?? CPU_SKILL.normal, ps = PERSONAS[persona] ?? PERSONAS.scholar;
   const careful = (mood.cautious ?? 0) > 0, hot = (mood.streak ?? 0) >= 2;
-  const hard = question.diff ? (question.diff - 3) * 0.06 : 0;         // 難しい問題ほど、わからなくて押さない
-  const never = clamp(k.never + ps.never + hard + (careful ? 0.08 : 0), 0.01, 0.7);
-  const early = clamp(k.early + ps.early + (hot ? 0.01 : 0), 0, 0.5) * (careful ? 0.3 : 1);
-  const bluff = ps.bluff * (careful ? 0.3 : 1);
-  if (rand() < never) return null;
+  // まず結果を、決まった割合（スルー15%・誤答25%・正解60%）で決める。強さ・性格は、押すタイミングと、誤答のしかたに効く。
+  // 誤答のあとの慎重な間は、誤答を減らして、その分スルーにする（間違えたあとの人間らしさ）
+  const wrongP = CPU_RATE.wrong * (careful ? 0.3 : 1);
+  const r = rand();
+  if (r < CPU_RATE.skip + (CPU_RATE.wrong - wrongP)) return null;
+  const wrong = r < CPU_RATE.skip + CPU_RATE.wrong;
   const reactMs = () => {
     const [lo, hi] = ps.react;
     return Math.round((lo + ((hi - lo) * (rand() + rand())) / 2) * k.react + (careful ? 100 : 0));
   };
   const ends = chunksOf(question).reduce((a, c) => (a.push((a.at(-1) ?? 0) + c.length), a), []);
-  if (sure > 3 && rand() < early) {
-    const traps = question.traps ?? [];
-    if (traps.length && rand() < 0.6) {                                 // 引っかけに乗って、つい押す
-      const t = traps[Math.floor(rand() * traps.length)];
-      return { kind: 'trap', at: clamp(ends[t.chunk - 1] ?? 1, 1, question.q.length), ok: false, answer: t.a, react: reactMs() };
-    }
+  const traps = question.traps ?? [];
+  const earlyAt = () => {
     const g = question.guess ? ends[question.guess - 1] : null;
-    const at = Math.max(1, Math.min(sure - 1, g ?? Math.floor(sure * (0.35 + 0.6 * rand()))));
-    const lucky = rand() < 0.35;                                        // 先走っても、運よく当たることがある
-    return { kind: 'guess', at, ok: lucky, answer: lucky ? null : cpuWrongAnswer(question, rand), react: reactMs() };
+    return Math.max(1, Math.min(sure - 1, g ?? Math.floor(sure * (0.35 + 0.6 * rand()))));
+  };
+  const lateAt = () => Math.min(question.q.length, sure + Math.round((k.lag[0] + rand() * (k.lag[1] - k.lag[0])) * ps.lagMul * (hot ? 0.8 : 1)));
+  if (wrong) {
+    // 誤答のしかた: 引っかけに乗る／先走る／知らないのに押す（性格で割合が変わる）
+    const w = [traps.length ? 3 : 0, sure > 3 ? 2 + ps.early * 20 : 0, 2 + ps.bluff * 10];
+    let x = rand() * (w[0] + w[1] + w[2]);
+    if ((x -= w[0]) < 0) { const t = traps[Math.floor(rand() * traps.length)]; return { kind: 'trap', at: clamp(ends[t.chunk - 1] ?? 1, 1, question.q.length), ok: false, answer: t.a, react: reactMs() }; }
+    if ((x -= w[1]) < 0) return { kind: 'guess', at: earlyAt(), ok: false, answer: cpuWrongAnswer(question, rand), react: reactMs() };
+    return { kind: 'bluff', at: lateAt(), ok: false, answer: cpuWrongAnswer(question, rand), react: reactMs() };
   }
-  const lag = Math.round((k.lag[0] + rand() * (k.lag[1] - k.lag[0])) * ps.lagMul * (hot ? 0.8 : 1));
-  const at = Math.min(question.q.length, sure + lag);
-  if (rand() < bluff) return { kind: 'bluff', at, ok: false, answer: cpuWrongAnswer(question, rand), react: reactMs() };
-  return { kind: 'know', at, ok: true, answer: null, react: reactMs() };
+  if (sure > 3 && rand() < clamp(k.early + ps.early, 0, 0.3)) return { kind: 'guess', at: earlyAt(), ok: true, answer: null, react: reactMs() };   // 先走ったけれど、当たった
+  return { kind: 'know', at: lateAt(), ok: true, answer: null, react: reactMs() };
 }
 /** CPUが誤答したときに言う答え（誤答の候補から選ぶ。無ければ null） */
 export function cpuWrongAnswer(question, rand = Math.random) {

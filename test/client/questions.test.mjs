@@ -86,19 +86,21 @@ test('塊・読み済みの文字数・押した時刻からの塊の数', () =>
 test('CPUの押し方: 確定ポイント基準・強さで変わる・押さないことがある', () => {
   const q = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, wrong: ['a', 'b'] }, 1).q;
   assert.equal(cpuPlan(normalizeQuestion({ q: 'あいう', a: 'x' }, 1).q, 'strong'), null, '確定ポイントが無ければ押さない');
-  assert.equal(cpuPlan(q, 'strong', () => 0), null, 'never の確率に入ると押さない');
+  assert.equal(cpuPlan(q, 'strong', () => 0), null, 'スルーの割合に入ると押さない');
   for (const lv of ['weak', 'normal', 'strong']) {
     const p = cpuPlan(q, lv, () => 0.5);
     const [lo, hi] = CPU_SKILL[lv].lag;
     assert.equal(p.ok, true); assert.ok(p.at >= 20 + lo && p.at <= 20 + hi, lv);
   }
-  const seq = [0.9, 0.0, 0.5]; let i = 0;
-  const early = cpuPlan(q, 'weak', () => seq[i++ % 3]);          // never を避け、当てずっぽうに入る
+  const seq = [0.3, 0.0, 0.5]; let i = 0;
+  const early = cpuPlan(q, 'weak', () => seq[i++ % 3]);          // 誤答の割合に入り、先走る
   assert.equal(early.ok, false); assert.ok(early.at >= 1 && early.at < 20);
-  const stat = lv => { let n = 0, ok = 0; for (let k = 0; k < 4000; k++) { const p = cpuPlan(q, lv); if (!p) continue; n++; ok += p.ok ? 1 : 0; assert.ok(p.at >= 1 && p.at <= q.q.length); } return { n, rate: ok / n }; };
-  const w = stat('weak'), s = stat('strong');
-  assert.ok(s.n > w.n, '強いほど押す');
-  assert.ok(s.rate > w.rate, '強いほど正解する');
+  // 結果の割合は、強さ・性格に関係なく、スルー15%・誤答25%・正解60%
+  for (const lv of ['weak', 'normal', 'strong']) for (const ps of Object.keys(PERSONAS)) {
+    const N = 20000; let skip = 0, wrong = 0, right = 0;
+    for (let k = 0; k < N; k++) { const p = cpuPlan(q, lv, Math.random, ps); if (!p) skip++; else if (p.ok) right++; else wrong++; assert.ok(!p || (p.at >= 1 && p.at <= q.q.length)); }
+    assert.ok(Math.abs(skip / N - 0.15) < 0.015 && Math.abs(wrong / N - 0.25) < 0.015 && Math.abs(right / N - 0.6) < 0.015, `${lv}/${ps}: ${skip / N} ${wrong / N} ${right / N}`);
+  }
   assert.ok(cpuPlan(normalizeQuestion({ q: 'あ'.repeat(5), a: 'x', sure: 5 }, 1).q, 'weak', () => 0.99).at <= 5, '問題文の長さを超えない');
   assert.equal(cpuWrongAnswer(q, () => 0.99), 'b'); assert.equal(cpuWrongAnswer({ wrong: [] }), null);
 });
@@ -123,7 +125,6 @@ test('CPUの性格: 名前で決まり（いつも同じ）、4種類にばら�
   const avg = (persona, f) => { let n = 0, sum = 0; for (let i = 0; i < 4000; i++) { const p = cpuPlan(q, 'normal', Math.random, persona); if (p) { n++; sum += f(p); } } return sum / n; };
   assert.ok(avg('hasty', p => p.at) < avg('careful', p => p.at), 'せっかちは早く押し、慎重は遅く押す');
   assert.ok(avg('hasty', p => p.react) < avg('careful', p => p.react), 'せっかちは反応が速い');
-  assert.ok(avg('hasty', p => (p.ok ? 1 : 0)) < avg('careful', p => (p.ok ? 1 : 0)), 'せっかちは誤答が多い');
   for (const k of Object.keys(PERSONAS)) assert.ok(PERSONAS[k].label);
 });
 
@@ -146,14 +147,11 @@ test('CPUの押し方の種類: わかって押す・先走り（当たること
   assert.ok(seen.bluff.every(p => p.at >= 15 && !p.ok), '知ったかぶりも、見かけは確定ポイント以降');
 });
 
-test('CPUの気分: 誤答の直後は慎重（先走り・知ったかぶりが減り、押さない・反応が遅くなる）。難しい問題ほど押さない', () => {
+test('CPUの気分: 誤答の直後は慎重（先走り・知ったかぶりが減り、反応が遅くなる）', () => {
   const q = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, wrong: ['a'] }, 1).q;
   const rate = (mood, qq = q, f = p => p.ok === false) => { let n = 0, hit = 0; for (let i = 0; i < 6000; i++) { n++; const p = cpuPlan(qq, 'normal', Math.random, 'moody', mood); if (p && f(p)) hit++; } return hit / n; };
-  assert.ok(rate({ cautious: 2 }) < rate({}), '慎重なときは、誤答が少ない');
+  assert.ok(rate({ cautious: 2 }) < rate({}) * 0.5, '慎重なときは、誤答が少ない');
   assert.ok(rate({ cautious: 2 }, q, p => false) === 0);
   let rt = (mood) => { let s = 0, n = 0; for (let i = 0; i < 3000; i++) { const p = cpuPlan(q, 'normal', Math.random, 'moody', mood); if (p) { s += p.react; n++; } } return s / n; };
   assert.ok(rt({ cautious: 1 }) > rt({}) + 60, '慎重なときは反応が遅い');
-  const hard = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, diff: 5 }, 1).q, easy = normalizeQuestion({ q: 'あ'.repeat(30), a: 'x', sure: 20, diff: 1 }, 1).q;
-  const none = qq => { let n = 0; for (let i = 0; i < 6000; i++) if (!cpuPlan(qq, 'normal', Math.random, 'scholar')) n++; return n; };
-  assert.ok(none(hard) > none(easy) * 1.5, '難しい問題ほど押さない');
 });
