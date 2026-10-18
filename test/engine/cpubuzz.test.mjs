@@ -82,3 +82,61 @@ test('CPUの答えが、演出とログに出る（正解・誤答とも）', as
   assert.ok(h.b.G.log.some(l => /先に押して正解$/.test(l.m)), '答えの文言なしでも動く');
   checkInvariants(h.b.G);
 });
+
+const acted = h => h.b.G.log.filter(l => /の行動$/.test(l.m) && l.m.startsWith('🤖')).length;
+
+test('CPUが早押しで競うとき（cpuBuzz）: 参加者が答えても、スルーでも、CPUは行動しない', async () => {
+  const h = harness(); start(h);
+  h.b.setCpuBuzz(true);
+  await h.correct('A', '通常攻撃', '魔王1');
+  assert.equal(acted(h), 0, '参加者が正解して行動したあと、CPUは動かない');
+  assert.equal(h.b.G.q, 2);
+  await h.b.skip();
+  assert.equal(acted(h), 0, 'スルーでもCPUは動かない'); assert.equal(h.b.G.q, 3);
+  await h.wrong('B');
+  assert.equal(acted(h), 0, '参加者が誤答しても、CPUは動かない'); assert.equal(h.b.G.q, 4);
+  checkInvariants(h.b.G);
+});
+
+test('CPUが早押しで競うとき: 勝ったCPUだけが行動する。誤答（押し負けではなく自滅）では動かない', async () => {
+  const h = harness(); start(h, { bossPenalty: true });
+  h.b.setCpuBuzz(true);
+  await h.b.cpuBuzz(boss(h).id, false, '誤答');
+  assert.equal(acted(h), 0, 'CPUが誤答したときは、行動しない（問題は続く）'); assert.equal(h.b.G.q, 1);
+  await h.b.cpuBuzz(boss(h).id, true, '正解');
+  assert.equal(acted(h), 1, '早押しに勝って正解したCPUが、1回行動する'); assert.equal(h.b.G.q, 2);
+  checkInvariants(h.b.G);
+});
+
+test('複数のCPU: 早押しに勝ったCPUが自分で行動する（ほかのCPUではない）', async () => {
+  const h = harness();
+  h.b.start({ players: [P('A', 'warrior'), P('B', 'monk')], foes: ['mage', 'bm', 'warrior'], cpuAuto: true, hpScale: 1 });
+  h.b.setCpuBuzz(true);
+  const cpus = h.b.G.units.filter(u => u.cpu);
+  for (const winner of [cpus[2], cpus[0], cpus[1]]) {
+    const before = h.b.G.log.length;
+    await h.b.cpuBuzz(winner.id, true, '正解');
+    const mine = h.b.G.log.slice(0, h.b.G.log.length - before).filter(l => /の行動$/.test(l.m)).map(l => l.m);
+    assert.equal(mine.length, 1, mine.join(','));
+    assert.ok(mine[0].includes(winner.name), `${mine[0]} は ${winner.name} の行動のはず`);
+  }
+});
+
+test('cpuBuzz がオフ（問題集を使わないとき）は、これまでどおり、1問ごとにCPUが動く', async () => {
+  const h = harness(); start(h);
+  await h.b.skip();
+  assert.equal(acted(h), 1);
+  h.b.setCpuBuzz(true); h.b.setCpuBuzz(false);
+  await h.b.skip();
+  assert.equal(acted(h), 2);
+});
+
+test('早押しに勝ったCPUが、休み・戦闘不能で動けないときは、誰も動かない', async () => {
+  const h = harness(); start(h);
+  h.b.setCpuBuzz(true);
+  const b = boss(h);
+  b.restNow = true;
+  await h.b.skip();
+  assert.equal(acted(h), 0);
+  checkInvariants(h.b.G);
+});

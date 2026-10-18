@@ -167,10 +167,13 @@ export class HostStore {
   /** バトルの問題番号に合わせて、問題集の出題とCPUの押し方を更新する */
   syncQuiz() {
     const G = this.battle.G;
+    this.#syncCpuBuzz();
     if (!G || !this.quiz.has) return;
     const cpus = G.cpu && G.cfg?.cpuAuto ? G.units.filter(u => (u.isBoss || u.cpu) && !u.human && u.alive && !u.restNow).map(u => ({ id: u.id, name: u.name })) : [];
     this.quiz.sync(G.q, cpus, this.level);
   }
+  /** 問題集があり、CPUが早押しに参加するときは、CPUは「早押しに勝った問題」でだけ行動する */
+  #syncCpuBuzz() { const G = this.battle.G; if (G) this.battle.setCpuBuzz(this.quiz.has && this.quiz.cpuOn && !!G.cfg?.cpuAuto); }
   #cpuPending = new Map();           // サーバーに押下を送ったCPU { 'cpu:ID' → { id, name, ok, answer, question } }（勝者が決まるまで）
   /**
    * 問読みが、CPUの押す位置に達した。CPUも参加者と同じように、サーバーに押下を送り、いちばん早い者が回答権を取る

@@ -13,7 +13,7 @@
   let detail = $state(false);
 
   // 問題の番号や問題集が変わったときに、出題とCPUの押し方を合わせる
-  $effect(() => { G.q; quiz.has; quiz.offset; untrack(() => host.syncQuiz()); });
+  $effect(() => { G.q; quiz.has; quiz.offset; quiz.cpuOn; untrack(() => host.syncQuiz()); });
 
   /** Space: 読み始める／一時停止　→ : 次の塊まで進める　← : 前の塊に戻す */
   function onkey(e) {

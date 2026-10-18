@@ -817,6 +817,23 @@ test('[進行役] CPUの誤答は答えが演出に出る。誤答するとCPU�
     h.destroy();
   } finally { Math.random = rnd; env.restore(); }
 });
+test('[進行役] 問題集があり「CPUも早押しする」がオンなら、CPUは早押しに勝った問題でだけ行動する（押し負け・スルーでは動かない）', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const { h } = await hostReady(env, mods);
+    h.start(); await tick(30);
+    assert.ok(!h.G.cfg.cpuBuzz, '問題集がなければ、これまでどおり');
+    h.quiz.importFrom(BANK); h.syncQuiz();
+    assert.equal(h.battle.G.cfg.cpuBuzz, true, '問題集があればオン');
+    h.quiz.setCpuOn(false); h.syncQuiz();
+    assert.equal(h.battle.G.cfg.cpuBuzz, false, 'CPUが早押ししない設定なら、これまでどおり');
+    h.quiz.setCpuOn(true); h.syncQuiz();
+    assert.equal(h.battle.G.cfg.cpuBuzz, true);
+    h.quiz.clear(); h.syncQuiz();
+    assert.equal(h.battle.G.cfg.cpuBuzz, false, '問題集を消せば、元に戻る');
+    h.destroy();
+  } finally { env.restore(); }
+});
 test('[進行役] 人間が先に押していたら、CPUは押さない（回答者が決まっている間）', async () => {
   const mods = await loadStores(); const env = fakeEnv();
   const rnd = Math.random; Math.random = () => 0.5;

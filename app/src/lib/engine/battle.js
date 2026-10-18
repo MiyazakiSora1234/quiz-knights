@@ -114,8 +114,9 @@ export function createBattle(ui) {
   }
 
   /** CPU（魔王・CPUの職業ユニット）のうち1体が、1問ごとに自動で1回行動する。先読みで「いちばん効く動き」をするCPUと、その行動・対象を選ぶ */
-  async function cpuTurn() {
-    const all = G.units.filter(u => (u.isBoss || u.cpu) && !u.human && u.alive && !u.restNow);   // 参加者が操作する魔王は自動で動かない
+  /** only: 早押しに勝ったCPU。指定があれば、そのCPUだけが動く */
+  async function cpuTurn(only = null) {
+    const all = G.units.filter(u => (u.isBoss || u.cpu) && !u.human && u.alive && !u.restNow && (!only || u.id === only.id));   // 参加者が操作する魔王は自動で動かない
     let cpus = [], plan = null;
     if (all.length) {
       let top = null;
@@ -147,9 +148,10 @@ export function createBattle(ui) {
   }
 
   /** 1問が終わったとき。correct は正解した人（いなければ null） */
-  async function endQuestion(correct) {
+  /** cpuWinner: 早押しに勝ったCPU。CPUが早押しで競っている（cfg.cpuBuzz）ときは、勝ったCPUだけが動き、押し負けたとき・スルーのときは動かない */
+  async function endQuestion(correct, cpuWinner = null) {
     checkEnd();
-    if (!G.over && G.cfg.cpuAuto) await cpuTurn();
+    if (!G.over && G.cfg.cpuAuto && (!G.cfg.cpuBuzz || cpuWinner)) await cpuTurn(cpuWinner);
     if (!G.over) await tickPoison();            // 決着がついたあとは、毒で状況を変えない
     for (const u of G.units) { u.restNow = u.restNext; u.restNext = false; }
     G.prevCorrect = correct ? correct.id : null;
@@ -344,7 +346,7 @@ export function createBattle(ui) {
     log(`🤖 ${nm(u)} が先に押して${text ? `「${text}」と答え、` : ''}${ok ? '正解' : '誤答'}`, 'sys');
     ctx.event({ kind: 'answer', ok, who: u.name, text: text || '' });
     await wait(ok ? 900 : 700);
-    if (ok) { await endQuestion(null); return; }
+    if (ok) { await endQuestion(null, u); return; }
     await wrongPenalty(u);
     checkEnd();
   }
@@ -534,6 +536,8 @@ export function createBattle(ui) {
       return true;
     },
     skip() { return transact(doThrow); },
+    /** CPUが早押しで競うか。オンのあいだ、CPUは「早押しに勝った問題」でだけ行動する（押し負け・スルーでは動かない） */
+    setCpuBuzz(on) { if (G && !!G.cfg.cpuBuzz !== !!on) G.cfg.cpuBuzz = !!on; },
     /** CPUの早押し。回答者が決まっていない間だけ（ok: 正解したか） */
     cpuBuzz(id, ok, text = '') {
       const u = G && G.units.find(x => x.id === id);
