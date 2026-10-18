@@ -8,6 +8,7 @@
   import ChatPanel from './ChatPanel.svelte';
   import LogSheet from '../../components/LogSheet.svelte';
   import Notice from '../../components/Notice.svelte';
+  import CpuThinking from '../../components/CpuThinking.svelte';
   import EventFx from '../../components/EventFx.svelte';
   import { fade, fly } from 'svelte/transition';
   import { panel, modal } from '../../lib/stores/ui.svelte.js';
@@ -59,6 +60,7 @@
 {#if G.over}<GameOver {host} {G} />{/if}
 <UnitEditor {host} {G} />
 <Notice notice={G.notice} />
+<CpuThinking thinking={G.thinking} />
 <EventFx event={G.event} />
 <LogSheet lines={G.log} />
 {#if host.waiting}

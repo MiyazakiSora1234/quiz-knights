@@ -537,6 +537,8 @@ export function createBattle(ui) {
     },
     skip() { return transact(doThrow); },
     /** CPUが早押しで競うか。オンのあいだ、CPUは「早押しに勝った問題」でだけ行動する（押し負け・スルーでは動かない） */
+    /** CPUが早押しに勝って考えている間の表示（name: CPUの名前 / null で消す） */
+    setThinking(name) { if (!G) return; const next = name ? { name } : null; if ((G.thinking?.name ?? null) === (next?.name ?? null)) return; G.thinking = next; emit(); },
     setCpuBuzz(on) { if (G && !!G.cfg.cpuBuzz !== !!on) G.cfg.cpuBuzz = !!on; },
     /** CPUの早押し。回答者が決まっていない間だけ（ok: 正解したか） */
     cpuBuzz(id, ok, text = '') {

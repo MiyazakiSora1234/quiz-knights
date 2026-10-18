@@ -11,6 +11,7 @@
   import LogSheet from '../components/LogSheet.svelte';
   import PlaySettings from './play/PlaySettings.svelte';
   import Notice from '../components/Notice.svelte';
+  import CpuThinking from '../components/CpuThinking.svelte';
   import EventFx from '../components/EventFx.svelte';
 
   let { id } = $props();
@@ -76,7 +77,7 @@
   {/if}
   <AskDialog {p} />
   <PlaySettings {p} />
-  {#if p.gs}<Notice notice={p.gs.notice} /><EventFx event={p.gs.event} />{/if}
+  {#if p.gs}<Notice notice={p.gs.notice} /><CpuThinking thinking={p.gs.thinking} /><EventFx event={p.gs.event} />{/if}
   <LogSheet lines={(p.gs?.log ?? []).map(m => ({ m }))} />
 </div>
 

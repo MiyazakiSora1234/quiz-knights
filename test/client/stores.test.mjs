@@ -769,9 +769,11 @@ test('[進行役] CPUが早押しに勝ったら、少し「考えている時�
     await tick(40);
     assert.equal(h.G.q, 1, '考えている間は、まだ答えていない');
     assert.equal(h.G.stats?.[cb.id]?.correct ?? 0, 0);
+    assert.equal(h.G.thinking?.name, cb.name, '考え中の表示が出る（参加者の画面にも送られる）');
     await wait(300);
     for (let i = 0; i < 50 && h.G.q === 1; i++) await tick(20);
     assert.equal(h.G.q, 2, '考えたあとで答える');
+    assert.ok(!h.G.thinking, '答えたら考え中の表示は消える');
     h.destroy();
   } finally { Math.random = rnd; env.restore(); }
 });
