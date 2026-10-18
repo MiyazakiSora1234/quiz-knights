@@ -167,8 +167,12 @@ export function personaFor(name) {
   for (const ch of String(name ?? '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
   return PERSONA_KEYS[h % PERSONA_KEYS.length];
 }
-/** CPUが押す問題での結果の割合（強さ・性格に関係なく一定）: スルー（押さない）・誤答・正解 */
-export const CPU_RATE = { skip: 0.15, wrong: 0.25, right: 0.6 };
+/** 問題ごとの結果の割合（CPUの強さごと。性格には関係なく一定）: スルー（押さない）・誤答・正解 */
+export const CPU_RATE = {
+  weak: { skip: 0.25, wrong: 0.35, right: 0.4 },
+  normal: { skip: 0.15, wrong: 0.25, right: 0.6 },
+  strong: { skip: 0.07, wrong: 0.15, right: 0.78 },
+};
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /**
@@ -183,12 +187,13 @@ export function cpuPlan(question, level = 'normal', rand = Math.random, persona 
   if (!sure) return null;
   const k = CPU_SKILL[level] ?? CPU_SKILL.normal, ps = PERSONAS[persona] ?? PERSONAS.scholar;
   const careful = (mood.cautious ?? 0) > 0, hot = (mood.streak ?? 0) >= 2;
-  // まず結果を、決まった割合（スルー15%・誤答25%・正解60%）で決める。強さ・性格は、押すタイミングと、誤答のしかたに効く。
+  // まず結果を、強さごとの決まった割合（普通ならスルー15%・誤答25%・正解60%）で決める。性格は、押すタイミングと、誤答のしかたに効く。
   // 誤答のあとの慎重な間は、誤答を減らして、その分スルーにする（間違えたあとの人間らしさ）
-  const wrongP = CPU_RATE.wrong * (careful ? 0.3 : 1);
+  const rate = CPU_RATE[level] ?? CPU_RATE.normal;
+  const wrongP = rate.wrong * (careful ? 0.3 : 1);
   const r = rand();
-  if (r < CPU_RATE.skip + (CPU_RATE.wrong - wrongP)) return null;
-  const wrong = r < CPU_RATE.skip + CPU_RATE.wrong;
+  if (r < rate.skip + (rate.wrong - wrongP)) return null;
+  const wrong = r < rate.skip + rate.wrong;
   const reactMs = () => {
     const [lo, hi] = ps.react;
     return Math.round((lo + ((hi - lo) * (rand() + rand())) / 2) * k.react + (careful ? 100 : 0));

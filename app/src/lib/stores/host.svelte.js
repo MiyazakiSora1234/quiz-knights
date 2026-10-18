@@ -201,7 +201,7 @@ export class HostStore {
     this.#cpuTimers.add(timer);
   }
   /** CPUが回答権を取った。正解なら問題が終わり、誤答ならCPUが罰を受けて、参加者がもう一度早押しする */
-  cpuThinkMs = 5000;                 // CPUが押してから答えるまでの「考えている時間」の目安（実際は±10%でばらつく）
+  cpuThinkMs = 3000;                 // CPUが押してから答えるまでの「考えている時間」の目安（実際は±10%でばらつく）
   async #cpuResolve(p) {
     const think = this.cpuThinkMs > 0 ? Math.round(this.cpuThinkMs * (0.9 + Math.random() * 0.2)) : 0;
     if (think > 0) {

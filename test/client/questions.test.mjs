@@ -1,7 +1,7 @@
 // 問題集の検査・変換・CPUの押し方（純粋な関数）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBank, normalizeQuestion, parseSlashed, toSlashed, parseLines, importText, chunksOf, readChars, chunksAt, cpuPlan, cpuWrongAnswer, personaFor, PERSONAS, exportBank, SAMPLE_BANK, CPU_SKILL, MAX_QUESTIONS } from '../../app/src/lib/questions.js';
+import { normalizeBank, normalizeQuestion, parseSlashed, toSlashed, parseLines, importText, chunksOf, readChars, chunksAt, cpuPlan, cpuWrongAnswer, personaFor, PERSONAS, exportBank, SAMPLE_BANK, CPU_SKILL, CPU_RATE, MAX_QUESTIONS } from '../../app/src/lib/questions.js';
 
 const Q = { no: 1, q: '日本で一番高い山は何でしょう？', a: '富士山', cuts: [3, 7, 10], sure: 7 };
 
@@ -95,11 +95,12 @@ test('CPUの押し方: 確定ポイント基準・強さで変わる・押さな
   const seq = [0.3, 0.0, 0.5]; let i = 0;
   const early = cpuPlan(q, 'weak', () => seq[i++ % 3]);          // 誤答の割合に入り、先走る
   assert.equal(early.ok, false); assert.ok(early.at >= 1 && early.at < 20);
-  // 結果の割合は、強さ・性格に関係なく、スルー15%・誤答25%・正解60%
+  // 結果の割合は、強さごとに決まっていて、性格には関係ない
   for (const lv of ['weak', 'normal', 'strong']) for (const ps of Object.keys(PERSONAS)) {
     const N = 20000; let skip = 0, wrong = 0, right = 0;
     for (let k = 0; k < N; k++) { const p = cpuPlan(q, lv, Math.random, ps); if (!p) skip++; else if (p.ok) right++; else wrong++; assert.ok(!p || (p.at >= 1 && p.at <= q.q.length)); }
-    assert.ok(Math.abs(skip / N - 0.15) < 0.015 && Math.abs(wrong / N - 0.25) < 0.015 && Math.abs(right / N - 0.6) < 0.015, `${lv}/${ps}: ${skip / N} ${wrong / N} ${right / N}`);
+    const R = CPU_RATE[lv];
+    assert.ok(Math.abs(skip / N - R.skip) < 0.015 && Math.abs(wrong / N - R.wrong) < 0.015 && Math.abs(right / N - R.right) < 0.015, `${lv}/${ps}: ${skip / N} ${wrong / N} ${right / N}`);
   }
   assert.ok(cpuPlan(normalizeQuestion({ q: 'あ'.repeat(5), a: 'x', sure: 5 }, 1).q, 'weak', () => 0.99).at <= 5, '問題文の長さを超えない');
   assert.equal(cpuWrongAnswer(q, () => 0.99), 'b'); assert.equal(cpuWrongAnswer({ wrong: [] }), null);
