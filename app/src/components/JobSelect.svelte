@@ -1,5 +1,4 @@
 <script>
-  import { icon } from '../lib/icons.js';
   import { JOB, SELECTABLE, BOSS, bossIdOf } from '../lib/engine.js';
   import { pick as pickFrom } from '../lib/stores/ui.svelte.js';
 
@@ -26,7 +25,6 @@
 
 <div class="jw">
 <button type="button" class="sel" bind:this={btn} onclick={open} aria-haspopup="dialog" aria-label={label}>
-  <span class="ic">{@html icon(value)}</span>
   <span class="nm">{nameOf(value)}</span>
   <span class="st">{statOf(value)}</span>
   <svg class="car" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -42,7 +40,6 @@
   .sel{display:flex;align-items:center;gap:8px;width:100%;min-width:0;background:var(--s1);border:1px solid var(--line2);border-radius:10px;padding:6px 10px;cursor:pointer;text-align:left;transition:border-color .1s}
   .sel:hover{border-color:var(--gold)}
   .sel:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
-  .ic{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1rem;background:#120f0c;border:1.5px solid var(--line2)}
   .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
   .st{color:var(--mut);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0;min-width:0}
   @container job (max-width: 250px){.st{display:none}}

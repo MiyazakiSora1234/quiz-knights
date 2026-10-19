@@ -41,8 +41,8 @@ const SPECIALS = {
       async ([t]) => { ctx.heal(a, 3); await ctx.dmgTo(a, [t], ctx.dm(a, 4)); });
   },
   necro(ctx, a, add) {
-    const n = ctx.G.units.filter(u => !u.alive && !u.isBoss && u.side === a.side).length;
-    add(`死者の怨念（${n}ダメージ）`, '死んでいる仲間の人数×1ダメージ', [P('対象', alive)],
+    const n = ctx.G.units.filter(u => !u.alive && !u.isBoss).length;
+    add(`死者の怨念（${n}ダメージ）`, '死んでいる人数×1ダメージ', [P('対象', alive)],
       async ([t]) => { if (n > 0) await ctx.dmgTo(a, [t], ctx.dm(a, n)); else ctx.log('死んでいる仲間がいない'); });
   },
   bard(ctx, a, add) {
@@ -112,51 +112,51 @@ const SPECIALS = {
 /* ================================ 魔王 ================================ */
 const BOSS_SKILLS = {
   1(ctx, a, add) {
-    add('技1', '敵1体に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 3)); });
-    add('技2', '1人に2ダメージ、別の1人に1ダメージ', [P('2ダメージの人', foe(a)), P('1ダメージの人', notIn(foe(a)))], async ([t, n]) => {
+    add('剛腕の一撃', '敵1体に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 3)); });
+    add('二段打ち', '1人に2ダメージ、別の1人に1ダメージ', [P('2ダメージの人', foe(a)), P('1ダメージの人', notIn(foe(a)))], async ([t, n]) => {
       await ctx.applyEvents([{ src: a, to: t, amt: ctx.dm(a, 2) }, ...(n ? [{ src: a, to: n, amt: ctx.dm(a, 1) }] : [])]);
     });
-    add('技3', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, 1)); });
+    add('咆哮', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, 1)); });
   },
   2(ctx, a, add) {
     if (a.form === 0) {
-      add('技1', '2人に1ダメージ。その2人は次のターン休み', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))],
+      add('眠りの双波', '2人に1ダメージ。その2人は次のターン休み', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))],
         async ([x, y]) => { await ctx.dmgTo(a, [x, y], 1); ctx.setRest(x); ctx.setRest(y); });
-      add('技2', '1人に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 3); });
-      add('技3', '敵1人を次の問題休みにする', [P('対象', foe(a))], async ([t]) => { ctx.setRest(t); });
+      add('重圧', '1人に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 3); });
+      add('幻惑', '敵1人を次の問題休みにする', [P('対象', foe(a))], async ([t]) => { ctx.setRest(t); });
     } else if (a.form === 1) {
-      add('技1', '自分を2回復', [], async () => { ctx.heal(a, 2); });
-      add('技2', '敵に1ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 1); });
-      add('技3', '敵1人に1ダメージ、自分を1回復', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 1); ctx.heal(a, 1); });
+      add('再生', '自分を2回復', [], async () => { ctx.heal(a, 2); });
+      add('切り裂き', '敵に1ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 1); });
+      add('吸魂', '敵1人に1ダメージ、自分を1回復', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 1); ctx.heal(a, 1); });
     } else {
-      add('技1', '1人に2ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 2); });
-      add('技2', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), 1); });
+      add('終焉の刃', '1人に2ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 2); });
+      add('滅びの嵐', '敵全体に1ダメージ', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), 1); });
     }
   },
   3(ctx, a, add) {
-    add('技1', '2人に1ダメージ。その後、与えたダメージの半分（切り上げ）回復', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
+    add('吸血の牙', '2人に1ダメージ。その後、与えたダメージの半分（切り上げ）回復', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
       const dealt = await ctx.dmgTo(a, [x, y], 1);
       if (dealt > 0) ctx.heal(a, Math.ceil(dealt / 2));
     });
     const prev = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
-    add('技2', `直前に正解した相手に4ダメージ${prev ? `（${prev.name}）` : '（該当者なし）'}`, [], async () => {
+    add('報復', `直前に正解した相手に4ダメージ${prev ? `（${prev.name}）` : '（該当者なし）'}`, [], async () => {
       const t = ctx.G.units.find(u => u.id === ctx.G.prevCorrect);
       if (t && t.alive && t.side !== a.side) await ctx.dmgTo(a, [t], 4); else ctx.log('直前の正解者がいないため不発');
     }, { disabled: !(prev && prev.alive && prev.side !== a.side) });
-    add('技3', '自分にバリア（次のダメージ1回を無効）。すでにバリアがあるときは使えない', [], async () => {
+    add('闇の障壁', '自分にバリア（次のダメージ1回を無効）。すでにバリアがあるときは使えない', [], async () => {
       a.barrier = 1; ctx.fxUnit(a.id, 'barrier'); ctx.log(`🔰 ${a.name} にバリアが付いた`, 'sys');
     }, { disabled: a.barrier > 0 });
   },
   4(ctx, a, add) {
-    add('技1', '敵1人に毒（次の2問が終わるたびに1ダメージ）', [P('対象', foe(a))], async ([t]) => {
+    add('毒牙', '敵1人に毒（次の2問が終わるたびに1ダメージ）', [P('対象', foe(a))], async ([t]) => {
       if (!(t.poison > 0)) t.poisonSkip = true;
       t.poison = 2; ctx.fxUnit(t.id, 'poison');
       ctx.log(`☠ ${t.name} は毒を受けた`, 'sys');
     });
     const poisoned = ctx.G.units.filter(u => u.alive && u.side !== a.side && u.poison > 0).length;
     const amt = poisoned >= 3 ? 2 : 1;
-    add(`技2（敵全体に${amt}）`, '敵全体に1ダメージ（毒を受けている敵が3人以上なら2ダメージ）', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, amt)); });
-    add('技3', '敵2人に毒（次の2問が終わるたびに1ダメージ）', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
+    add(`毒霧（敵全体に${amt}）`, '敵全体に1ダメージ（毒を受けている敵が3人以上なら2ダメージ）', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, amt)); });
+    add('双頭の毒', '敵2人に毒（次の2問が終わるたびに1ダメージ）', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
       for (const t of [x, y]) { if (!(t.poison > 0)) t.poisonSkip = true; t.poison = 2; ctx.fxUnit(t.id, 'poison'); ctx.log(`☠ ${t.name} は毒を受けた`, 'sys'); }
     });
   },
@@ -179,13 +179,13 @@ const BOSS_SKILLS = {
     }, { disabled: !ok });
   },
   6(ctx, a, add) {
-    add('技1', '敵1人に5ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 5)); });
-    add('技2', '敵全体に2ダメージ。自分も1ダメージ（体力が1のときは受けない）', [], async () => {
+    add('竜の爪', '敵1人に5ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 5)); });
+    add('業火のブレス', '敵全体に2ダメージ。自分も1ダメージ（体力が1のときは受けない）', [], async () => {
       const evs = ctx.foesOf(a).map(t => ({ src: a, to: t, amt: ctx.dm(a, 2) }));
       if (a.hp > 1) evs.push({ src: null, to: a, amt: 1 });
       await ctx.applyEvents(evs);
     });
-    add('技3', '敵2人に2ダメージ', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => { await ctx.dmgTo(a, [x, y], ctx.dm(a, 2)); });
+    add('尾の薙ぎ払い', '敵2人に2ダメージ', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => { await ctx.dmgTo(a, [x, y], ctx.dm(a, 2)); });
   },
 };
 

@@ -1,4 +1,4 @@
-// アイテムの効果の定義。正解したときの行動メニューに「🎒 アイテム」として並び、使うと1個減る（行動とは別に何個でも使える）
+// アイテムの効果の定義。正解したときの行動メニューに「🎒 アイテム」として並び、使うと1個減る（行動とは別に、1回の行動で2個まで使える）
 //   buildItemActions(ctx, a) -> [{ key, label, desc, prompts, run, disabled }]（jobs.js の行動と同じ形）
 import { ITEMS, ITEM_KEYS } from './data.js';
 
@@ -42,7 +42,15 @@ const EFFECTS = {
   pebble(ctx, a) { return { prompts: [P('石を投げる相手', foe(a))], run: async ([t]) => { await ctx.dmgTo(a, [t], 1); } }; },
   scroll(ctx, a) { return { prompts: [], run: async () => { await ctx.dmgTo(a, ctx.foesOf(a), 1); } }; },
   herb(ctx, a) { return { prompts: [P('毒を消す味方', u => u.alive && u.side === a.side && u.poison > 0)], run: async ([t]) => { t.poison = 0; t.poisonSkip = false; ctx.log(`🌿 ${t.name} の毒が消えた`, 'heal'); } }; },
-  alarm(ctx, a) { return { prompts: [P('起こす味方', u => u.alive && u.side === a.side && u.restNext)], run: async ([t]) => { t.restNext = false; ctx.log(`🔔 ${t.name} の休みが取り消された`, 'heal'); } }; },
+  alarm(ctx, a) {      // 味方全員の状態異常（毒・次の問題休み・ディレイ・地雷）を回復する
+    const sick = u => u.poison > 0 || u.restNext || (u.delayQ != null && u.delayQ >= ctx.G.q) || !!u.mine;
+    const team = ctx.G.units.filter(u => u.alive && u.side === a.side);
+    return { disabled: !team.some(sick), prompts: [], run: async () => {
+      const cured = team.filter(sick);
+      for (const u of cured) { u.poison = 0; u.poisonSkip = false; u.restNext = false; u.delayQ = null; u.mine = null; ctx.fxUnit(u.id, 'heal'); }
+      ctx.log(`🔔 ${cured.map(u => u.name).join('・') || '誰も'} の状態異常が回復した`, 'heal');
+    } };
+  },
   bomb(ctx, a) { return { prompts: [P('爆弾を投げる相手', foe(a))], run: async ([t]) => { await ctx.dmgTo(a, [t], 2); } }; },
   amulet(ctx, a) {
     return { prompts: [P('守る味方', ally(a))], run: async ([t]) => { t.barrier = 1; ctx.fxUnit(t.id, 'barrier'); ctx.log(`🔰 ${t.name} にバリアが付いた`, 'sys'); } };

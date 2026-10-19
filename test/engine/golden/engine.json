@@ -30,8 +30,8 @@
    "P2|gambler|p|0/19|0|00",
    "P3|bard|p|0/19|0|00",
    "L9|bard|p|0/19|0|00",
-   "L23|toolmaster|p|0/19|0|00|holy,scroll,bandage",
-   "魔王1|boss|e|17/27|1|00"
+   "L23|toolmaster|p|0/19|0|00|scroll,bandage",
+   "魔王1|boss|e|18/27|1|00"
   ],
   "logTail": [
    "L23(道具使い) は倒れた…",
@@ -1531,7 +1531,7 @@
  },
  "62": {
   "over": "lose",
-  "q": 35,
+  "q": 30,
   "units": [
    "P0|ghost|p|0/11|0|00",
    "P1|bm|p|0/8|0|00",
@@ -1539,24 +1539,22 @@
    "P3|necro|p|0/19|0|00",
    "L9|oracle|p|0/19|0|00",
    "L22|mw|p|0/19|0|00",
-   "L32|bard|p|0/19|0|00",
-   "魔王5|boss|e|37/49|1|00"
+   "魔王5|boss|e|35/49|1|00"
   ],
   "logTail": [
-   "── 第35問 ──",
+   "── 第30問 ──",
    "L22(魔法戦士) は倒れた…",
-   "L22(魔法戦士) に 2 ダメージ → HP 0/19",
-   "❌ L22(魔法戦士) 誤答"
+   "L22(魔法戦士) に 2 ダメージ（魔王5） → HP 0/19",
+   "🤖 魔王5 の行動"
   ],
-  "logLen": 198,
+  "logLen": 169,
   "stats": {
    "1": "2/4",
    "2": "0/2",
    "3": "1/0",
-   "4": "2/2",
+   "4": "3/2",
    "6": "4/3",
-   "7": "3/6",
-   "8": "4/2"
+   "7": "7/1"
   }
  },
  "63": {
@@ -2616,20 +2614,21 @@
   "q": 8,
   "units": [
    "P0|necro|p|3/5|1|00",
-   "P2|ghost|p|1/3|1|00",
+   "P2|ghost|p|0/3|0|00",
    "P1|poisoner|e|0/5|0|00",
    "P3|bomb|e|0/5|0|00"
   ],
   "logTail": [
    "── 第8問 ──",
    "P1(毒使い) は倒れた…",
-   "P1(毒使い) に 2 ダメージ（P2） → HP 0/5",
-   "⭕ P2(幽霊) 正解！"
+   "P1(毒使い) に 1 ダメージ（P1） → HP 0/5",
+   "⭕ P1(毒使い) 正解！"
   ],
-  "logLen": 28,
+  "logLen": 31,
   "stats": {
    "1": "1/0",
-   "3": "4/0",
+   "2": "1/0",
+   "3": "3/0",
    "4": "1/0"
   }
  },
@@ -2726,32 +2725,32 @@
   }
  },
  "113": {
-  "over": "teame",
-  "q": 38,
+  "over": "teamp",
+  "q": 34,
   "units": [
    "P0|mimic|p|0/8|0|00",
    "P3|minelayer|p|0/6|0|00",
    "L26|minelayer|p|0/6|0|00",
-   "L28|toolmaster|p|0/8|0|00|bomb,candy,fang",
+   "L28|toolmaster|p|3/8|1|00|candy,fang",
    "P1|mimic|e|0/8|0|00",
-   "L22|necro|e|3/8|1|00",
+   "L22|necro|e|0/8|0|00",
    "P2|tank|c|0/13|0|00"
   ],
   "logTail": [
-   "L28(道具使い) は倒れた…",
-   "L28(道具使い) に 2 ダメージ → HP 0/8",
-   "❌ L28(道具使い) 誤答",
-   "── 第38問 ──"
+   "── 第34問 ──",
+   "L28(道具使い) に 1 ダメージ（L28） → HP 3/8",
+   "P1(模倣者) は倒れた…",
+   "P1(模倣者) に 2 ダメージ（L28） → HP 0/8"
   ],
-  "logLen": 135,
+  "logLen": 124,
   "stats": {
    "1": "5/3",
-   "2": "3/3",
+   "2": "2/3",
    "3": "4/3",
    "4": "4/1",
-   "5": "4/2",
-   "6": "1/2",
-   "7": "0/2"
+   "5": "2/2",
+   "6": "1/1",
+   "7": "1/1"
   }
  },
  "114": {
@@ -3081,14 +3080,14 @@
    "❌ P0(見習い) 誤答",
    "同じ問題を再受付（1人が誤答済み）"
   ],
-  "logLen": 128,
+  "logLen": 129,
   "stats": {
    "1": "1/2",
    "2": "1/2",
    "3": "1/3",
-   "4": "0/4",
+   "4": "1/4",
    "5": "1/2",
-   "6": "4/3",
+   "6": "3/3",
    "7": "1/3",
    "8": "1/2",
    "9": "1/1"
@@ -3231,7 +3230,7 @@
    "P1|pickpocket|e|0/4|0|00",
    "P4|necro|e|0/5|0|00",
    "P7|poisoner|e|0/5|0|00",
-   "P2|thief|c|3/4|1|00",
+   "P2|thief|c|2/4|1|00",
    "P5|mw|c|3/5|1|00"
   ],
   "logTail": [
@@ -4107,24 +4106,24 @@
  },
  "162": {
   "over": "teamp",
-  "q": 19,
+  "q": 16,
   "units": [
    "P0|bomb|p|0/25|0|00|powder,scroll",
-   "P1|playboy|p|0/20|0|00|venom,bandage,alarm",
-   "P2|berserker|p|4/35|1|00|",
+   "P1|playboy|p|0/20|0|00|bandage,bomb,alarm",
+   "P2|berserker|p|9/35|1|00|coin,pebble",
    "魔王2|boss|e|0/3|0|00"
   ],
   "logTail": [
-   "── 第19問 ──",
+   "── 第16問 ──",
    "魔王2 は倒れた…",
    "魔王2 に 7 ダメージ（P2） → HP 0/3",
    "⭕ P2(バーサーカー) 正解！"
   ],
-  "logLen": 145,
+  "logLen": 133,
   "stats": {
    "1": "2/0",
-   "2": "3/1",
-   "3": "6/4"
+   "2": "2/1",
+   "3": "7/5"
   }
  },
  "163": {
@@ -4282,62 +4281,63 @@
   }
  },
  "169": {
-  "over": "win",
-  "q": 35,
+  "over": "lose",
+  "q": 40,
   "units": [
    "P0|gambler|p|0/19|0|00|venom",
    "P1|monk|p|0/23|0|00|pebble,landmine",
-   "P2|oracle|p|2/19|1|00|bandage,water,amulet",
-   "P3|mage|p|1/19|1|00|bomb,landmine,fang",
-   "L3|jester|p|5/15|1|00|",
-   "L8|cleric|p|3/23|1|00|coin,water",
+   "P2|oracle|p|0/19|0|00|bandage,water,amulet",
+   "P3|mage|p|0/19|0|00|bomb,landmine,fang",
+   "L3|jester|p|0/15|0|00|bomb",
+   "L8|cleric|p|0/23|0|00|coin,water",
    "L11|bm|p|0/8|0|00|jerky,pebble",
    "L13|sage|p|0/19|0|00|pebble,potion,bandage",
-   "L14|gambler|p|9/19|1|00|blood,doll,landmine",
-   "魔王3|boss|e|0/8|0|00"
+   "L14|gambler|p|0/19|0|00|blood,doll,landmine",
+   "魔王3|boss|e|5/8|1|00"
   ],
   "logTail": [
-   "── 第35問 ──",
-   "魔王3 は倒れた…",
-   "魔王3 に 5 ダメージ（L14） → HP 0/8",
-   "🪙 コインは表！"
+   "── 第40問 ──",
+   "P3(魔法使い) は倒れた…",
+   "P3(魔法使い) に 2 ダメージ → HP 0/19",
+   "❌ P3(魔法使い) 誤答"
   ],
-  "logLen": 257,
+  "logLen": 289,
   "stats": {
    "1": "2/0",
    "2": "3/2",
    "3": "1/3",
-   "4": "1/3",
-   "6": "2/1",
-   "7": "3/3",
+   "4": "1/4",
+   "6": "3/1",
+   "7": "3/4",
    "8": "1/0",
    "9": "1/2",
-   "10": "2/3"
+   "10": "4/3"
   }
  },
  "170": {
   "over": "teame",
-  "q": 14,
+  "q": 17,
   "units": [
-   "P0|pickpocket|p|0/5|0|00|shackle,holy,herb,bento",
-   "P3|toolmaster|p|0/6|0|00|firework,coin,pebble,water",
-   "P1|bard|e|4/6|1|00|bandage,coin,venom",
-   "P4|jester|e|0/5|0|00|",
-   "P2|bm|c|0/3|0|00|bento"
+   "P0|pickpocket|p|0/5|0|00|candy,shackle,holy,herb",
+   "P3|toolmaster|p|0/6|0|00|firework,coin,pebble,potion",
+   "P1|bard|e|0/6|0|00|bandage,fang,coin,venom",
+   "P4|jester|e|0/5|0|00|firework,bento",
+   "L12|apprentice|e|5/7|1|00|alarm,herb",
+   "P2|bm|c|0/3|0|00|bento,shuriken"
   ],
   "logTail": [
-   "── 第14問 ──",
-   "P0(怪盗) は倒れた…",
-   "P0(怪盗) に 1 ダメージ（P1） → HP 0/5",
-   "P1(吟遊詩人) は 1 回復 (HP 4/6)"
+   "── 第17問 ──",
+   "P2(バトルマスター) は倒れた…",
+   "P2(バトルマスター) に 2 ダメージ → HP 0/3",
+   "❌ P2(バトルマスター) 誤答"
   ],
-  "logLen": 69,
+  "logLen": 71,
   "stats": {
-   "1": "1/1",
-   "2": "1/0",
-   "3": "1/0",
-   "4": "2/3",
-   "5": "1/1"
+   "1": "0/2",
+   "2": "1/3",
+   "3": "2/1",
+   "5": "1/1",
+   "6": "2/1"
   }
  },
  "171": {
@@ -4411,42 +4411,40 @@
   "q": 13,
   "units": [
    "P0|monk|p|0/19|0|00|bento",
-   "P1|hero|e|5/22|1|00|",
-   "L14|cleric|e|16/19|1|00|smoke,jerky"
+   "P1|hero|e|2/22|1|00|"
   ],
   "logTail": [
    "── 第13問 ──",
+   "P1(勇者) に 7 ダメージ（P1） → HP 2/22",
    "P0(僧侶) は倒れた…",
-   "P0(僧侶) に 2 ダメージ → HP 0/19",
-   "❌ P0(僧侶) 誤答"
+   "P0(僧侶) に 1 ダメージ（P1） → HP 0/19"
   ],
-  "logLen": 63,
+  "logLen": 65,
   "stats": {
-   "1": "1/3",
-   "2": "5/3",
-   "3": "1/1"
+   "1": "3/2",
+   "2": "7/3"
   }
  },
  "174": {
   "over": "teamp",
-  "q": 18,
+  "q": 11,
   "units": [
-   "P0|oracle|p|16/25|1|00|pebble",
-   "P1|mimic|p|6/25|1|00|herb",
-   "P2|bomb|p|7/25|1|00|herb",
-   "魔王2|boss|e|0/1|0|00r"
+   "P0|oracle|p|19/25|1|00|powder",
+   "P1|mimic|p|17/25|1|00|herb",
+   "P2|bomb|p|13/25|1|00|bandage,herb,amulet",
+   "魔王2|boss|e|0/1|0|00"
   ],
   "logTail": [
-   "── 第18問 ──",
-   "P1(模倣者) に 1 ダメージ（P0） → HP 6/25",
-   "P0(預言者) は 3 回復 (HP 16/25)",
-   "🪙 コインは表！"
+   "── 第11問 ──",
+   "P0(預言者) に 1 ダメージ（P0） → HP 19/25",
+   "魔王2 は倒れた…",
+   "魔王2 に 1 ダメージ（P0） → HP 0/1"
   ],
-  "logLen": 156,
+  "logLen": 92,
   "stats": {
-   "1": "5/0",
-   "2": "7/4",
-   "3": "1/2"
+   "1": "3/0",
+   "2": "4/2",
+   "3": "2/2"
   }
  },
  "175": {
@@ -4578,24 +4576,26 @@
  },
  "180": {
   "over": "teamp",
-  "q": 21,
+  "q": 24,
   "units": [
-   "P0|toolmaster|p|20/25|1|00|candy,jerky",
-   "P1|tactician|p|12/25|1|00|candy",
-   "P2|cleric|p|7/30|1|00|alarm,herb",
+   "P0|toolmaster|p|22/25|1|00|candy,pebble,water",
+   "P1|tactician|p|9/25|1|00|candy",
+   "P2|cleric|p|9/30|1|00|alarm,herb",
+   "L20|mw|p|21/25|1|00|pebble",
    "魔王2|boss|e|0/1|0|00"
   ],
   "logTail": [
-   "── 第21問 ──",
+   "── 第24問 ──",
    "魔王2 は倒れた…",
-   "魔王2 に 1 ダメージ（P1） → HP 0/1",
-   "⭕ P1(軍師) 正解！"
+   "魔王2 に 1 ダメージ（L20） → HP 0/1",
+   "L20(魔法戦士) は 1 回復 (HP 21/25)"
   ],
-  "logLen": 168,
+  "logLen": 195,
   "stats": {
-   "1": "5/4",
+   "1": "5/3",
    "2": "6/1",
-   "3": "3/3"
+   "3": "4/2",
+   "5": "2/1"
   }
  },
  "181": {
@@ -4623,27 +4623,31 @@
   }
  },
  "182": {
-  "over": "teamp",
-  "q": 10,
+  "over": "teame",
+  "q": 18,
   "units": [
-   "P0|pickpocket|p|3/5|1|00|alarm",
+   "P0|pickpocket|p|0/5|0|00|alarm,smoke,amulet",
    "P3|oracle|p|0/6|0|00|amulet,feather,pebble,doll",
-   "P1|warrior|e|0/9|0|00|potion,map,candy,bandage",
-   "P4|ghost|e|0/4|0|00|doll,bento,pebble,alarm",
-   "P2|thief|c|0/5|0|00|smoke,map"
+   "P1|warrior|e|2/9|1|00|potion,map,bandage",
+   "P4|ghost|e|0/4|0|00|doll,alarm",
+   "L9|berserker|e|0/9|0|00|coin,bandage,drink,rope",
+   "L14|sage|e|4/6|1|00|water,bandage,pebble",
+   "P2|thief|c|0/5|0|00|map,bomb"
   ],
   "logTail": [
-   "── 第10問 ──",
-   "P2(盗賊) は倒れた…",
-   "P1(戦士) は倒れた…",
-   "P2(盗賊) に 5 ダメージ（P1） → HP 0/5"
+   "── 第18問 ──",
+   "P0(怪盗) は倒れた…",
+   "P0(怪盗) に 3 ダメージ（P1） → HP 0/5",
+   "⭕ P1(戦士) 正解！"
   ],
-  "logLen": 53,
+  "logLen": 84,
   "stats": {
-   "1": "1/0",
-   "2": "2/0",
-   "3": "4/0",
-   "4": "0/2"
+   "1": "3/0",
+   "2": "2/4",
+   "3": "3/0",
+   "4": "0/2",
+   "5": "1/0",
+   "6": "1/1"
   }
  },
  "183": {
@@ -4708,17 +4712,17 @@
   "over": "teamp",
   "q": 6,
   "units": [
-   "P0|jester|p|0/13|0|00|doll,candy,bandage",
-   "L5|warrior|p|10/22|1|00|rope",
+   "P0|jester|p|3/13|1|00|doll,candy,bandage",
+   "L5|warrior|p|12/22|1|00|rope",
    "P1|bm|e|0/6|0|00|doll,rope,herb"
   ],
   "logTail": [
    "── 第6問 ──",
-   "P0(道化師) は倒れた…",
-   "P0(道化師) に 5 ダメージ（L5） → HP 0/13",
-   "L5(戦士) に 5 ダメージ（L5） → HP 10/22"
+   "L5(戦士) に 3 ダメージ（L5） → HP 12/22",
+   "🌫 L5 は次の誤答ダメージを受けない",
+   "🎒 L5 は 🌫 煙玉 を使った"
   ],
-  "logLen": 32,
+  "logLen": 30,
   "stats": {
    "1": "1/2",
    "2": "1/0",
@@ -4727,26 +4731,25 @@
  },
  "186": {
   "over": "teamp",
-  "q": 32,
+  "q": 25,
   "units": [
-   "P0|oracle|e|0/25|0|00|smoke",
-   "P1|tank|e|0/41|0|00|herb",
-   "P2|apprentice|p|0/24|0|00|shuriken",
-   "L22|sage|p|8/25|1|00|bandage,fang",
+   "P0|oracle|p|0/25|0|00|smoke,candy",
+   "P1|tank|p|3/41|1|00|herb",
+   "P2|apprentice|e|0/24|0|00|shuriken,coin",
+   "L22|sage|p|20/25|1|00|bandage,fang,shackle,pebble",
    "魔王2|boss|e|0/1|0|00"
   ],
   "logTail": [
-   "── 第32問 ──",
+   "── 第25問 ──",
    "魔王2 は倒れた…",
-   "魔王2 に 1 ダメージ（L22） → HP 0/1",
-   "⭕ L22(賢者) 正解！"
+   "魔王2 に 1 ダメージ（P1） → HP 0/1",
+   "🛡 P1 の守り回数 +1 (1)"
   ],
-  "logLen": 262,
+  "logLen": 218,
   "stats": {
-   "1": "7/3",
-   "2": "5/3",
-   "3": "5/4",
-   "5": "2/2"
+   "1": "5/3",
+   "2": "6/1",
+   "3": "6/5"
   }
  },
  "187": {
@@ -4774,59 +4777,57 @@
   }
  },
  "188": {
-  "over": "teame",
-  "q": 26,
+  "over": "teamp",
+  "q": 19,
   "units": [
-   "P0|oracle|p|0/6|0|00|potion",
+   "P0|oracle|p|6/6|1|00|coin,potion",
    "P3|tank|p|0/10|0|00|alarm",
-   "L17|bm|p|0/3|0|00|bento,doll",
-   "P1|necro|e|4/6|1|00|herb",
+   "L17|bm|p|2/3|1|00|",
+   "P1|necro|e|0/6|0|00|herb",
    "P4|oracle|e|0/6|0|00|smoke",
-   "L14|jester|e|3/5|1|00|amulet,herb",
-   "L27|minelayer|e|5/5|1|00|amulet,potion",
+   "L14|jester|e|0/5|0|00|amulet,herb",
    "P2|mimic|c|0/6|0|00|herb"
   ],
   "logTail": [
-   "── 第26問 ──",
-   "P2(模倣者) は倒れた…",
-   "P2(模倣者) に 2 ダメージ → HP 0/6",
-   "❌ P2(模倣者) 誤答"
+   "── 第19問 ──",
+   "L14(道化師) は倒れた…",
+   "L14(道化師) に 5 ダメージ（L17） → HP 0/5",
+   "⭕ L17(バトルマスター) 正解！"
   ],
-  "logLen": 102,
+  "logLen": 84,
   "stats": {
-   "1": "2/1",
-   "2": "2/0",
-   "3": "4/3",
+   "1": "1/0",
+   "2": "1/0",
+   "3": "2/2",
    "4": "1/3",
    "5": "4/0",
-   "6": "0/1",
-   "7": "0/2"
+   "6": "1/0",
+   "7": "2/0"
   }
  },
  "189": {
   "over": "teame",
-  "q": 21,
+  "q": 25,
   "units": [
-   "P0|monk|p|0/15|0|00|jerky,fang",
+   "P0|monk|p|0/15|0|00|fang",
    "P1|gambler|p|0/13|0|00|charm,bomb,candy",
    "P2|apprentice|p|0/13|0|00|jerky",
-   "P3|gambler|p|0/13|0|00|potion",
-   "P4|toolmaster|p|0/13|0|00|bandage,herb,landmine",
-   "P5|mimic|p|0/13|0|00|candy",
-   "魔王5|boss|e|5/10|1|00"
+   "P3|gambler|p|0/13|0|00|",
+   "P4|toolmaster|p|0/13|0|00|bandage,herb,map",
+   "P5|mimic|p|0/13|0|00|firework",
+   "魔王5|boss|e|4/10|1|00"
   ],
   "logTail": [
-   "── 第21問 ──",
-   "P5(模倣者) は倒れた…",
-   "P5(模倣者) に 3 ダメージ（魔王5） → HP 0/13",
+   "── 第25問 ──",
+   "P0(僧侶) は倒れた…",
+   "P0(僧侶) に 3 ダメージ（魔王5） → HP 0/15",
    "🤖 魔王5 の行動"
   ],
-  "logLen": 143,
+  "logLen": 153,
   "stats": {
-   "1": "1/4",
-   "3": "3/1",
-   "4": "3/0",
-   "5": "3/1",
+   "1": "3/5",
+   "3": "3/0",
+   "4": "4/0",
    "6": "4/1"
   }
  },
@@ -4836,26 +4837,27 @@
   "units": [
    "P0|cleric|p|0/13|0|00|firework,map,pebble,scroll",
    "P1|tactician|p|0/11|0|00|coin,rope,powder,bandage",
-   "P2|cleric|p|0/13|0|00|herb,bomb,alarm",
+   "P2|cleric|p|0/13|0|00|herb,map,alarm",
    "P3|poisoner|p|0/11|0|00|feather,pebble,amulet,tea",
    "P4|bm|p|0/4|0|00|coin,bomb,water",
    "P5|thief|p|0/9|0|00|bandage,amulet,coin,powder",
-   "P6|cleric|p|0/13|0|00|herb",
-   "魔王6|boss|e|14/20|1|00"
+   "P6|cleric|p|0/13|0|00|pebble,herb",
+   "魔王6|boss|e|10/20|1|00"
   ],
   "logTail": [
    "── 第15問 ──",
-   "P2(守護神官) は倒れた…",
-   "P2(守護神官) に 1 ダメージ（P2） → HP 0/13",
-   "⭕ P2(守護神官) 正解！"
+   "P1(軍師) は倒れた…",
+   "P1(軍師) に 3 ダメージ（魔王6） → HP 0/11",
+   "🤖 魔王6 の行動"
   ],
-  "logLen": 124,
+  "logLen": 136,
   "stats": {
-   "2": "0/3",
-   "3": "5/1",
-   "4": "0/1",
+   "1": "2/0",
+   "2": "1/2",
+   "3": "2/1",
+   "4": "1/2",
    "5": "1/0",
-   "7": "4/0"
+   "7": "1/1"
   }
  }
 }

@@ -1,6 +1,6 @@
 // バトルの進行: 正解・誤答・スルー、問題の終わり、取り消し（画面に依存しない。Node でもテストできる）
 //  ui = { ask(title, options, {sub,cancel}) -> Promise, random?(), toast(msg), changed(snapshot), persist?(G) }
-import { CANCEL, JOB, BOSS, ITEMS, GENRES, LEVELS, squadFoeScale, isSquadFoes, jobName, nm, bossHp, bossIdOf } from './data.js';
+import { CANCEL, JOB, BOSS, ITEMS, ITEM_USE_MAX, GENRES, LEVELS, squadFoeScale, isSquadFoes, jobName, nm, bossHp, bossIdOf } from './data.js';
 import { createContext } from './context.js';
 import { buildActions } from './jobs.js';
 import { buildItemActions, dealItems, startItemCount } from './items.js';
@@ -212,14 +212,16 @@ export function createBattle(ui) {
 
   /** 行動を選ばせて実行する。選択肢の対象を1つずつ聞き、足りなければ不発。対象の選択から「戻る」で行動を選び直せる */
   async function chooseAndRunAction(a) {
+    let used = 0;                                                // この行動で使ったアイテムの数（ITEM_USE_MAX まで）
     for (;;) {
       const acts = buildActions(ctx, a);
       const items = buildItemActions(ctx, a);
-      const c = await ask(`${nm(a)} の行動`, actionMenu(acts, items), { sub: acts.every(x => x.disabled) ? '使える行動がありません' : (items.length ? '行動を選んでください（🎒 アイテムも使えます）' : '行動を選んでください') });
+      const c = await ask(`${nm(a)} の行動`, actionMenu(acts, items, used >= ITEM_USE_MAX), { sub: acts.every(x => x.disabled) ? '使える行動がありません' : (items.length ? '行動を選んでください（🎒 アイテムも使えます）' : '行動を選んでください') });
       if (typeof c === 'string' && c.startsWith('item:')) {
         const it = items[+c.slice(5)];
         if (!it) continue;
         const r = await useItem(a, it);
+        if (!r.cancelled) used++;
         if (r.done) return r.result;                           // アイテムで決着した・自分が倒れた: 続きの行動はできない
         continue;                                              // アイテムは行動を消費しない。メニューに戻る
       }
@@ -231,18 +233,18 @@ export function createBattle(ui) {
     }
   }
   /** 行動メニューの選択肢（行動 → アイテム → 何もしない）。対象がいないものは選べない */
-  function actionMenu(acts, items) {
+  function actionMenu(acts, items, itemsFull = false) {
     const blocked = x => x.disabled || !x.prompts.every(p => G.units.some(u => p.f(u, [])));
     return [
       ...acts.map((x, i) => ({ label: x.label, sub: x.desc, value: i, disabled: blocked(x) })),
-      ...items.map((x, i) => ({ label: x.label, sub: `アイテム：${x.desc}（使っても行動は残る）`, value: 'item:' + i, cls: 'item', disabled: blocked(x) })),
+      ...items.map((x, i) => ({ label: x.label, sub: itemsFull ? `アイテム：1回の行動で使えるのは${ITEM_USE_MAX}個まで` : `アイテム：${x.desc}（使っても行動は残る。1回の行動で${ITEM_USE_MAX}個まで）`, value: 'item:' + i, cls: 'item', disabled: itemsFull || blocked(x) })),
       { label: '何もしない', value: -1, cls: 'ghost' },
     ];
   }
   /** アイテムを使う（対象を選ぶ → 1個減らす → 予告して効果）。戻る/不発なら使わず done=false。使った結果で決着した・自分が倒れたら done=true */
   async function useItem(a, it) {
     const t = await pickTargets(it);
-    if (t.back || t.fizzled) return { done: false };
+    if (t.back || t.fizzled) return { done: false, cancelled: true };
     const wasAlive = a.alive;
     const at = a.items.indexOf(it.key);
     if (at >= 0) a.items.splice(at, 1);

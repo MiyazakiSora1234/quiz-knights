@@ -13,7 +13,8 @@ function harness() {
       const s = script.shift();
       if (s === undefined) throw new Error('想定外の質問: ' + title + ' / ' + opts.map(o => o.label).join('|'));
       if (s === CANCEL) throw CANCEL;
-      const o = opts.find(x => x.label.includes(s));
+      const nth = typeof s === 'string' && /^技[1-9]$/.exec(s) ? opts[+s[1] - 1] : null;      // 「技N」は魔王のN番目の技（技には名前が付いている）
+      const o = nth ?? opts.find(x => x.label.includes(s));
       if (!o) throw new Error(`選択肢「${s}」がありません: ${opts.map(x => x.label).join(' | ')}`);
       if (o.disabled) throw new Error(`選択肢「${s}」は無効です`);
       return o.value;

@@ -1,7 +1,7 @@
 <script>
   import { slide } from 'svelte/transition';
   import { icon } from '../lib/icons.js';
-  import { JOB, BOSS, JOB_GROUPS, ITEMS } from '../lib/engine.js';
+  import { JOB, BOSS, JOB_GROUPS, ITEMS, ITEM_GROUPS } from '../lib/engine.js';
 
   // 職業・魔王・アイテムの一覧（ルール一覧と、選択ダイアログで共通）。
   // kind: 'jobs' | 'boss' | 'items' ／ onselect があれば「選べる一覧」（value が選択中。二度押し・ダブルクリックは ondone）
@@ -28,17 +28,21 @@
   {/each}
   <div class="hint">{selectable ? '職業をタップすると、説明が開きます。決まったら、下の「選ぶ」を押します。' : '職業をタップすると、くわしい説明が開きます。'}</div>
 {:else if kind === 'items'}
-  <div class="grid2">
-    {#each Object.entries(ITEMS) as [k, it]}
-      {#if selectable}
-        <button class="item btn-like" class:sel={value === k} aria-pressed={value === k} onclick={() => pick(k)} ondblclick={() => ondone?.(k)}>
-          <span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span>
-        </button>
-      {:else}
-        <div class="item"><span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span></div>
-      {/if}
-    {/each}
-  </div>
+  {#each ITEM_GROUPS as g}
+    <h4>{g.n}</h4>
+    <div class="grid2">
+      {#each g.keys as k}
+        {@const it = ITEMS[k]}
+        {#if selectable}
+          <button class="item btn-like" class:sel={value === k} aria-pressed={value === k} onclick={() => pick(k)} ondblclick={() => ondone?.(k)}>
+            <span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span>
+          </button>
+        {:else}
+          <div class="item"><span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span></div>
+        {/if}
+      {/each}
+    </div>
+  {/each}
 {:else}
   {#each Object.entries(BOSS) as [k, b]}
     {@const key = 'boss' + k}

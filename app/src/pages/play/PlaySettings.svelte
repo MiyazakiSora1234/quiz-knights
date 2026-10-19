@@ -10,7 +10,7 @@
   // 参加者の設定ダイアログ。タブで「ユーザー（名前・職業・チーム）」「クイズ（ディレイ）」に分ける。ゲームの設定（戦う相手・難易度）は進行役だけが決める。
   // バトル中は、バトルに関係するクイズ設定だけを出す
   let { p } = $props();   // PlayStore
-  const TABS = [['user', 'ユーザー'], ['quiz', 'クイズ'], ['bank', '問題集']];
+  const TABS = [['user', 'ユーザー設定'], ['quiz', 'クイズ設定'], ['bank', '問題集']];
   const tabs = $derived(p.gs ? TABS.filter(([k]) => k === 'quiz') : TABS);     // バトル中は、クイズ設定だけ
   const tab = $derived(tabs.some(([k]) => k === panel.settings) ? panel.settings : tabs[0][0]);
   let n = $state(''), f = $state(''), rn = $state(''), rp = $state('');

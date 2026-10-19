@@ -23,9 +23,8 @@
   <header class="rbar">
     <div class="ttl"><b>{p.roomName}</b><span class="sub"><span class="dot {p.hasHost && p.hostOnline ? 'on' : ''}"></span>{p.hasHost ? (p.hostOnline ? '進行役あり' : '進行役：接続待ち') : '進行役なし'} ・ {p.id}番</span></div>
     <div class="tools">
-      <button class="btn sm qz" onclick={() => (panel.settings = 'quiz')}>⏱ クイズ設定</button>
       <button class="ib" onclick={() => (panel.rules = true)} title="職業・ルール" aria-label="職業・ルール">📖</button>
-      <button class="ib" onclick={() => (panel.settings = 'user')} title="設定（名前・職業・チーム）" aria-label="設定">⚙</button>
+      <button class="ib" onclick={() => (panel.settings = 'user')} title="設定（ユーザー設定・クイズ設定・問題集）" aria-label="設定">⚙</button>
       <button class="ib" onclick={leave} title="退室" aria-label="退室">⎋</button>
     </div>
   </header>
@@ -65,7 +64,6 @@
   .ttl b{display:block;font-family:var(--serif);font-size:1.25rem;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
   .ttl .sub{display:flex;align-items:center;gap:6px;font-size:.8rem}
   .tools{display:flex;gap:6px;margin-right:48px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-  .qz{height:40px}
   .ib{width:40px;height:40px;border-radius:10px;background:var(--s2);border:1px solid var(--line);font-size:1.1rem;padding:0;cursor:pointer}
   .ib:hover{border-color:var(--gold)}
   .members{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-content:start}

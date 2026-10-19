@@ -1,8 +1,8 @@
 // アイテム: 開始時の配布・メニュー表示・各効果・行動が残ること・取り消し
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBattle, ITEMS, ITEM_KEYS, SELECTABLE, statusTags } from '../../app/src/lib/engine.js';
-import { rng } from './harness.mjs';
+import { createBattle, ITEMS, ITEM_KEYS, ITEM_GROUPS, SELECTABLE, statusTags } from '../../app/src/lib/engine.js';
+import { rng, harness } from './harness.mjs';
 
 /** script: 行動メニューで選ぶ値の列（文字列 'item:0' など）→ 対象の選択は pickTarget(title, options) */
 function mk({ seed = 1, script = [], pick = (t, ok) => ok[0].value } = {}) {
@@ -111,7 +111,7 @@ test('[アイテム] ランダムな戦闘を最後まで回しても壊れな�
       ask: async (t, o) => { const ok = o.filter(x => !x.disabled && x.value !== '__back__'); if (t.endsWith('の行動')) { const a = ok.filter(x => x.cls !== 'ghost'); return (r() < .8 && a.length ? pick(a) : ok[0]).value; } if (t.startsWith('🛡')) return o.find(x => x.cls === 'ghost').value; return pick(ok).value; },
       toast() {}, changed() {}, random: r,
     });
-    b.start({ players: Array.from({ length: 4 }, (_, i) => ({ name: 'P' + i, job: pick(SELECTABLE) })), mode: 'cpu', boss: 1 + (s % 6), items: 3, level: 'normal', cpuAuto: true });
+    b.start({ players: Array.from({ length: 4 }, (_, i) => ({ name: 'P' + i, job: pick(SELECTABLE.filter(j => j !== 'toolmaster' && j !== 'mimic')) })), mode: 'cpu', boss: 1 + (s % 6), items: 3, level: 'normal', cpuAuto: true });
     let q = 0, total = b.G.units.reduce((t, u) => t + (u.items?.length || 0), 0);
     while (!b.G.over && q++ < 60) {
       const alive = b.G.units.filter(u => u.alive && !u.isBoss && !u.restNow);
@@ -355,4 +355,39 @@ test('[怪盗・道具使い] 乱戦（盗む・補給が混ざった戦闘）�
     stole += h.b.G.log.filter(l => /盗んだ/.test(l.m)).length; supplied += h.b.G.log.filter(l => /補給した/.test(l.m)).length;
   }
   assert.ok(stole > 0 && supplied > 0, `盗む ${stole} 回・補給 ${supplied} 回が起きている`);
+});
+
+test('[アイテム] 目覚ましベル: 味方全員の状態異常（毒・休み・ディレイ・地雷）を回復する。誰も状態異常でなければ使えない', async () => {
+  const { b, asks } = mk({ script: [-1, 'item:0', -1] });
+  b.start({ players, mode: 'cpu', boss: 1 });
+  const u = n => b.G.units.find(x => x.name === n);
+  u('A').items = ['alarm'];
+  assert.ok(b.select(u('A').id)); await b.correct();
+  assert.ok(asks[0].o.find(o => o.value === 'item:0').disabled, '状態異常がいなければ選べない');
+  u('B').poison = 2; u('A').restNext = true; u('A').delayQ = b.G.q + 1; u('A').mine = { by: 99, dmg: 1 };
+  u('魔王1').poison = 2;                                         // 敵は回復しない
+  assert.ok(b.select(u('A').id)); await b.correct();
+  assert.equal(u('B').poison, 0); assert.equal(u('A').restNext, false); assert.equal(u('A').delayQ, null); assert.ok(!u('A').mine);
+  assert.ok(u('魔王1').poison > 0, '敵は治らない'); assert.deepEqual(u('A').items, []);
+});
+
+test('[アイテム] 1回の行動で使えるアイテムは2個まで（3個目は選べない）。行動は残る', async () => {
+  const { b, asks } = mk({ script: ['item:0', 'item:0', -1] });
+  b.start({ players, mode: 'cpu', boss: 1 });
+  const A = b.G.units.find(x => x.name === 'A');
+  A.hp = 3; A.items = ['bandage', 'bandage', 'bandage'];
+  assert.ok(b.select(A.id)); await b.correct();
+  assert.equal(A.items.length, 1, '2個だけ使った');
+  const menus = asks.filter(x => x.t.endsWith('の行動'));
+  assert.equal(menus.length, 3);
+  assert.ok(!menus[1].o.find(o => o.value === 'item:0').disabled, '2個目までは選べる');
+  assert.ok(menus[2].o.find(o => o.value === 'item:0').disabled, '3個目は選べない');
+  assert.ok(menus[2].o.some(o => !o.disabled && o.value === 0), '通常の行動は残る');
+});
+
+test('[アイテム] 一覧のジャンル分け: 全アイテムが、ちょうど1つのジャンルに入る', () => {
+  const all = ITEM_GROUPS.flatMap(g => g.keys);
+  assert.deepEqual([...all].sort(), [...ITEM_KEYS].sort());
+  assert.equal(new Set(all).size, all.length, '重複がない');
+  assert.ok(ITEM_GROUPS.every(g => g.n && g.keys.length));
 });

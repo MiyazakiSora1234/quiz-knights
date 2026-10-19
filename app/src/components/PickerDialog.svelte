@@ -32,13 +32,13 @@
         {#if TABS.length > 1}
           <div class="tabs" role="tablist">{#each TABS as [k, n]}<button role="tab" aria-selected={tab === k} class:on={tab === k} onclick={() => (tab = k)}>{n}</button>{/each}</div>
         {:else}<b class="ttl">{req.kind === 'item' ? 'アイテムを選ぶ' : '職業を選ぶ'}</b>{/if}
+        <button class="btn sm cancel" onclick={() => closePicker(null)}>キャンセル<kbd>Esc</kbd></button>
       </div>
       <div class="body">
         {#key tab}<Catalog kind={tab} value={chosen} onselect={(k) => (chosen = k)} ondone={done} />{/key}
       </div>
       <div class="pbar">
         <div class="cur">{#if chosen}<span class="ic">{#if ITEMS[chosen]}{ITEMS[chosen].ic}{:else}{@html icon(chosen)}{/if}</span><b>{nameOf(chosen)}</b>{:else}<span class="none">選んでください</span>{/if}</div>
-        <button class="btn ghost" onclick={() => closePicker(null)}>キャンセル<kbd>Esc</kbd></button>
         <button class="btn primary" disabled={!chosen} onclick={() => done()}>選ぶ</button>
       </div>
     </div>
@@ -50,6 +50,7 @@
   .dlg{background:var(--s1);border:1px solid var(--gold);border-radius:16px;max-width:720px;width:100%;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden}
   .head{flex:none;display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
   .ttl{color:var(--gold);font-size:1.05rem}
+  .cancel{margin-left:auto;flex:none}
   .tabs{display:flex;gap:6px;flex-wrap:wrap}
   .tabs button{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 18px;font-weight:700;cursor:pointer;color:var(--mut)}
   .tabs button.on{background:var(--gold);color:#2a1c06;border-color:var(--gold)}

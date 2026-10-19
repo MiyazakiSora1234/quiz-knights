@@ -13,7 +13,8 @@ function harness() {
       if (s === undefined) throw new Error('想定外の質問: ' + title + ' / ' + opts.map(o => o.label).join('|'));
       if (s === CANCEL) throw CANCEL;
       if (typeof s === 'function') return s(opts);
-      const o = opts.find(x => x.label.includes(s));
+      const nth = typeof s === 'string' && /^技[1-9]$/.exec(s) ? opts[+s[1] - 1] : null;      // 「技N」は魔王のN番目の技（技には名前が付いている）
+      const o = nth ?? opts.find(x => x.label.includes(s));
       if (!o) throw new Error(`選択肢「${s}」がありません: ${opts.map(x => x.label).join(' | ')}`);
       if (o.disabled) throw new Error(`選択肢「${s}」は無効です`);
       return o.value;
@@ -143,12 +144,18 @@ test('魔法戦士: 通常攻撃が敵全体', async () => {
   assert.equal(h.u('D').guards, 1);
 });
 
-test('ネクロマンサー: 死んでいる仲間の人数×1', async () => {
+test('ネクロマンサー: 死んでいる人数×1（敵味方を合わせて。魔王は数えない）', async () => {
   const h = harness();
   h.b.start({ players: [P('A', 'necro'), P('B', 'monk'), P('C', 'warrior'), P('D', 'tank')], boss: 3 });
   h.u('B').alive = false; h.u('B').hp = 0; h.u('C').alive = false; h.u('C').hp = 0;
   await h.correct('A', '死者の怨念', 'D');
   assert.equal(h.u('D').hp, 6);
+  const g = harness();
+  g.b.start({ players: [P('A', 'necro'), P('B', 'monk'), P('C', 'warrior'), { ...P('D', 'tank'), team: 'e' }], mode: 'pvp' });
+  g.u('B').alive = false; g.u('B').hp = 0; g.u('D').alive = false; g.u('D').hp = 0;
+  const hp = g.u('C').hp;
+  await g.correct('A', '死者の怨念（2', 'C');
+  assert.equal(g.u('C').hp, hp - 2, '敵側の死者も数える');
 });
 
 test('盗賊: 正解でジャンルを選べる', async () => {

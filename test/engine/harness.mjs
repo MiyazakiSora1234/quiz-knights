@@ -39,7 +39,9 @@ export function harness({ askFn = null, random = null } = {}) {
       const s = script.shift();
       if (s === undefined) throw new Error('想定外の質問: ' + title + ' / ' + opts.map(o => o.label).join('|'));
       if (s === CANCEL) throw CANCEL;
-      const o = opts.find(x => x.label.includes(s));
+      // 「技N」は、魔王の行動メニューのN番目の技（技には名前が付いているので、番号で選べるようにしている）
+      const nth = typeof s === 'string' && /^技[1-9]$/.exec(s) ? opts[+s[1] - 1] : null;
+      const o = nth ?? opts.find(x => x.label.includes(s));
       if (!o) throw new Error(`選択肢「${s}」がありません: ${opts.map(x => x.label).join(' | ')}`);
       if (o.disabled) throw new Error(`選択肢「${s}」は無効です`);
       return o.value;
