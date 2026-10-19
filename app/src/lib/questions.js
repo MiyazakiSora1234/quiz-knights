@@ -152,6 +152,7 @@ export const CPU_SKILL = {
   weak: { lag: [4, 14], early: 0.06, react: 1.3 },
   normal: { lag: [1, 6], early: 0.03, react: 1 },
   strong: { lag: [0, 2], early: 0.01, react: 0.8 },
+  extreme: { lag: [0, 1], early: 0.01, react: 0.7 },
 };
 /** CPUの性格。lagMul=押す遅さの倍率、early=先走る確率の加減、bluff=知らないのに押してしまう確率、react=反応の遅れ(ms)の範囲 */
 export const PERSONAS = {
@@ -172,6 +173,7 @@ export const CPU_RATE = {
   weak: { skip: 0.25, wrong: 0.35, right: 0.4 },
   normal: { skip: 0.15, wrong: 0.25, right: 0.6 },
   strong: { skip: 0.07, wrong: 0.15, right: 0.78 },
+  extreme: { skip: 0.04, wrong: 0.1, right: 0.86 },
 };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 

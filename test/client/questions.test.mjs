@@ -96,7 +96,7 @@ test('CPUの押し方: 確定ポイント基準・強さで変わる・押さな
   const early = cpuPlan(q, 'weak', () => seq[i++ % 3]);          // 誤答の割合に入り、先走る
   assert.equal(early.ok, false); assert.ok(early.at >= 1 && early.at < 20);
   // 結果の割合は、強さごとに決まっていて、性格には関係ない
-  for (const lv of ['weak', 'normal', 'strong']) for (const ps of Object.keys(PERSONAS)) {
+  for (const lv of ['weak', 'normal', 'strong', 'extreme']) for (const ps of Object.keys(PERSONAS)) {
     const N = 20000; let skip = 0, wrong = 0, right = 0;
     for (let k = 0; k < N; k++) { const p = cpuPlan(q, lv, Math.random, ps); if (!p) skip++; else if (p.ok) right++; else wrong++; assert.ok(!p || (p.at >= 1 && p.at <= q.q.length)); }
     const R = CPU_RATE[lv];
