@@ -1,13 +1,12 @@
 <script>
   import { fade, scale } from 'svelte/transition';
   import { panel } from '../lib/stores/ui.svelte.js';
-  import { icon } from '../lib/icons.js';
-  import { JOB, BOSS, JOB_GROUPS, LEVELS, ITEMS } from '../lib/engine.js';
+  import Catalog from './Catalog.svelte';
+  import { LEVELS } from '../lib/engine.js';
   import { RULINGS } from '../lib/rulings.js';
 
   const close = () => (panel.rules = false);
   let tab = $state('play');
-  let open = $state(null);   // 開いている職業
   const TABS = [['play', '遊び方'], ['jobs', '職業'], ['boss', '魔王'], ['items', 'アイテム'], ['rulings', '裁定']];
   let query = $state('');     // 裁定の絞り込み
   const hit = (q, a) => !query.trim() || (q + a).includes(query.trim());
@@ -58,25 +57,10 @@
           <div class="box"><b>早押しのルール（進行役が選びます）</b><ul>{#each BUZZ_RULES as [t, d]}<li><b>{t}</b>：{d}</li>{/each}</ul></div>
           <div class="box"><b>難易度</b><ul>{#each Object.values(LEVELS).filter(x => !x.hidden) as l}<li><b>{l.n}</b>：{l.d}</li>{/each}</ul></div>
         {:else if tab === 'jobs'}
-          {#each JOB_GROUPS as g}
-            <h4>{g.n}</h4>
-            <div class="grid">
-              {#each g.keys as k}
-                {@const j = JOB[k]}
-                <button class="job" class:on={open === k} onclick={() => (open = open === k ? null : k)}>
-                  <span class="av">{@html icon(k)}</span>
-                  <span class="tx"><b>{j.n}</b><small>ATK {j.atk} ／ HP {j.hp}</small></span>
-                </button>
-                {#if open === k}<div class="desc">{@html icon(k)}<p><b>{j.n}</b>　{j.d}</p></div>{/if}
-              {/each}
-            </div>
-          {/each}
-          <div class="hint">職業をタップすると、くわしい説明が開きます。</div>
+          <Catalog kind="jobs" />
         {:else if tab === 'items'}
           <div class="box"><b>アイテムとは</b><ul><li>バトル開始時に、参加者へランダムで配られます。</li><li>正解したときの行動メニューに「🎒」で並びます。使っても通常の行動は残ります。</li><li>仲間の持ち物は名前まで、相手の持ち物は個数だけが見えます。</li></ul></div>
-          <div class="grid2">
-            {#each Object.values(ITEMS) as it}<div class="item"><span class="ic">{it.ic}</span><span><b>{it.n}</b><small>{it.d}</small></span></div>{/each}
-          </div>
+          <Catalog kind="items" />
         {:else if tab === 'rulings'}
           <input class="find" type="search" placeholder="キーワードで探す（例：バリア、毒、タンク）" bind:value={query} aria-label="裁定を検索" />
           {#each rulings as g}
@@ -88,14 +72,7 @@
             <div class="hint">見つかりませんでした。</div>
           {/each}
         {:else}
-          {#each Object.entries(BOSS) as [k, b]}
-            <div class="boss">
-              <div class="bh"><span class="av foe">{@html icon('boss' + k)}</span><div><b>{b.n}</b><small>{b.intro}</small></div></div>
-              <div class="row"><span class="k">体力</span><span>{b.hpText}</span></div>
-              {#each b.skills as s}<div class="row"><span class="k">{s.n}</span><span>{s.d}</span></div>{/each}
-              {#each b.traits as t}<div class="row"><span class="k tr">特性</span><span>{t}</span></div>{/each}
-            </div>
-          {/each}
+          <Catalog kind="boss" />
         {/if}
       </div>
     </div>
@@ -117,23 +94,8 @@
   .box{background:#0003;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:.88rem}
   .box ul{margin:6px 0 0;padding-left:20px;color:var(--mut);line-height:1.6}.box li b{color:var(--tx)}
   h4{margin:14px 2px 8px;color:var(--gold);font-size:.95rem;letter-spacing:.1em}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
-  .job{display:flex;align-items:center;gap:10px;text-align:left;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer}
-  .job:hover{border-color:var(--line2)}.job.on{border-color:var(--gold);background:#3a2f1a}
-  .av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:1.45rem;background:#120f0c;border:2px solid var(--line2)}
-  .av.foe{border-color:var(--red-d)}
-  .tx b{display:block}.tx small{color:var(--mut);font-size:.74rem}
-  .desc{grid-column:1/-1;display:flex;gap:12px;align-items:flex-start;background:#0004;border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:10px 12px;font-size:.9rem;line-height:1.55}
-  .desc :global(.ic){font-size:1.6rem;flex:none}.desc p{margin:0}.desc b{color:var(--gold)}
   .hint{text-align:center;color:var(--dim);font-size:.8rem;margin-top:12px}
-  .boss{background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;font-size:.86rem}
-  .bh{display:flex;gap:12px;align-items:center;margin-bottom:2px}.bh b{display:block;font-size:1.02rem}.bh small{color:var(--mut)}
-  .row{display:grid;grid-template-columns:5.6em 1fr;gap:8px;line-height:1.5}
-  .k{font-weight:700;color:var(--gold);font-size:.78rem;background:#0004;border-radius:6px;padding:1px 6px;text-align:center;align-self:start}.k.tr{color:#ff9aa2}
   .tabs{flex-wrap:wrap}
-  .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
-  .item{display:flex;gap:10px;align-items:center;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
-  .item .ic{font-size:1.5rem;flex:none;width:34px;text-align:center}.item b{display:block;font-size:.9rem}.item small{color:var(--mut);font-size:.78rem;line-height:1.4}
   .find{width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--tx);font-size:.9rem;margin-bottom:4px}
   .rl{background:var(--s2);border:1px solid var(--line);border-radius:10px;margin-bottom:6px}
   .rl summary{cursor:pointer;padding:9px 12px;font-weight:700;font-size:.88rem;list-style:none}.rl summary::-webkit-details-marker{display:none}

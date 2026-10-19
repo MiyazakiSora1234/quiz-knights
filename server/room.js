@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
   SLOTS, HOST_GRACE_MS, HOST_TAKEOVER_MS, BATTLE_MAX_CHARS, BOSS_COUNT, PERSONAL_DELAY_MAX, OFFLINE_PRUNE_MS,
-  MAX_MSG_PLAYER, MAX_MSG_HOST, MAX_SOCKETS_PER_ROOM, MAX_SOCKETS_PER_IP, MAX_PLAYERS, MAX_PLAYERS_PER_IP,
+  MAX_MSG_PLAYER, MAX_MSG_HOST, MAX_MSG_BANK, BANK_INTERVAL_MS, MAX_SOCKETS_PER_ROOM, MAX_SOCKETS_PER_IP, MAX_PLAYERS, MAX_PLAYERS_PER_IP,
   RATE_PLAYER, RATE_HOST, RATE_STRIKES_MAX, RATE_CHAT, FAIL_MAX, FAIL_LOCK_MS,
 } from './config.js';
 import { clean, safeEq, own, ipTag, Bucket, FailLock } from './safe.js';
@@ -29,7 +29,7 @@ export class Room extends DurableObject {
     this.state = null;             // 進行役が送ってくる表示用の状態
     this.battle = null;            // 進行役が送ってくるバトルの全状態（進行役が替わっても続きから進められるように、サーバーが預かる）
     this.cpuNames = {};            // CPUの pid（cpu:…） -> 名前（メモリのみ）
-    this.rtts = new Map();         // pid -> 往復遅延(ms)。参加者が自己申告（メモリのみ）
+    this.rtts = new Map(); this.bankAt = new Map();         // pid -> 往復遅延(ms)。参加者が自己申告（メモリのみ）
     this.chat = [];                // 直近のチャット（メモリのみ）
     this.lastWinner = null;        // 直近の早押しの勝者（進行役が戻ったとき用）
     this.round = new BuzzRound();  // 今の問題の早押し
@@ -157,7 +157,8 @@ export class Room extends DurableObject {
   async webSocketMessage(ws, raw) {
     if (typeof raw !== 'string') return;                                  // 文字列（JSON）以外は受け付けない
     const att0 = this.roleOf(ws), isHost = att0.role === 'host';
-    if (raw.length > (isHost ? MAX_MSG_HOST : MAX_MSG_PLAYER)) { try { ws.close(1009, 'message too big'); } catch { /* noop */ } return; }
+    const bank = !isHost && raw.startsWith('{"t":"bank"');            // 問題集だけは、参加者でも大きく送れる
+    if (raw.length > (isHost ? MAX_MSG_HOST : bank ? MAX_MSG_BANK : MAX_MSG_PLAYER)) { try { ws.close(1009, 'message too big'); } catch { /* noop */ } return; }
     if (!this.allowMessage(ws, isHost)) return;
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
@@ -383,6 +384,14 @@ export class Room extends DurableObject {
         const v = clampRtt(m.rtt), old = this.rtts.get(pid);
         this.rtts.set(pid, v);
         if (old == null || Math.abs(old - v) > 8) this.lobby();   // 進行役の遅延表示を更新
+        return;
+      }
+      case 'bank': {                                    // 参加者が、問題集（JSON）を進行役へ送る。進行役の端末が検査して取り込む
+        const now = Date.now();
+        if (typeof m.json !== 'string' || m.json.length > MAX_MSG_BANK - 200 || !this.hostWs()) return;
+        if (now - (this.bankAt.get(pid) ?? 0) < BANK_INTERVAL_MS) return;
+        this.bankAt.set(pid, now);
+        this.toHost({ t: 'bank', from: clean(p.name, 12), json: m.json });
         return;
       }
       case 'profile':

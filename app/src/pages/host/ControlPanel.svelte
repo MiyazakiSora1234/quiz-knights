@@ -42,14 +42,19 @@
   .who.none{color:var(--dim);font-size:1rem;font-family:var(--sans);font-weight:400}
   .wi{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--gold);flex:none}
   .rank{font-size:.8rem;color:var(--mut);min-height:1.2em}
-  .main{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   .main .btn{flex-direction:column;gap:2px;padding:16px 8px}
   .main svg{width:26px;height:26px}
   .main kbd{font-size:.65rem}
-  .sub{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sub{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   @media(max-width:900px){
     kbd{display:none}
     .ctl{padding:10px;gap:8px}.who{font-size:1.15rem;min-height:1.8rem}
     .main .btn{flex-direction:row;padding:12px 8px;gap:8px}
+  }
+  /* 背の低い画面（小さいスマホ・横向き）では、画面を押さえすぎないように小さくする */
+  @media(max-width:900px) and (max-height:700px){
+    .ctl{padding:8px;gap:6px}.who{min-height:1.4rem;font-size:1rem}.who.none{display:none}
+    .main,.sub{gap:6px}.main .btn{padding:8px 6px}.main svg{width:20px;height:20px}.sub .btn{padding:6px 8px}
   }
 </style>

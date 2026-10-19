@@ -106,5 +106,5 @@
   .lnk:focus-visible{outline:2px solid var(--gold)}
   .plans{margin-top:6px;font-size:.8rem;color:var(--mut);display:flex;flex-direction:column;gap:2px}
   .plans .used{opacity:.55}
-  @media(max-width:900px){.text{font-size:1.15rem;line-height:1.6}.next{min-width:130px;padding:10px 14px}}
+  @media(max-width:900px){.text{font-size:1.15rem;line-height:1.6}.next{flex:1 1 100%;min-width:0;padding:10px 14px}.next kbd{display:none}}
 </style>

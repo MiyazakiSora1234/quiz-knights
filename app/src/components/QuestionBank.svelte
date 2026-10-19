@@ -131,9 +131,9 @@
   .chip.warn{flex:none;border-color:var(--gold);color:var(--gold);font-size:.72rem}
   .edit{padding:4px 12px 12px;display:flex;flex-direction:column;gap:8px}
   .edit label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--mut)}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
   .prev{font-size:.84rem;color:var(--tx);background:#0003;border-radius:8px;padding:6px 10px}
   .err{color:var(--red);font-size:.86rem}
   .none{color:var(--dim);font-size:.88rem;border:1px dashed var(--line2);border-radius:10px;padding:16px;text-align:center}
-  @media(max-width:560px){.two{grid-template-columns:1fr}.ans{display:none}}
+  @media(max-width:560px){.two{grid-template-columns:minmax(0,1fr)}.ans{display:none}}
 </style>

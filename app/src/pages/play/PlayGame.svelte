@@ -188,7 +188,7 @@
 
   /* PC: 左に自分とボタン、右に全員とバトルログ */
   @media(min-width:900px){
-    .game{display:grid;grid-template-columns:380px 1fr;grid-template-areas:"top top" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
+    .game{display:grid;grid-template-columns:380px minmax(0,1fr);grid-template-areas:"top top" "ans mid" "buzz mid";gap:14px 28px;align-items:start;min-height:0}
     .ansbox{grid-area:ans}
     .top{grid-area:top}.mid{grid-area:mid}
     .buzzarea{grid-area:buzz;position:static;background:none;padding:6px 0}

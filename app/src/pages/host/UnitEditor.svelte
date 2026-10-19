@@ -1,7 +1,8 @@
 <script>
   import { fade, fly } from 'svelte/transition';
-  import { JOB, ITEMS, ITEM_KEYS } from '../../lib/engine.js';
+  import { JOB, ITEMS } from '../../lib/engine.js';
   import JobSelect from '../../components/JobSelect.svelte';
+  import { pick } from '../../lib/stores/ui.svelte.js';
   import Stepper from '../../components/Stepper.svelte';
 
   // 戦闘中のユニット調整: 職業・体力・攻撃・生死・休みを直す（「1つ戻す」で元に戻せる）
@@ -9,9 +10,8 @@
   const u = $derived(G.units.find(x => x.id === host.editing));
   let f = $state(null);
   let lastId = null;
-  let add = $state(ITEM_KEYS[0]);        // 付与するアイテム
   $effect(() => {
-    if (u && u.id !== lastId) { lastId = u.id; f = { name: u.name, job: u.job, hp: u.hp, maxHp: u.maxHp, atk: u.atk, alive: u.alive, rest: u.restNow, items: [...(u.items ?? [])] }; add = ITEM_KEYS[0]; }
+    if (u && u.id !== lastId) { lastId = u.id; f = { name: u.name, job: u.job, hp: u.hp, maxHp: u.maxHp, atk: u.atk, alive: u.alive, rest: u.restNow, items: [...(u.items ?? [])] }; }
     if (!u) { lastId = null; f = null; }
   });
 
@@ -26,7 +26,8 @@
   }
   const close = () => { host.editing = null; };
   const canItems = $derived(!!u && !u.isBoss && !u.cpu);      // アイテムを持てるのは、参加者のユニットだけ
-  const give = () => { if (f.items.length < 20) f.items = [...f.items, add]; };
+  /** 一覧の画面でアイテムを選んで、付与する */
+  const give = async () => { if (f.items.length >= 20) return; const k = await pick('item'); if (k && f) f.items = [...f.items, k]; };
   const take = i => { f.items = f.items.filter((_, k) => k !== i); };
 </script>
 
@@ -52,8 +53,7 @@
             {#each f.items as k, i}<span class="it">{ITEMS[k].ic} {ITEMS[k].n}<button type="button" class="x" aria-label="{ITEMS[k].n}を取り上げる" onclick={() => take(i)}>×</button></span>{:else}<span class="none">持っていません</span>{/each}
           </div>
           <div class="giv">
-            <select class="input" bind:value={add} aria-label="付与するアイテム">{#each ITEM_KEYS as k}<option value={k}>{ITEMS[k].ic} {ITEMS[k].n} ― {ITEMS[k].d}</option>{/each}</select>
-            <button type="button" class="btn sm" onclick={give}>付与</button>
+            <button type="button" class="btn sm" onclick={give} disabled={f.items.length >= 20}>＋ アイテムを選んで付与</button>
           </div>
         </div>
       {/if}

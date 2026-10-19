@@ -32,7 +32,7 @@
   .chat{display:flex;flex-direction:column;gap:8px;padding:12px;min-height:0}
   h3{font-size:.95rem;display:flex;align-items:center;gap:8px}
   .answers{display:flex;flex-direction:column;gap:6px;max-height:160px;overflow:auto}
-  .ans{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--s2)}
+  .ans{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--s2)}
   .ans .tx{font-weight:700;color:var(--gold);overflow-wrap:anywhere;word-break:break-word;min-width:0}
   .ans{min-width:0}
   .none{color:var(--dim);font-size:.85rem}

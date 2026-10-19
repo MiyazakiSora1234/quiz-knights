@@ -24,6 +24,9 @@ export const OFFLINE_PRUNE_MS = 6 * 3600e3;
 /** メッセージ1通の大きさの上限（文字数）。参加者は小さく、進行役は状態・バトルの預けがあるので大きく */
 export const MAX_MSG_PLAYER = 4096;
 export const MAX_MSG_HOST = 262144;
+/** 参加者が進行役へ送る問題集（JSON）の大きさの上限と、送れる間隔 */
+export const MAX_MSG_BANK = 400000;
+export const BANK_INTERVAL_MS = 10000;
 /** 1つの部屋につなげる数・同じ接続元（IP）からつなげる数。接続元が分からない開発環境では数えない */
 export const MAX_SOCKETS_PER_ROOM = 150;
 export const MAX_SOCKETS_PER_IP = 30;

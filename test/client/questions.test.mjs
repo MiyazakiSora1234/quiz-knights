@@ -88,7 +88,7 @@ test('CPUの押し方: 確定ポイント基準・強さで変わる・押さな
   assert.equal(cpuPlan(normalizeQuestion({ q: 'あいう', a: 'x' }, 1).q, 'strong'), null, '確定ポイントが無ければ押さない');
   assert.equal(cpuPlan(q, 'strong', () => 0), null, 'スルーの割合に入ると押さない');
   for (const lv of ['weak', 'normal', 'strong']) {
-    const p = cpuPlan(q, lv, () => 0.5);
+    const p = cpuPlan(q, lv, () => 0.9);          // どの強さでも、正解の割合に入る
     const [lo, hi] = CPU_SKILL[lv].lag;
     assert.equal(p.ok, true); assert.ok(p.at >= 20 + lo && p.at <= 20 + hi, lv);
   }

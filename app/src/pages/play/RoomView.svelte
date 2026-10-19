@@ -78,7 +78,7 @@
   .mi{min-width:0;flex:1}.mi b{display:flex;align-items:center;gap:6px;min-width:0}.mi .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi .dot{flex:none}
   .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .mi small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .bottom{flex:none;display:grid;grid-template-columns:1fr;gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
+  .bottom{flex:none;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;border-top:1px solid var(--line);padding-top:12px;position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--bg) 14px)}
   .chat{display:flex;flex-direction:column;gap:8px;min-width:0}
   .log{height:150px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:6px 10px;font-size:.88rem}
   .log{overflow-x:hidden}
@@ -95,6 +95,6 @@
   }
   @media(min-width:900px){
     .room{min-height:calc(100dvh - 40px)}
-    .bottom{grid-template-columns:1fr 1fr;align-items:stretch}.log{height:180px}.big{min-height:0}
+    .bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch}.log{height:180px}.big{min-height:0}
   }
 </style>

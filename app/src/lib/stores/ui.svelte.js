@@ -31,4 +31,14 @@ export function cancelModal() {
   modal.req = null; r.reject(CANCEL);
 }
 
+/** 職業・魔王・アイテムを、一覧の画面から選ぶ。pick('job' | 'item', 今の値, { bosses }) → 選んだキー（キャンセルは null） */
+export const picker = $state({ req: null });
+export function pick(kind, value = null, { bosses = true } = {}) {
+  return new Promise(resolve => { picker.req?.resolve(null); picker.req = { kind, value, bosses, resolve }; });
+}
+export function closePicker(result = null) {
+  const r = picker.req; if (!r) return;
+  picker.req = null; r.resolve(result);
+}
+
 export const panel = $state({ rules: false, log: false, quiz: false, bank: false, settings: null });     // settings: 参加者の設定ダイアログ（null＝閉じる / 'user' / 'game' / 'quiz'）

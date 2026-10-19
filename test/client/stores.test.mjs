@@ -833,7 +833,7 @@ test('[進行役] CPUの誤答は答えが演出に出る。誤答するとCPU�
     // 次の問題へ（スルー）。慎重になっているので、先走り・知ったかぶりが出ない
     await skipQ(h);
     for (let i = 0; i < 30; i++) {
-      h.quiz.sync(h.G.q + i + 1, [{ id, name: '魔王1' }], 'weak');
+      h.quiz.sync(h.G.q + i + 1, [{ id, name: '魔王1' }], 'strong');
       const p = h.quiz.plans[0];
       if (i === 0) assert.ok(!p || p.kind === 'know', `慎重な直後: ${p?.kind}`);
     }
@@ -870,4 +870,19 @@ test('[進行役] 人間が先に押していたら、CPUは押さない（回�
     assert.equal(h.G.q, 1); assert.equal(h.G.sel, h.G.pids.p0, '人間の回答のまま');
     h.destroy();
   } finally { Math.random = rnd; env.restore(); }
+});
+test('[進行役] 参加者から問題集が届いたら、バトルの準備中だけ取り込む（バトル中は取り込まない）', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const { h, ws } = await hostReady(env, mods);
+    const json = JSON.stringify({ version: 1, title: '届いた', questions: [{ no: 1, q: 'あいう/えお', a: '正解', sure: 3 }, { no: 2, q: 'かき/くけこ', a: '答え' }] });
+    ws.recv({ t: 'bank', from: 'たろう', json });
+    assert.equal(h.quiz.questions.length, 2); assert.equal(h.quiz.title, '届いた');
+    ws.recv({ t: 'bank', from: 'たろう', json: 'これは問題集ではない' });
+    assert.equal(h.quiz.questions.length, 2, '読めないものでは、いまの問題集を壊さない');
+    h.start(); await tick(30);
+    ws.recv({ t: 'bank', from: 'はなこ', json: JSON.stringify({ version: 1, questions: [{ no: 1, q: 'だけ', a: 'x' }] }) });
+    assert.equal(h.quiz.questions.length, 2, 'バトル中は取り込まない');
+    h.destroy();
+  } finally { env.restore(); }
 });

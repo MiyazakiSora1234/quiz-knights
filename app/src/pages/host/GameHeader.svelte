@@ -52,7 +52,7 @@
 
 <style>
   .gbar{border-bottom:1px solid var(--line);background:#14110ee6;position:sticky;top:0;z-index:30;backdrop-filter:blur(6px)}
-  .in{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:10px 18px;max-width:1320px;margin:0 auto}
+  .in{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;padding:10px 18px;max-width:1320px;margin:0 auto}
   .gl{display:flex;align-items:center;gap:12px;min-width:0}
   .gl .logo{font-size:1rem;white-space:nowrap}
   .gc{display:flex;align-items:center;gap:10px}

@@ -2,6 +2,7 @@
   import Toast from './components/Toast.svelte';
   import Modal from './components/Modal.svelte';
   import RulesDialog from './components/RulesDialog.svelte';
+  import PickerDialog from './components/PickerDialog.svelte';
   import List from './pages/List.svelte';
   import Host from './pages/Host.svelte';
   import Play from './pages/Play.svelte';
@@ -24,3 +25,4 @@
 <Toast />
 <Modal />
 <RulesDialog />
+<PickerDialog />

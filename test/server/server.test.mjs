@@ -1448,3 +1448,27 @@ test('防御: CPUの押下は、IDの文字を絞り、数にも上限がある'
   assert.ok(w.ranking.length <= 16, `CPUは16体まで: ${w.ranking.length}`);
   host.send({ t: 'close' });
 });
+
+test('問題集: 参加者が送った問題集（JSON）は、進行役にだけ届く。大きくても通り、短い間隔の連続は捨てる／進行役がいなければ届かない', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'たろう'), b = await joinPlayer(id, 'はなこ');
+  host.clear(); a.clear(); b.clear();
+  const json = JSON.stringify({ version: 1, title: 'T', questions: Array.from({ length: 300 }, (_, i) => ({ no: i + 1, q: `これは${i}番目の問題文です。`.repeat(4), a: '答え' })) });
+  assert.ok(json.length > 4096 && json.length < 300000);
+  a.send({ t: 'bank', json });
+  const got = await host.wait('bank');
+  assert.equal(got.from, 'たろう'); assert.equal(got.json, json);
+  await new Promise(r => setTimeout(r, 200));
+  assert.ok(!b.has('bank') && !a.has('bank'), '進行役以外には届かない');
+  assert.equal(a.closed, null, '大きな問題集でも、切られない');
+  host.clear(); a.send({ t: 'bank', json });
+  await new Promise(r => setTimeout(r, 300));
+  assert.ok(!host.has('bank'), '短い間隔の連続は捨てる');
+  // 大きすぎるもの・文字列でないものは通らない
+  b.send({ t: 'bank', json: 'x'.repeat(500000) });
+  await new Promise(r => setTimeout(r, 400));
+  assert.ok(!host.has('bank')); assert.ok(b.closed, '大きすぎるメッセージは、接続ごと切る');
+  const c = await joinPlayer(id, 'じろう'); c.send({ t: 'bank', json: { a: 1 } });
+  await new Promise(r => setTimeout(r, 300));
+  assert.ok(!host.has('bank'), '文字列でなければ届かない');
+});

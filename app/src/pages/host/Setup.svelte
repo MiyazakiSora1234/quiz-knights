@@ -70,11 +70,13 @@
   .acts{display:flex;gap:8px;flex-wrap:wrap}
   .resume{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#2d2414;border:1px solid var(--gold);border-radius:14px;padding:12px 16px;margin-bottom:16px}
   .resume b{display:block}
-  .grid{display:grid;grid-template-columns:1fr 370px;gap:18px;align-items:start}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:18px;align-items:start}
   .main{display:flex;flex-direction:column;gap:16px;min-width:0}
   .side{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px}
-  @media(max-width:900px){.grid{grid-template-columns:1fr}.side{position:static}}
-  h3 .chip{font-family:var(--sans);font-weight:500;color:var(--tx);margin-left:6px}
+  @media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.side{position:static}}
+  h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+  h3 .chip{font-family:var(--sans);font-weight:500;color:var(--tx);margin-left:0;white-space:nowrap}
+  h3 .rnd{margin-left:auto}
   .chip.warn{border-color:var(--gold);color:var(--gold)}
   .desc{margin-top:8px}
   .empty{border:1px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--mut);margin-bottom:10px}

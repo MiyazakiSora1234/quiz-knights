@@ -96,6 +96,7 @@ export class HostStore {
         toast('進行役をおりました。参加者になります'); setTimeout(() => { location.href = `/play?id=${this.id}`; }, 600);
         return;
       case 'answer': return this.#onAnswer(m);
+      case 'bank': return this.#onBank(m);
       case 'chat': this.chat = [...this.chat, m].slice(-200); if (m.answer) sfx.open(); return;
       case 'settings': this.roomName = m.name; this.password = m.password; toast('部屋の設定を変更しました'); return;
       case 'notice': toast(m.msg, 3000); return;
@@ -238,6 +239,13 @@ export class HostStore {
       this.conn.send({ t: 'ask', to: pid, qid, title, sub: o.sub || '', options: options.map(({ label, sub, disabled, cls, unit, group, gcls, gorder }) => ({ label, sub, disabled, cls, unit, group, gcls, gorder })) });
     });
   }
+  /** 参加者から問題集が届いた。バトルの準備中だけ、検査して置き換える（バトル中は出題がずれるので受けない） */
+  #onBank(m) {
+    const from = typeof m.from === 'string' ? m.from : '参加者';
+    if (this.battle.G) { toast(`${from} から問題集が届きましたが、バトル中なので取り込みませんでした`, 4000); return; }
+    const r = this.quiz.importFrom(String(m.json ?? ''), true);
+    toast(r.questions.length ? `${from} が問題集を設定しました（${r.questions.length}問）` : `${from} から問題集が届きましたが、読めませんでした`, 4000);
+  }
   #onAnswer(m) {
     const r = this.#remote;
     if (!r || r.qid !== m.qid || r.pid !== m.pid) return;
@@ -376,7 +384,7 @@ export class HostStore {
     if (G.sel == null && !G.over && (force || this.#openedFor !== G.q)) {
       this.#openedFor = G.q;
       this.#cpuPending.clear(); this.#cancelCpuTimers();
-      this.ranks = {};
+      this.ranks = {}; this.rank = '';
       this.conn.send({ t: 'open', q: G.q, chain: this.buzzRule === 'chain', eligible: eligibleDelays(G) });
     }
   }

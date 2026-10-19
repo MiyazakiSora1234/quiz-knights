@@ -89,7 +89,7 @@
   @media(min-width:901px){.sheet{display:none}}
   @media(max-width:900px){
     .chatdock{display:none}
-    .layout{grid-template-columns:1fr;padding:12px 12px 270px}
+    .layout{grid-template-columns:minmax(0,1fr);padding:12px 12px 270px}
     .side{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;max-height:none;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#14110ecc,#14110e 30%);border-top:1px solid var(--line2);gap:8px}
   }
 </style>

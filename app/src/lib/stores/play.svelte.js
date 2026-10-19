@@ -207,6 +207,8 @@ export class PlayStore {
     store.set(KEY.delay, String(this.delay));
     this.conn?.send({ t: 'profile', delay: this.delay });
   }
+  /** 問題集（JSON）を進行役へ送る。送れたら true */
+  sendBank(json) { return !!this.hasHost && typeof json === 'string' && json.length <= 380000 && !!this.conn?.send({ t: 'bank', json }); }
   sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
   /** 部屋の中で名前・ひとことを変える */
   saveProfile(name, flavor) {
