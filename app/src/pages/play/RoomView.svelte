@@ -6,6 +6,8 @@
   import { JOB, SELECTABLE, BOSS, bossIdOf, jobDescOf } from '../../lib/engine.js';
   import { panel, confirmAsk, toast } from '../../lib/stores/ui.svelte.js';
   import { titleName } from '../../lib/titles.js';
+  import TopTools from '../../components/TopTools.svelte';
+  import { sound, toggleSound } from '../../lib/stores/sound.svelte.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
   let { p } = $props();   // PlayStore
@@ -13,6 +15,20 @@
   const jobKey = m => (SELECTABLE.includes(m.job) || bossIdOf(m.job) ? m.job : 'warrior');
   const jobN = k => (bossIdOf(k) ? BOSS[bossIdOf(k)].n : JOB[k].n);
 
+  // 右上のボタンは、バトル中の画面・進行役の画面と同じ並び（⏱ 📚 ⚙ 📖 🔊 ☰）
+  const tools = $derived([
+    { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.settings = 'quiz') },
+    { key: 'bank', icon: '📚', label: '問題集', title: '問題集を進行役に送る', onclick: () => (panel.settings = 'bank') },
+    { key: 'settings', icon: '⚙', label: '設定', title: '設定（ユーザー設定・称号）', onclick: () => (panel.settings = 'user') },
+    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
+  ]);
+  const menuItems = $derived([
+    { icon: '🔗', label: '参加用URLをコピー', onclick: () => p.copyUrl() },
+    { icon: '👑', label: '進行役になる', hidden: p.hasHost && p.hostOnline, onclick: () => p.claimHost() },
+    { hr: true },
+    { icon: '⎋', label: '退室する', danger: true, onclick: () => p.confirmLeave() },
+  ]);
   function send(e) { e.preventDefault(); if (!msg.trim()) return; p.sendChat(msg); msg = ''; }
   async function leave() { if (await confirmAsk('退室しますか？', '部屋一覧に戻ります。', '退室する')) p.leave(); }
   const time = ts => new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -23,11 +39,7 @@
 <div class="room" in:fade={{ duration: 160 }}>
   <header class="rbar">
     <div class="ttl"><b>{p.roomName}</b><span class="sub"><span class="dot {p.hasHost && p.hostOnline ? 'on' : ''}"></span>{p.hasHost ? (p.hostOnline ? '進行役あり' : '進行役：接続待ち') : '進行役なし'} ・ {p.id}番</span></div>
-    <div class="tools">
-      <button class="ib" onclick={() => (panel.rules = true)} title="職業・ルール" aria-label="職業・ルール">📖</button>
-      <button class="ib" onclick={() => (panel.settings = 'user')} title="設定（ユーザー設定・クイズ設定・問題集）" aria-label="設定">⚙</button>
-      <button class="ib" onclick={leave} title="退室" aria-label="退室">⎋</button>
-    </div>
+    <TopTools {tools} menu={menuItems} />
   </header>
 
   <div class="members">

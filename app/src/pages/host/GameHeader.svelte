@@ -1,10 +1,11 @@
 <script>
-  import { fade, fly } from 'svelte/transition';
+  import { fade } from 'svelte/transition';
+  import TopTools from '../../components/TopTools.svelte';
   import { panel, confirmAsk } from '../../lib/stores/ui.svelte.js';
   import { sound, toggleSound } from '../../lib/stores/sound.svelte.js';
 
   let { host, G, chatOpen = $bindable(false), answerCount = 0 } = $props();
-  let menu = $state(false);
+  let bar = $state();
   const showGenre = $derived(G.genre && G.genreFor === G.q);
 
   async function quit() {
@@ -13,11 +14,29 @@
   async function closeRoom() {
     if (await confirmAsk('部屋を閉じますか？', '参加者は全員退室になります。', '部屋を閉じる')) host.closeRoom();
   }
-  /** Esc で閉じる／外側のクリックで閉じる */
-  export function closeMenu() { menu = false; }
+  /** Esc でメニューを閉じる */
+  export function closeMenu() { bar?.close(); }
+  const RULE_LABEL = { next: ['⏭', '誤答：次の問題へ'], retry: ['🔁', '誤答：誤答者を除いて再受付'], chain: ['⛓', '誤答：連チャン（次の順位へ）'] };
+  // 右上のボタンは、参加者の画面・準備画面と同じ並び（💬 ↩ ↪ 📜 ⏱ 📚 📖 🔊 ☰）
+  const tools = $derived([
+    { key: 'chat', icon: '💬', label: 'チャット', badge: answerCount || '', active: chatOpen, onclick: () => (chatOpen = !chatOpen) },
+    { key: 'undo', icon: '↩', label: '1つ戻す', title: '1つ戻す（Ctrl+Z）', disabled: !host.canUndo || host.busy, onclick: () => host.undo() },
+    { key: 'redo', icon: '↪', label: '1つ進める', title: '1つ進める（Ctrl+Y）', disabled: !host.canRedo || host.busy, onclick: () => host.redo() },
+    { key: 'log', icon: '📜', label: 'バトルログ', onclick: () => (panel.log = true) },
+    { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.quiz = true) },
+    { key: 'bank', icon: '📚', label: '問題集', onclick: () => (panel.bank = true) },
+    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
+  ]);
+  const menuItems = $derived([
+    { icon: '🔗', label: '参加用URLをコピー', onclick: () => host.copyUrl() },
+    { icon: RULE_LABEL[host.buzzRule][0], label: RULE_LABEL[host.buzzRule][1], onclick: () => { host.buzzRule = ({ next: 'retry', retry: 'chain', chain: 'next' })[host.buzzRule]; } },
+    { icon: '👑', label: '進行役をやめる', onclick: () => host.release() },
+    { hr: true },
+    { icon: '↺', label: '最初からやり直す', danger: true, onclick: quit },
+    { icon: '✕', label: '部屋を閉じる', danger: true, onclick: closeRoom },
+  ]);
 </script>
-
-<svelte:window onclick={(e) => { if (!e.target.closest?.('.menuwrap')) menu = false; }} />
 
 <header class="gbar"><div class="in">
   <div class="gl">
@@ -25,29 +44,7 @@
     {#if host.status !== 'ready'}<span class="chip red">再接続中…</span>{/if}
   </div>
   <div class="gc"><span class="qno">第{G.q}問</span>{#if showGenre}<span class="chip pur" transition:fade>ジャンル：{G.genre}</span>{/if}</div>
-  <div class="gr">
-    <button class="btn sm chatbtn" title="チャット" aria-label="チャット" onclick={() => (chatOpen = !chatOpen)}>💬<span class="lbl"> チャット</span>{#if answerCount}<span class="chip gold">回答 {answerCount}</span>{/if}</button>
-    <button class="btn sm" disabled={!host.canUndo || host.busy} title="1つ戻す" aria-label="1つ戻す" onclick={() => host.undo()}>↩<span class="lbl"> 1つ戻す</span><kbd>Ctrl+Z</kbd></button>
-    <button class="btn sm" disabled={!host.canRedo || host.busy} title="1つ進める" aria-label="1つ進める" onclick={() => host.redo()}>↪<span class="lbl"> 1つ進める</span><kbd>Ctrl+Y</kbd></button>
-    <button class="btn sm" title="クイズ設定" aria-label="クイズ設定" onclick={() => (panel.quiz = true)}>⏱<span class="lbl"> クイズ設定</span></button>
-    <div class="menuwrap">
-      <button class="btn sm" onclick={() => (menu = !menu)} aria-haspopup="true" aria-expanded={menu}>メニュー ▾</button>
-      {#if menu}
-        <div class="menu" transition:fly={{ y: -6, duration: 120 }}>
-          <button class="mi" onclick={() => { panel.log = true; menu = false; }}>📜 バトルログ</button>
-          <button class="mi" onclick={() => { panel.rules = true; menu = false; }}>📖 職業・ルール一覧</button>
-          <button class="mi" onclick={() => { panel.bank = true; menu = false; }}>📚 問題集{host.quiz.has ? `（${host.quiz.questions.length}問）` : ''}</button>
-          <button class="mi" onclick={() => { host.copyUrl(); menu = false; }}>🔗 参加用URLをコピー</button>
-          <button class="mi" onclick={() => { host.buzzRule = ({ next: 'retry', retry: 'chain', chain: 'next' })[host.buzzRule]; }}>{host.buzzRule === 'chain' ? '⛓ 誤答：連チャン（次の順位へ）' : host.buzzRule === 'retry' ? '🔁 誤答：誤答者を除いて再受付' : '⏭ 誤答：次の問題へ'}</button>
-          <button class="mi" onclick={toggleSound}>{sound.on ? '🔊 効果音：オン' : '🔇 効果音：オフ'}</button>
-          <button class="mi" onclick={() => { menu = false; host.release(); }}>👑 進行役をやめる</button>
-          <div class="hr"></div>
-          <button class="mi danger" onclick={() => { menu = false; quit(); }}>↺ 最初からやり直す</button>
-          <button class="mi danger" onclick={() => { menu = false; closeRoom(); }}>✕ 部屋を閉じる</button>
-        </div>
-      {/if}
-    </div>
-  </div>
+  <div class="gr"><TopTools bind:this={bar} labels {tools} menu={menuItems} /></div>
 </div></header>
 
 <style>
@@ -58,11 +55,6 @@
   .gc{display:flex;align-items:center;gap:10px}
   .gr{display:flex;gap:8px;justify-content:flex-end}
   .qno{font-family:var(--serif);font-size:1.7rem;font-weight:800;color:var(--gold);white-space:nowrap}
-  .menuwrap{position:relative}
-  .menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--s1);border:1px solid var(--line2);border-radius:12px;padding:6px;min-width:230px;z-index:40;box-shadow:0 14px 34px #000d}
-  .mi{display:flex;width:100%;gap:10px;align-items:center;padding:10px 12px;background:none;border:0;border-radius:8px;text-align:left;cursor:pointer}
-  .mi:hover{background:var(--s3)}.mi.danger{color:#ff9aa2}
-  .hr{height:1px;background:var(--line);margin:4px 6px}
   @media(max-width:900px){
     .in{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 12px}.gl{display:none}
     .gr{flex-wrap:wrap;gap:6px;align-items:center}

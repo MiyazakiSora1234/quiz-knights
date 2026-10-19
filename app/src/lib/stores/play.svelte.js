@@ -1,6 +1,6 @@
 // 参加者の状態: 入室・ロビー・バトル中の表示用状態と、早押し
 import { Conn } from '../net.js';
-import { toast } from './ui.svelte.js';
+import { toast, confirmAsk } from './ui.svelte.js';
 import { sfx, vib, unlockAudio } from './sound.svelte.js';
 import { store, session, KEY } from '../storage.js';
 import { rankTags } from '../ranks.js';
@@ -216,6 +216,13 @@ export class PlayStore {
     if (ok) this.#announceTitles(titles.markBank());
     return ok;
   }
+  /** 参加用のURLをコピーする */
+  async copyUrl() {
+    const url = `${location.origin}/play?id=${this.id}`;
+    try { await navigator.clipboard.writeText(url); toast('参加用URLをコピーしました'); } catch { toast(url, 6000); }
+  }
+  /** 退室してよいか確かめてから、部屋一覧へ戻る */
+  async confirmLeave() { if (await confirmAsk('退室しますか？', '部屋一覧に戻ります。', '退室する')) this.leave(); }
   /** 名前の横に出す称号を変える（取った称号だけ。空で外す） */
   setTitle(id) {
     if (!titles.equip(id)) return false;

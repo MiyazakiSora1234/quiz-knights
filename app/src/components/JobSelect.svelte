@@ -24,10 +24,10 @@
 </script>
 
 <div class="jw">
-<button type="button" class="sel" bind:this={btn} onclick={open} aria-haspopup="dialog" aria-label={label}>
+<button type="button" class="sel" bind:this={btn} onclick={open} aria-haspopup="dialog" title="職業・魔王の一覧から選ぶ" aria-label={label}>
   <span class="nm">{nameOf(value)}</span>
   <span class="st">{statOf(value)}</span>
-  <svg class="car" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span class="chg">変更</span>
 </button>
 <button type="button" class="dice" onclick={dice} title="職業をランダムに決める" aria-label="ランダム">🎲</button>
 </div>
@@ -43,5 +43,5 @@
   .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
   .st{color:var(--mut);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0;min-width:0}
   @container job (max-width: 250px){.st{display:none}}
-  .car{width:12px;height:8px;flex:none;color:var(--mut);margin-left:auto}
+  .chg{margin-left:auto;flex:none;font-size:.72rem;font-weight:700;color:var(--gold);border:1px solid var(--gold-d);border-radius:999px;padding:1px 9px}
 </style>

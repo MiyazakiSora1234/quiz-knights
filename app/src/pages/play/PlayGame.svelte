@@ -9,10 +9,27 @@
   import { sfx, vib } from '../../lib/stores/sound.svelte.js';
   import { ITEMS } from '../../lib/engine.js';
   import { titles } from '../../lib/stores/titles.svelte.js';
+  import TopTools from '../../components/TopTools.svelte';
+  import { sound, toggleSound } from '../../lib/stores/sound.svelte.js';
   import { titleName } from '../../lib/titles.js';
 
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
+  // 右上のボタンは、待機画面・進行役の画面と同じ並び（💬 📜 ⏱ 📖 🔊 ☰）。バトル中に開けない設定（⚙・📚）は出さない
+  const tools = $derived([
+    { key: 'chat', icon: '💬', label: 'チャット', badge: unread || '', active: chatOpen, onclick: toggleChat },
+    { key: 'log', icon: '📜', label: 'バトルログ', onclick: () => (panel.log = true) },
+    { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.settings = 'quiz') },
+    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
+  ]);
+  const menuItems = $derived([
+    { icon: '🔗', label: '参加用URLをコピー', onclick: () => p.copyUrl() },
+    { icon: '👑', label: '進行役になる', hidden: p.hostOnline, onclick: () => p.claimHost() },
+    { icon: '🏅', label: '称号', onclick: () => (panel.settings = 'titles') },
+    { hr: true },
+    { icon: '⎋', label: '退室する', danger: true, onclick: () => p.confirmLeave() },
+  ]);
   // 敵（自分と別の陣営）を上、味方を下に並べる
   const mySide = $derived(p.me?.side ?? 'p');
   const versus = $derived(gs.mode === 'pvp' && !gs.cpu);   // ユーザー対戦では、チームごとの色（A=青 / B=赤）で見せる
@@ -89,8 +106,7 @@
   <div class="top">
     <div><span class="qn">第{gs.q}問</span>{#if gs.genre}<span class="chip pur" transition:fade>{gs.genre}</span>{/if}</div>
     <div class="topr">
-      <button class="btn sm" type="button" onclick={() => (panel.settings = 'quiz')}>⏱ クイズ設定</button>
-      <button class="btn sm chat-t" type="button" onclick={toggleChat} aria-expanded={chatOpen} title="チャット">💬 チャット{#if unread}<span class="badge">{unread}</span>{/if}</button>
+      <TopTools {tools} menu={menuItems} />
       <div class="net"><span class="dot {p.netGood ? 'on' : p.status === 'open' ? 'warn' : ''}"></span>{p.rtt != null ? `${p.rtt}ms` : ''}{p.jitter != null ? ` ±${p.jitter}` : ''}</div>
     </div>
   </div>
@@ -157,7 +173,7 @@
   .top{display:flex;justify-content:space-between;align-items:center;padding:2px 2px 8px;border-bottom:1px solid var(--line)}
   .qn{font-family:var(--serif);font-size:1.5rem;font-weight:800;color:var(--gold);white-space:nowrap}
   .chip.pur{margin-left:8px}
-  .net{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.78rem;margin-right:48px;white-space:nowrap}
+  .net{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.78rem;white-space:nowrap}
 
   .ansbox{display:flex;flex-direction:column;gap:4px}
   .ans{display:flex;gap:8px}.ans .input{flex:1;min-width:0}
@@ -175,7 +191,6 @@
   @media(max-width:520px){
     .top{flex-wrap:wrap;gap:6px}
     .topr .btn{padding:6px 10px;font-size:.8rem}
-    .net{margin-right:44px}
   }
   .chatfloat{position:fixed;top:56px;right:10px;z-index:58;width:min(94vw,380px);display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--s1);border:1px solid var(--gold);border-radius:14px;box-shadow:0 14px 40px #000c}
   .cf-h{display:flex;justify-content:space-between;align-items:center;color:var(--gold)}

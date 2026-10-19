@@ -5,24 +5,33 @@
   import InviteCard from './InviteCard.svelte';
   import RosterRow from './RosterRow.svelte';
   import FoePicker from '../../components/FoePicker.svelte';
+  import TopTools from '../../components/TopTools.svelte';
+  import { sound, toggleSound } from '../../lib/stores/sound.svelte.js';
 
   // バトルの準備画面: 左に招待URLと参加者の名簿、右にモード・魔王・開始ボタン
   let { host } = $props();
   const pvp = $derived(host.mode === 'pvp');
   const offline = $derived(host.roster.filter(p => p.pid && !p.online).length);
   const block = $derived(host.startBlock);
+  // 右上のボタンは、バトル中の画面・参加者の画面と同じ並び（⏱ 📚 📖 🔊 ☰）
+  const tools = $derived([
+    { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.quiz = true) },
+    { key: 'bank', icon: '📚', label: '問題集', badge: host.quiz.has ? host.quiz.questions.length : '', onclick: () => (panel.bank = true) },
+    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
+  ]);
+  const menuItems = $derived([
+    { icon: '🔗', label: '参加用URLをコピー', onclick: () => host.copyUrl() },
+    { icon: '👑', label: '進行役をやめる', onclick: () => host.release() },
+    { hr: true },
+    { icon: '✕', label: '部屋を閉じる', danger: true, onclick: async () => { if (await confirmAsk('部屋を閉じますか？', '参加者は全員退室になります。', '部屋を閉じる')) host.closeRoom(); } },
+  ]);
 </script>
 
 <div class="page">
   <div class="topbar">
     <div class="logo">QUIZ KNIGHTS <span class="sub">／ 進行役：バトルの準備</span></div>
-    <div class="acts">
-      <button class="btn sm" onclick={() => (panel.quiz = true)}>⏱ クイズ設定</button>
-      <button class="btn sm" onclick={() => (panel.bank = true)}>📚 問題集{host.quiz.has ? `（${host.quiz.questions.length}問）` : ''}</button>
-      <button class="btn sm" onclick={() => (panel.rules = true)}>職業・ルール一覧</button>
-      <button class="btn sm" onclick={() => host.release()}>進行役をやめる</button>
-      <button class="btn sm danger" onclick={async () => (await confirmAsk('部屋を閉じますか？', '参加者は全員退室になります。', '部屋を閉じる')) && host.closeRoom()}>部屋を閉じる</button>
-    </div>
+    <TopTools labels {tools} menu={menuItems} />
   </div>
 
   {#if host.saved}
