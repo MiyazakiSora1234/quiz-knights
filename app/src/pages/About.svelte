@@ -25,7 +25,7 @@
   ];
 </script>
 
-<svelte:head><title>QUIZ KNIGHTS について</title></svelte:head>
+<svelte:head><title>このゲームについて - QUIZ KNIGHTS</title></svelte:head>
 
 <div class="page">
   <header class="hero">

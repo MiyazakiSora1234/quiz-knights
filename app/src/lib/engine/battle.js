@@ -469,12 +469,12 @@ export function createBattle(ui) {
       if (squad) addFoes(foes, level);
       if (pvp) {
         G.units.sort((a, b) => TEAM_ORDER[a.side] - TEAM_ORDER[b.side]); // チームごとに席を連続させる（安定ソート）
-        log(squad ? `バトル開始！ プレイヤー vs ${G.units.filter(u => u.cpu || u.isBoss).map(u => u.name).join('・')}` : '対戦開始！ チームA vs チームB', 'sys');
+        log(squad ? `バトル開始！ 参加者 vs ${G.units.filter(u => u.cpu || u.isBoss).map(u => u.name).join('・')}` : '対戦開始！ チームA vs チームB', 'sys');
       } else {
         const S = G.units.reduce((s, u) => s + u.atk, 0);
         const b = mkBoss(+boss, S * LEVELS[level].hp);
         G.units.push(b);
-        log(`バトル開始！ ${b.name} (HP ${b.hp}) ／ プレイヤー攻撃合計 ${S}`, 'sys');
+        log(`バトル開始！ ${b.name} (HP ${b.hp}) ／ 参加者の攻撃力の合計 ${S}`, 'sys');
       }
       // 全員の体力を同じ倍率で増やす（試合を長くするための調整。与えるダメージ・回復量は変えない）
       for (const u of G.units) {
@@ -595,7 +595,7 @@ export function createBattle(ui) {
       else if (patch.alive === true || !u.alive) { u.alive = true; u.ghost = false; u.hp = Math.max(1, u.hp); }
       if (typeof patch.rest === 'boolean') u.restNow = patch.rest;
       G.over = null; checkEnd();
-      log(`✎ ${u.name} を調整（${JOB[u.job]?.n ?? '魔王'} ATK${u.atk} HP ${u.hp}/${u.maxHp}${u.alive ? '' : '・戦闘不能'}）`, 'sys');
+      log(`✎ ${u.name} を調整（${JOB[u.job]?.n ?? '魔王'} ATK ${u.atk} ／ HP ${u.hp}/${u.maxHp}${u.alive ? '' : '・戦闘不能'}）`, 'sys');
       ui.persist && ui.persist(G);
       emit();
       return true;

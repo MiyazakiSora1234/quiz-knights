@@ -99,7 +99,7 @@ test('魔王の説明: 全魔王に紹介・体力・技・特性がある。ア
   const { icon } = await import('../../app/src/lib/icons.js');
   const svgs = new Set();
   for (const [id, b] of Object.entries(BOSS)) {
-    assert.ok(b.intro && b.hpText && b.skills.length && b.traits.length && b.d, id);
+    assert.ok(b.intro && b.hpText && b.skills.length && b.traits.length, id);
     svgs.add(icon(iconKey({ isBoss: true, bossId: +id })));
   }
   assert.equal(svgs.size, 6);

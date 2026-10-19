@@ -20,7 +20,7 @@ export function syncRoster(roster, lobby, nextKey) {
       roster.push({ key: nextKey(), name: lp.name, flavor: lp.flavor || '', title: lp.title || '', job: validJob(lp.job), team: lp.team || 'p', pid: lp.pid, online: lp.online, rtt: lp.rtt ?? null, delay: lp.delay || 0 });
       continue;
     }
-    if (!row.touchedName) row.name = lp.name;
+    row.name = lp.name;                          // 名前は、参加者が決める（進行役は変えない）
     row.online = lp.online; row.flavor = lp.flavor || ''; row.title = lp.title || ''; row.rtt = lp.rtt ?? null; row.delay = lp.delay || 0;
     // 進行役が変えた職業・チームは、サーバーに届いて同じ値が返ってくるまで守る（そのあとは、参加者が選び直せば反映する）
     if (row.touchedJob && validJob(lp.job) === row.job) row.touchedJob = false;

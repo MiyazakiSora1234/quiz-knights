@@ -27,7 +27,7 @@
     <div class="box panel">
       <h3>別の画面が進行役になりました</h3>
       <p class="sub">この部屋の進行役が、別のタブや端末で開かれました。操作が重ならないよう、こちらは停止しています。</p>
-      <div class="acts"><button class="btn primary lg" onclick={() => host.takeOver()}>この画面を進行役にする</button><a class="btn lg" href="/">部屋一覧へ</a></div>
+      <div class="acts"><button class="btn primary lg" onclick={() => host.takeOver()}>この画面を進行役にする</button><a class="btn lg" href="/">部屋一覧に戻る</a></div>
     </div>
   </div>
 {/if}

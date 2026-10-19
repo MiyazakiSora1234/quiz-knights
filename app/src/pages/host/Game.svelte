@@ -69,7 +69,7 @@
 {#if chatOpen}
   <div class="sheet" role="presentation" onclick={(e) => e.target === e.currentTarget && (chatOpen = false)} transition:fade={{ duration: 120 }}>
     <div class="sheet-in" in:fly={{ y: 16, duration: 180 }}>
-      <button class="btn ghost sm close" onclick={() => (chatOpen = false)}>閉じる ✕</button>
+      <button class="btn ghost sm close" onclick={() => (chatOpen = false)}>閉じる</button>
       <ChatPanel {host} {G} />
     </div>
   </div>

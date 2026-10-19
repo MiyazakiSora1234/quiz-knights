@@ -47,7 +47,7 @@
       {:else if shown.kind === 'round'}
         <div class="rd">第{shown.q}問</div>
       {:else if shown.kind === 'coin'}
-        <div class="who">{shown.who} の コイントス！</div>
+        <div class="who">{shown.who} のコイントス！</div>
         <div class="coin" class:tails={!shown.heads}>
           <div class="face front">表</div>
           <div class="face back">裏</div>

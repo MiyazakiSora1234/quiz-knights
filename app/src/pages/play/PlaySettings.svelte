@@ -124,7 +124,7 @@
       </div>
 
       {#if tab === 'user'}
-        <div class="foot"><button class="btn primary" onclick={save}>保存して閉じる</button><button class="btn ghost" onclick={close}>閉じる</button></div>
+        <div class="foot"><button class="btn primary" onclick={save}>保存して閉じる</button><button class="btn ghost" onclick={close}>キャンセル</button></div>
       {/if}
     </div>
   </div>

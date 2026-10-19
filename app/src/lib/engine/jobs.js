@@ -17,7 +17,7 @@ const notIn = f => (u, picked) => f(u) && !picked.includes(u);  // すでに選�
 /* ============================ プレイヤーの職業 ============================ */
 const SPECIALS = {
   sage(ctx, a, add) {
-    add('蘇生', '死んだプレイヤーを体力1で蘇生',
+    add('蘇生', '死んだ味方を体力1で蘇生',
       [P('蘇生する人', u => !u.alive && !u.isBoss && u.side === a.side)],
       async ([t]) => { t.alive = true; t.hp = 1; t.ghost = false; ctx.log(`${t.name} が体力1で蘇生した！`, 'heal'); });
   },
@@ -43,7 +43,7 @@ const SPECIALS = {
   necro(ctx, a, add) {
     const n = ctx.G.units.filter(u => !u.alive && !u.isBoss).length;
     add(`死者の怨念（${n}ダメージ）`, '死んでいる人数×1ダメージ', [P('対象', alive)],
-      async ([t]) => { if (n > 0) await ctx.dmgTo(a, [t], ctx.dm(a, n)); else ctx.log('死んでいる仲間がいない'); });
+      async ([t]) => { if (n > 0) await ctx.dmgTo(a, [t], ctx.dm(a, n)); else ctx.log('死んでいる人がいない'); });
   },
   bard(ctx, a, add) {
     add('みんなに癒しの歌', '味方全員を1回復', [],
@@ -113,7 +113,7 @@ const SPECIALS = {
 /* ================================ 魔王 ================================ */
 const BOSS_SKILLS = {
   1(ctx, a, add) {
-    add('剛腕の一撃', '敵1体に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 3)); });
+    add('剛腕の一撃', '敵1人に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], ctx.dm(a, 3)); });
     add('二段打ち', '1人に2ダメージ、別の1人に1ダメージ', [P('2ダメージの人', foe(a)), P('1ダメージの人', notIn(foe(a)))], async ([t, n]) => {
       await ctx.applyEvents([{ src: a, to: t, amt: ctx.dm(a, 2) }, ...(n ? [{ src: a, to: n, amt: ctx.dm(a, 1) }] : [])]);
     });
@@ -121,7 +121,7 @@ const BOSS_SKILLS = {
   },
   2(ctx, a, add) {
     if (a.form === 0) {
-      add('眠りの双波', '2人に1ダメージ。その2人は次のターン休み', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))],
+      add('眠りの双波', '2人に1ダメージ。その2人は次の問題休み', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))],
         async ([x, y]) => { await ctx.dmgTo(a, [x, y], 1); ctx.setRest(x); ctx.setRest(y); });
       add('重圧', '1人に3ダメージ', [P('対象', foe(a))], async ([t]) => { await ctx.dmgTo(a, [t], 3); });
       add('幻惑', '敵1人を次の問題休みにする', [P('対象', foe(a))], async ([t]) => { ctx.setRest(t); });

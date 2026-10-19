@@ -23,7 +23,7 @@ test('[データ] 選べる職業は勇者を除く全職業で、分類（基�
 });
 for (const [id, b] of Object.entries(BOSS)) {
   test(`[データ] 魔王${id}: 紹介・体力式・技・特性・形態がそろっている`, () => {
-    assert.ok(b.n && b.intro && b.hpText && b.d);
+    assert.ok(b.n && b.intro && b.hpText);
     assert.ok(Array.isArray(b.skills) && b.skills.length >= 1 && b.skills.every(s => s.n && s.d));
     assert.ok(Array.isArray(b.traits) && b.traits.length >= 1);
     assert.ok(Array.isArray(b.forms) && b.forms.length >= 1);

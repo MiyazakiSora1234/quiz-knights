@@ -18,14 +18,14 @@
     <div class="edit">
       <input class="input" bind:value={n} maxlength="30" placeholder="部屋名" aria-label="部屋名" onkeydown={e => e.key === 'Enter' && save()}>
       <input class="input" bind:value={pw} maxlength="20" placeholder="パスワード（空で無し）" aria-label="パスワード" onkeydown={e => e.key === 'Enter' && save()}>
-      <button class="btn primary sm" onclick={save}>保存</button><button class="btn ghost sm" onclick={() => (edit = false)}>やめる</button>
+      <button class="btn primary sm" onclick={save}>保存</button><button class="btn ghost sm" onclick={() => (edit = false)}>キャンセル</button>
     </div>
   {:else}
     <div class="sub setrow">パスワード：{host.password || 'なし'} <button class="btn ghost sm" onclick={open}>✎ 部屋名・パスワードを変更</button></div>
   {/if}
   <div class="urlrow">
     <input class="input" readonly value={host.joinUrl} onfocus={(e) => e.currentTarget.select()} aria-label="参加用URL">
-    <button class="btn primary" onclick={host.copyUrl}>URLをコピー</button>
+    <button class="btn primary" onclick={host.copyUrl}>参加用URLをコピー</button>
   </div>
 </div>
 

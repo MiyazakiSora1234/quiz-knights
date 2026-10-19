@@ -8,7 +8,7 @@
 </script>
 
 <table class="score">
-  <thead><tr><th>プレイヤー</th><th>正解</th><th>誤答</th></tr></thead>
+  <thead><tr><th>参加者</th><th>正解</th><th>誤答</th></tr></thead>
   <tbody>
     {#each players as u (u.id)}
       <tr class:dead={!u.alive} class:me={u.id === mine}><td><span class="si">{@html icon(u.job)}</span>{u.name}</td><td class="ok">{stat(u, 'correct')}</td><td class="ng">{stat(u, 'wrong')}</td></tr>

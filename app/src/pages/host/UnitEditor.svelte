@@ -35,7 +35,7 @@
   <div class="back" role="presentation" onclick={(e) => e.target === e.currentTarget && close()} transition:fade={{ duration: 120 }}>
     <div class="dialog panel" in:fly={{ y: 14, duration: 180 }}>
       <h3>✎ {u.name} を調整</h3>
-      <div class="sub">HPを0にすると戦闘不能になります。</div>
+      <div class="sub">体力を0にすると戦闘不能になります。</div>
       <label class="field"><span>名前</span><input class="input" bind:value={f.name} maxlength="12"></label>
       {#if !u.isBoss}
         <div class="field"><span>職業（変えると、その職業の基本の数値になります）</span>
@@ -43,9 +43,9 @@
         </div>
       {/if}
       <div class="nums">
-        <div class="field"><span>HP</span><Stepper bind:value={f.hp} min={0} max={99} label="HP" /></div>
-        <div class="field"><span>最大HP</span><Stepper bind:value={f.maxHp} min={1} max={99} label="最大HP" /></div>
-        {#if !u.isBoss}<div class="field"><span>攻撃</span><Stepper bind:value={f.atk} min={0} max={99} label="攻撃" /></div>{/if}
+        <div class="field"><span>体力</span><Stepper bind:value={f.hp} min={0} max={99} label="体力" /></div>
+        <div class="field"><span>最大体力</span><Stepper bind:value={f.maxHp} min={1} max={99} label="最大体力" /></div>
+        {#if !u.isBoss}<div class="field"><span>攻撃力</span><Stepper bind:value={f.atk} min={0} max={99} label="攻撃力" /></div>{/if}
       </div>
       {#if canItems}
         <div class="field"><span>持ち物（付与・取り上げができます）</span>
@@ -57,7 +57,7 @@
           </div>
         </div>
       {/if}
-      <div class="two"><button class="btn primary" onclick={save}>反映する</button><button class="btn ghost" onclick={close}>やめる</button></div>
+      <div class="two"><button class="btn primary" onclick={save}>反映する</button><button class="btn ghost" onclick={close}>キャンセル</button></div>
     </div>
   </div>
 {/if}

@@ -19,7 +19,7 @@
       status = `サーバー接続OK ・ ${Math.round(performance.now() - t0)}ms ・ 5秒ごとに自動更新`;
     } catch { status = 'サーバーに接続できません。しばらくして再読み込みしてください'; }
   }
-  onMount(() => { document.title = 'QUIZ KNIGHTS - 部屋一覧'; load(); const t = setInterval(load, 5000); return () => clearInterval(t); });
+  onMount(() => { document.title = '部屋一覧 - QUIZ KNIGHTS'; load(); const t = setInterval(load, 5000); return () => clearInterval(t); });
 
   const used = $derived((rooms ?? []).filter(r => r.used));
   const free = $derived((rooms ?? []).filter(r => !r.used));
@@ -50,7 +50,7 @@
     <h1 class="logo">QUIZ KNIGHTS<small>クイズ騎士団</small></h1>
   </header>
 
-  <div class="who"><button class="btn sm ghost" onclick={() => (panel.rules = true)}>職業・ルールを見る</button> <a class="btn sm ghost" href="/about">このゲームについて</a></div>
+  <div class="who"><button class="btn sm ghost" onclick={() => (panel.rules = true)}>職業・ルール一覧</button> <a class="btn sm ghost" href="/about">このゲームについて</a></div>
 
   <h2 class="sec">開いている部屋</h2>
   {#if rooms === null}

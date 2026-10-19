@@ -12,7 +12,7 @@
   const groups = $derived(versus
     ? ['p', 'e', 'c'].map(t => ({ key: t, label: TEAM[t][0], cls: TEAM[t][1], units: G.units.filter(u => u.side === t) })).filter(g => g.units.length)
     : [{ key: 'e', label: G.cpu ? (foes.every(u => u.isBoss) ? '魔王軍' : 'CPUチーム') : '魔王軍', cls: 'foe', units: foes, boss: foes.length === 1 && foes[0].isBoss },
-       { key: 'p', label: 'プレイヤー', cls: 'ally', units: allies }]);
+       { key: 'p', label: '参加者', cls: 'ally', units: allies }]);
   // 参加者（端末を持つ人）は早押しで決まるので、進行役は選べない。魔王・CPUだけ進行役が選ぶ
   // 接続が切れている参加者のカードには印を付ける（戻ってこられるので、ユニットは残る）
   const offlineIds = $derived(new Set(Object.entries(G.pids ?? {}).filter(([pid]) => !host.lobby.find(l => l.pid === pid)?.online).map(([, id]) => id)));

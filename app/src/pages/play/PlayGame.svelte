@@ -83,7 +83,7 @@
     return [...(u.st ?? []).filter(t => !t.t.startsWith('🎒')), ...list.map(k => ({ t: `${ITEMS[k]?.ic ?? '🎒'} ${ITEMS[k]?.n ?? k}`, cls: '', d: ITEMS[k]?.d ?? '' }))];
   };
   const tagsOf = u => [
-    ...(u.restNow ? [{ t: '💤 休み', cls: 'warn' }] : []),
+    ...(u.restNow ? [{ t: '💤 今回休み', cls: 'warn' }] : []),
     ...(u.job === 'tank' ? [{ t: `🛡×${u.guards}`, cls: 'warn' }] : []),
     ...(allyTags(u) ?? (u.st ?? [])),
     ...(rankTagOf(u) ? [rankTagOf(u)] : []),
@@ -140,7 +140,7 @@
         <p class:sys={c.sys} class:ans={c.answer}>{#if !c.sys}<b>{c.name}</b>{/if}{#if c.answer}<i>回答</i>{/if}<span>{c.text}</span></p>
       {:else}<p class="sys"><span>まだメッセージはありません</span></p>{/each}
     </div>
-    <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="チャット…" aria-label="チャット"><button class="btn sm" type="submit">送信</button></form>
+    <form class="cs" onsubmit={(e) => { e.preventDefault(); p.sendChat(msg); msg = ''; }}><input class="input" bind:value={msg} maxlength="200" placeholder="メッセージ…" aria-label="メッセージ"><button class="btn sm" type="submit">送信</button></form>
   </div>
 {/if}
 

@@ -213,7 +213,7 @@ for (let seed = 1; seed <= 1500; seed++) {
       else if (x < 0.5) lobby.splice(r.int(lobby.length), 1);
       else if (x < 0.75) { const l = r.pick(lobby); l.online = !l.online; }
       else if (x < 0.9) { const l = r.pick(lobby); l.job = r.pick(JOBS); l.team = r() < 0.5 ? 'p' : 'e'; l.name = 'R' + r.int(99); }
-      else if (roster.length) { const row = r.pick(roster); row.job = 'bm'; row.touchedJob = true; row.team = 'e'; row.touchedTeam = true; row.name = '固定'; row.touchedName = true; }
+      else if (roster.length) { const row = r.pick(roster); row.job = 'bm'; row.touchedJob = true; row.team = 'e'; row.touchedTeam = true; row.name = '固定'; }                          // 名前は進行役が変えられない（次の同期で、参加者の名前に戻る）
       syncRoster(roster, JSON.parse(JSON.stringify(lobby)), nk);
       assert.deepEqual(roster.map(q => q.pid).sort(), lobby.map(l => l.pid).sort());
       assert.equal(new Set(roster.map(q => q.key)).size, roster.length);
@@ -221,7 +221,7 @@ for (let seed = 1; seed <= 1500; seed++) {
         const l = lobby.find(z => z.pid === row.pid);
         assert.equal(row.online, l.online);
         if (row.touchedJob) assert.equal(row.job, 'bm'); else assert.equal(row.job, JOBS.includes(l.job) ? l.job : 'warrior');
-        if (row.touchedName) assert.equal(row.name, '固定'); else assert.equal(row.name, l.name);
+        assert.equal(row.name, l.name, '名前は、いつも参加者の名前');
       }
     }
   });

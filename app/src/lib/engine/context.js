@@ -131,7 +131,7 @@ export function createContext({ ui, getG, emit }) {
   const unitOption = (u, extra = {}) => ({
     ...groupInfo(u),
     label: u.name,
-    sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}${u.alive ? '' : '（死亡）'}${isFoe(u) ? '　【敵】' : ''}`,
+    sub: `${jobName(u)}　HP ${u.hp}/${u.maxHp}${u.alive ? '' : '（戦闘不能）'}${isFoe(u) ? '　【敵】' : ''}`,
     value: u.id,
     cls: isFoe(u) ? 'foe' : '',
     unit: { job: iconKey(u), side: isFoe(u) ? 'e' : 'p', alive: u.alive },

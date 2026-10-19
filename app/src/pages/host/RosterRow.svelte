@@ -9,7 +9,7 @@
 <div class="rrow" class:pvp>
   <div class="av">{@html icon(p.job)}</div>
   <div class="rname">
-    <input class="input" bind:value={p.name} oninput={() => (p.touchedName = true)} onchange={() => { onedit({ name: p.name }); p.touchedName = false; }} maxlength="12" aria-label="名前">
+    <div class="nm">{p.name}</div>
     <div class="sub"><span class="dot {p.pid ? (p.online ? 'on' : '') : 'warn'}"></span>{p.pid ? (p.online ? 'オンライン' : 'オフライン') : '手動追加'}{p.rtt != null && p.online ? ` ${p.rtt}ms` : ''}{p.flavor ? ` ・ ${p.flavor}` : ''}</div>
   </div>
   <button class="btn ghost sm del" onclick={onremove} title={p.pid ? '退室させる' : '削除'} aria-label="削除">✕</button>
@@ -28,7 +28,7 @@
 <style>
   .rrow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;grid-template-areas:"av name del" "ctrl ctrl ctrl";align-items:center;gap:8px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--s2)}
   .av{grid-area:av;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:1.5rem;background:#120f0c;border:2px solid var(--line2)}
-  .rname{grid-area:name;min-width:0}.rname .input{padding:6px 10px;font-weight:700}
+  .rname{grid-area:name;min-width:0}.rname .nm{font-weight:700;font-size:1.05rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rname .sub{display:flex;align-items:center;gap:6px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .del{grid-area:del}
   .ctrl{grid-area:ctrl;display:flex;gap:8px;align-items:center;min-width:0}

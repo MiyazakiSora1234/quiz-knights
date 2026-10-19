@@ -5,7 +5,7 @@
   // 職業を選ぶボタン。押すと、一覧の画面（選ぶ／キャンセル）が開く。アイコン・名前・攻撃/体力を見せる
   let { value = $bindable(), onchange, label = '職業', bosses = true } = $props();
   const nameOf = j => bossIdOf(j) ? BOSS[bossIdOf(j)].n : JOB[j]?.n ?? '';
-  const statOf = j => bossIdOf(j) ? '魔王' : `ATK${JOB[j]?.atk} / HP${JOB[j]?.hp}`;
+  const statOf = j => bossIdOf(j) ? '魔王' : `ATK ${JOB[j]?.atk} ／ HP ${JOB[j]?.hp}`;
   let btn = $state(), opening = $state(false);
 
   async function open() {

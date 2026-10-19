@@ -12,7 +12,7 @@
 {#if panel.log}
   <div class="back" role="presentation" onclick={(e) => e.target === e.currentTarget && close()} transition:fade={{ duration: 120 }}>
     <div class="sheet parch" in:fly={{ y: 14, duration: 180 }} role="dialog" aria-label="バトルログ">
-      <div class="head"><b>バトルログ</b><button class="btn ghost sm" onclick={close}>閉じる ✕</button></div>
+      <div class="head"><b>バトルログ</b><button class="btn ghost sm" onclick={close}>閉じる</button></div>
       <div class="log">
         {#each lines.slice(0, 120) as l}<p class={l.c}>{l.m}</p>{:else}<p>まだ記録はありません</p>{/each}
       </div>
