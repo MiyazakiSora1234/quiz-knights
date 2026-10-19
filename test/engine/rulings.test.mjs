@@ -1,7 +1,7 @@
 // 裁定（ルール画面の文章）が、実際のエンジンの動きと合っているかを確かめる。文章を変えたら、ここも見直す
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBattle, ITEMS } from '../../app/src/lib/engine.js';
+import { createBattle, ITEMS, JOB, BOSS, LEVELS } from '../../app/src/lib/engine.js';
 import { RULINGS } from '../../app/src/lib/rulings.js';
 import { rng } from './harness.mjs';
 
@@ -179,4 +179,16 @@ test('[裁定] 裁定に出てくる主なアイテム名は、すべて実在�
   const names = Object.values(ITEMS).map(i => i.n);
   const text = JSON.stringify(RULINGS);
   for (const n of ['蘇生の羽', '毒薬', '手裏剣', '呪いの人形', '輸血パック']) { assert.ok(names.includes(n), n); assert.ok(text.includes(n), n + ' が裁定にある'); }
+});
+
+test('[裁定] データから作る裁定: すべての職業・アイテム・魔王・難易度に項目があり、数値がデータと合う。裁定は500件以上ある', () => {
+  const all = RULINGS.flatMap(g => g.items);
+  assert.ok(all.length >= 500, `${all.length}件`);
+  const qs = all.map(x => x[0]);
+  assert.equal(new Set(qs).size, qs.length, '質問が重ならない');
+  const text = JSON.stringify(RULINGS);
+  for (const j of Object.values(JOB)) { assert.ok(qs.includes(`${j.n}の攻撃力と体力は？`), j.n); assert.ok(text.includes(`攻撃力${j.atk}、体力${j.hp}`), j.n); }
+  for (const it of Object.values(ITEMS)) { assert.ok(qs.includes(`${it.n}を使うと、どうなる？`), it.n); assert.ok(text.includes(it.d), it.n); }
+  for (const b of Object.values(BOSS)) { assert.ok(qs.includes(`${b.n}の体力は？`)); for (const s of b.skills) assert.ok(qs.includes(`${b.n}の「${s.n}」とは？`), s.n); }
+  for (const l of Object.values(LEVELS).filter(x => !x.hidden)) assert.ok(qs.includes(`難易度「${l.n}」とは？`), l.n);
 });
