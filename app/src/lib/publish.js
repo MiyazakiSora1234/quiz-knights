@@ -4,11 +4,11 @@ import { BERSERKER_DELAY_MS, jobName, statusTags } from './engine.js';
 /** 参加者の画面に表示する状態。秘密の情報（地雷）は含めない */
 export function publicState(G) {
   return {
-    mode: G.mode, cpu: !!G.cpu, q: G.q, acting: G.acting ?? null, notice: G.notice ?? null, thinking: G.thinking ?? null, event: G.event ?? null, fxs: G.fxs ?? [], over: G.over, pids: G.pids, sel: G.sel,
+    mode: G.mode, cpu: !!G.cpu, q: G.q, acting: G.acting ?? null, notice: G.notice ?? null, thinking: G.thinking ?? null, result: G.result ?? null, event: G.event ?? null, fxs: G.fxs ?? [], over: G.over, pids: G.pids, sel: G.sel,
     genre: (G.genre && G.genreFor === G.q) ? `ジャンル：${G.genre}` : '',
     units: G.units.map(u => ({
       id: u.id, name: u.name, job: u.job, jobName: jobName(u), bossId: u.bossId, edit: u.edit || 0, side: u.side, hp: u.hp, maxHp: u.maxHp,
-      alive: u.alive, ghost: !!u.ghost, restNow: u.restNow, guards: u.guards, isBoss: u.isBoss, atk: u.atk,
+      alive: u.alive, ghost: !!u.ghost, restNow: u.restNow, guards: u.guards, isBoss: u.isBoss, atk: u.atk, human: !!u.human, cpu: !!u.cpu, title: u.title || '',
       st: statusTags(u, false, G.q),
     })),
     log: G.log.slice(0, 14).map(l => l.m),

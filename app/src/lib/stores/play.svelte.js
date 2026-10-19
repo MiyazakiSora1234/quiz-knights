@@ -4,6 +4,8 @@ import { toast } from './ui.svelte.js';
 import { sfx, vib, unlockAudio } from './sound.svelte.js';
 import { store, session, KEY } from '../storage.js';
 import { rankTags } from '../ranks.js';
+import { titles } from './titles.svelte.js';
+import { titleName } from '../titles.js';
 
 const goList = (ms = 1200) => setTimeout(() => { location.href = '/'; }, ms);
 
@@ -13,6 +15,7 @@ export class PlayStore {
   info = $state(null);            // 部屋一覧から見つけた、この部屋の情報
   name = $state(store.get(KEY.name) ?? '');
   flavor = $state(store.get(KEY.flavor) ?? '');
+  title = $state(titles.equipped);   // 名前の横に出す称号（id）
   pw = $state('');
   err = $state('');
   pid = $state(null);
@@ -111,9 +114,9 @@ export class PlayStore {
     if (!auto) this.#forgetPid();
     this.conn?.close();
     const conn = this.conn = new Conn(this.id, {
-      status: s => { this.status = s; },
+      status: s => { if (s === 'reconnecting' && this.gs && !this.gs.over) this.#reconnected = true; this.status = s; },
       clock: c => { this.rtt = Math.round(c.rtt); this.jitter = Math.round(c.jitter ?? 0); },
-      open: () => conn.send({ t: 'join', id: this.id, name: this.name.trim(), flavor: this.flavor.trim(), password: this.pw, pid: this.#knownPid() || undefined }),
+      open: () => conn.send({ t: 'join', id: this.id, name: this.name.trim(), flavor: this.flavor.trim(), title: this.title, password: this.pw, pid: this.#knownPid() || undefined }),
       message: m => this.#onMessage(m),
     });
     conn.connect();
@@ -137,8 +140,8 @@ export class PlayStore {
       case 'ask_close': if (m.all || this.req?.qid === m.qid) this.req = null; return;     // all: 進行役が替わったので、途中だった選択は閉じる
       case 'chat': this.chat = [...this.chat, m].slice(-100); return;
       case 'host_granted': store.set(KEY.hostKey(this.id), m.hostKey); this.#forgetPid(); location.href = `/host?id=${this.id}`; return;
-      case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) toast('バトル開始！'); return; }
-      case 'ended': this.myItems = []; this.allyItems = {}; this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
+      case 'state': { const first = !this.gs; this.gs = m.state; this.phase = 'game'; if (first) { toast('バトル開始！'); this.#reconnected = false; } this.#recordTitles(); return; }
+      case 'ended': this.#reconnected = false; this.myItems = []; this.allyItems = {}; this.req = null; this.gs = null; this.open = false; this.winner = null; this.sent = false; this.phase = 'lobby'; return;
       case 'open':
         this.ranks = {}; this.open = true; this.chain = !!m.chain; this.eligible = m.eligible; this.sent = false; this.winner = null;
         if (m.eligible.includes(this.pid)) { sfx.open(); vib(30); }
@@ -208,8 +211,30 @@ export class PlayStore {
     this.conn?.send({ t: 'profile', delay: this.delay });
   }
   /** 問題集（JSON）を進行役へ送る。送れたら true */
-  sendBank(json) { return !!this.hasHost && typeof json === 'string' && json.length <= 380000 && !!this.conn?.send({ t: 'bank', json }); }
-  sendChat(text) { if (text.trim()) this.conn.send({ t: 'chat', text }); }
+  sendBank(json) {
+    const ok = !!this.hasHost && typeof json === 'string' && json.length <= 380000 && !!this.conn?.send({ t: 'bank', json });
+    if (ok) this.#announceTitles(titles.markBank());
+    return ok;
+  }
+  /** 名前の横に出す称号を変える（取った称号だけ。空で外す） */
+  setTitle(id) {
+    if (!titles.equip(id)) return false;
+    this.title = titles.equipped;
+    this.conn?.send({ t: 'profile', title: this.title });
+    return true;
+  }
+  #reconnected = false;
+  #announceTitles(ids) { for (const id of ids) toast(`🏅 称号「${titleName(id)}」を獲得！`, 4000); }
+  /** バトルが終わったら、自分の記録から称号を判定する（同じバトルは1回だけ） */
+  #recordTitles() {
+    const gs = this.gs;
+    if (!gs?.over || !gs.result || this.mine == null) return;
+    const me = this.me;
+    const pub = u => !u.cpu && (!u.isBoss || u.human);
+    const all = gs.units.filter(pub).map(u => ({ u, s: gs.stats?.[u.id] || {} }));
+    this.#announceTitles(titles.record({ s: gs.stats?.[this.mine] || {}, u: me, all, result: gs.result, flags: { reconnected: this.#reconnected } }));
+  }
+  sendChat(text) { if (text.trim()) { this.conn.send({ t: 'chat', text }); this.#announceTitles(titles.addChat()); } }
   /** 部屋の中で名前・ひとことを変える */
   saveProfile(name, flavor) {
     if (!name.trim()) return;

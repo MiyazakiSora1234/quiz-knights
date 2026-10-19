@@ -71,7 +71,7 @@ test('[参加者] 入室: 接続したら join を送り、joined で pid を保
     p.name = ' たろう '; p.flavor = ' がんばる '; p.pw = 'pw';
     p.join();
     const ws = env.ws(); ws.open();
-    assert.deepEqual(ws.of('join')[0], { t: 'join', id: 3, name: 'たろう', flavor: 'がんばる', password: 'pw' });
+    assert.deepEqual(ws.of('join')[0], { t: 'join', id: 3, name: 'たろう', flavor: 'がんばる', title: '', password: 'pw' });
     ws.recv({ t: 'joined', pid: 'abc', room: 3, roomName: '部屋名', name: 'たろう', flavor: 'がんばる', job: 'mage', team: 'e', delay: 0 });
     assert.equal(p.pid, 'abc'); assert.equal(p.phase, 'lobby'); assert.equal(p.myJob, 'mage'); assert.equal(p.myTeam, 'e'); assert.equal(p.roomName, '部屋名');
     assert.equal(env.sess.getItem('qr_pid_3') ?? env.sess._m.values().next().value, 'abc');
@@ -884,5 +884,56 @@ test('[進行役] 参加者から問題集が届いたら、バトルの準備�
     ws.recv({ t: 'bank', from: 'はなこ', json: JSON.stringify({ version: 1, questions: [{ no: 1, q: 'だけ', a: 'x' }] }) });
     assert.equal(h.quiz.questions.length, 2, 'バトル中は取り込まない');
     h.destroy();
+  } finally { env.restore(); }
+});
+
+test('[称号] 保存: 取った称号・積み重ねが残り、同じバトルは1回だけ数える。つけられるのは取った称号だけ', async () => {
+  const mods = await loadStores(); const env = fakeEnv();
+  try {
+    const t = new mods.titles.TitleStore();
+    const game = { s: { correct: 3, wrong: 0, won: 1, first: 1 }, u: { job: 'monk', alive: true, hp: 5, maxHp: 6, atk: 1 }, all: [], result: { at: 11, q: 12, mode: 'cpu', win: 'p', bosses: [2] } };
+    const got = t.record(game);
+    assert.ok(got.includes('t011') && got.includes('t001') && got.includes('t100'), got.join());
+    assert.deepEqual(t.fresh, got);
+    assert.deepEqual(t.record(game), [], '同じバトルは数えない');
+    assert.equal(t.totals.plays, 1); assert.deepEqual(t.totals.winJobs, ['monk']); assert.deepEqual(t.totals.bosses, [2]);
+    assert.equal(t.equip('t011'), true); assert.equal(t.equipped, 't011');
+    assert.equal(t.equip('t090'), false, '取っていない称号はつけられない'); assert.equal(t.equip('xxx'), false);
+    // 保存される（別のインスタンスでも読める）
+    const t2 = new mods.titles.TitleStore();
+    assert.equal(t2.equipped, 't011'); assert.ok(t2.earned.t001 != null); assert.equal(t2.totals.plays, 1);
+    assert.deepEqual(t2.record(game), [], '再読み込みしても、同じバトルは数えない');
+    for (let i = 0; i < 9; i++) t2.addChat();
+    assert.ok(t2.earned.t091 == null); t2.addChat();
+    assert.ok(t2.earned.t091 != null, 'チャット10回');
+    assert.deepEqual(t2.addHosted(5).length, 0); t2.addHosted(5); t2.addHosted(6); const h = t2.addHosted(7);
+    assert.ok(h.includes('t097'), '進行役を3回'); assert.equal(t2.totals.hosted, 3, '同じバトルは1回だけ');
+    assert.deepEqual(t2.markBank(), ['t098']);
+    assert.equal(t2.equip(''), true); assert.equal(t2.equipped, '');
+    // 壊れた保存内容でも落ちない
+    env.local.setItem('qk_titles', '{"earned":{"__proto__":1,"t001":5,"zzz":2},"equipped":"t500","totals":null}');
+    const t3 = new mods.titles.TitleStore();
+    assert.deepEqual(Object.keys(t3.earned), ['t001']); assert.equal(t3.equipped, '');
+  } finally { env.restore(); }
+});
+
+test('[称号] 参加者の画面: バトルが終わったら、自分の記録から称号を判定して知らせる。つけた称号はサーバーへ送る', async () => {
+  const mods = await loadStores(); const env = fakeEnv({ rooms: [room] });
+  try {
+    const { p, ws } = await joined(env, mods);
+    const T = mods.titles.titles;
+    T.earned = { ...T.earned, t011: 1 }; T.equip('t011');
+    assert.equal(p.setTitle('t011'), true);
+    assert.deepEqual(ws.of('profile').at(-1), { t: 'profile', title: 't011' });
+    assert.equal(p.setTitle('t090'), false);
+    ws.recv({ t: 'state', state: gstate({ stats: { 1: { correct: 5, wrong: 0, won: 1, first: 5 } } }) });
+    assert.equal(T.fresh.length, 0, 'バトル中は判定しない');
+    ws.recv({ t: 'state', state: gstate({ over: 'win', q: 12, stats: { 1: { correct: 5, wrong: 0, won: 1, first: 5, kills: 3 } }, result: { at: 777, q: 12, mode: 'cpu', win: 'p', bosses: [1], minutes: 3 } }) });
+    assert.ok(T.earned.t004 != null && T.earned.t015 != null && T.earned.t039 != null && T.earned.t081 != null, 'first5・全問正解・3体撃破・魔王討伐');
+    assert.ok(mods.ui.toasts.some(t => /称号「.+」を獲得/.test(t.msg)));
+    const n = T.count; ws.recv({ t: 'state', state: gstate({ over: 'win', q: 12, stats: { 1: { correct: 5, wrong: 0, won: 1 } }, result: { at: 777, q: 12, mode: 'cpu', win: 'p', bosses: [1] } }) });
+    assert.equal(T.count, n, '同じバトルを2回判定しない');
+    p.sendChat('こんにちは'); assert.equal(T.totals.chat >= 1, true);
+    p.conn.close();
   } finally { env.restore(); }
 });

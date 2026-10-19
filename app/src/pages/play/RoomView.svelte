@@ -5,6 +5,7 @@
   import { icon } from '../../lib/icons.js';
   import { JOB, SELECTABLE, BOSS, bossIdOf, jobDescOf } from '../../lib/engine.js';
   import { panel, confirmAsk, toast } from '../../lib/stores/ui.svelte.js';
+  import { titleName } from '../../lib/titles.js';
 
   // 待機中の部屋の画面（taQu の部屋に合わせた配置）: 上に部屋名と操作、中央に参加者、下に チャット と 大きなボタン
   let { p } = $props();   // PlayStore
@@ -34,7 +35,7 @@
       <div class="mcard" class:tb={m.team === 'e'} class:tc={m.team === 'c'} class:me={m.pid === p.pid} class:off={!m.online} animate:flip={{ duration: 200 }} in:fly={{ y: 8, duration: 180 }}>
         <span class="av">{@html icon(jobKey(m))}</span>
         <div class="mi">
-          <b><span class="dot {m.online ? 'on' : ''}"></span><span class="nm">{m.name}</span><span class="tm {m.team === 'e' ? 'b' : m.team === 'c' ? 'c' : 'a'}">{m.team === 'e' ? 'B' : m.team === 'c' ? 'C' : 'A'}</span></b>
+          <b><span class="dot {m.online ? 'on' : ''}"></span><span class="nm">{m.name}</span>{#if m.title && titleName(m.title)}<span class="tt">{titleName(m.title)}</span>{/if}<span class="tm {m.team === 'e' ? 'b' : m.team === 'c' ? 'c' : 'a'}">{m.team === 'e' ? 'B' : m.team === 'c' ? 'C' : 'A'}</span></b>
           <small><span class="jbn" role="button" tabindex="0" title="クリックで職業の説明" onclick={() => toast(`${jobN(jobKey(m))}：${jobDescOf(jobKey(m))}`, 5000)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), toast(`${jobN(jobKey(m))}：${jobDescOf(jobKey(m))}`, 5000))}>{jobN(jobKey(m))}</span>{m.flavor ? ` ・ ${m.flavor}` : ''}</small>
         </div>
       </div>
@@ -73,6 +74,7 @@
   .tm.a{background:var(--blu);color:#06182b}.tm.b{background:var(--red);color:#2b0609}.tm.c{background:var(--grn);color:#06220f}
   .mcard.me{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}.mcard.off{opacity:.5}
   .av{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;background:#120f0c;border:2px solid var(--line2)}
+  .tt{flex:none;font-size:.68rem;font-weight:600;color:var(--gold);border:1px solid var(--gold-d);border-radius:999px;padding:0 7px}
   .mi{min-width:0;flex:1}.mi b{display:flex;align-items:center;gap:6px;min-width:0}.mi .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mi .dot{flex:none}
   .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .mi small{color:var(--mut);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

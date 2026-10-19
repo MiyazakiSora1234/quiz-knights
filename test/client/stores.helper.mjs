@@ -29,6 +29,7 @@ export async function loadStores() {
     play: await server.ssrLoadModule('/src/lib/stores/play.svelte.js'),
     host: await server.ssrLoadModule('/src/lib/stores/host.svelte.js'),
     ui: await server.ssrLoadModule('/src/lib/stores/ui.svelte.js'),
+    titles: await server.ssrLoadModule('/src/lib/stores/titles.svelte.js'),
   };
   return mods;
 }

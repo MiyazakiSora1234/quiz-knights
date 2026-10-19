@@ -1472,3 +1472,22 @@ test('問題集: 参加者が送った問題集（JSON）は、進行役にだ�
   await new Promise(r => setTimeout(r, 300));
   assert.ok(!host.has('bank'), '文字列でなければ届かない');
 });
+
+test('称号: 参加者がつけた称号（t001〜の形式だけ）が、名簿に載る。変な文字列は空になる', async () => {
+  const { id, host } = await makeRoom();
+  const a = await joinPlayer(id, 'たろう', { title: 't011' });
+  host.clear();
+  a.send({ t: 'profile', title: 't042' });
+  const lobby = await host.wait('lobby', 3000, m => m.players.some(p => p.title === 't042'));
+  assert.equal(lobby.players.find(p => p.pid === a.pid).title, 't042');
+  for (const bad of ['<img src=x>', 't1', 't0420', '__proto__', 'T042', 't04\n2']) {
+    a.send({ t: 'profile', title: bad });
+    const l = await host.wait('lobby', 3000, m => m.players.find(p => p.pid === a.pid)?.title === '');
+    assert.equal(l.players.find(p => p.pid === a.pid).title, '', String(bad));
+    a.send({ t: 'profile', title: 't042' });
+    await host.wait('lobby', 3000, m => m.players.find(p => p.pid === a.pid)?.title === 't042');
+  }
+  const b = await joinPlayer(id, 'はなこ');
+  const members = await b.wait('members', 3000, m => m.players.some(p => p.pid === a.pid));
+  assert.equal(members.players.find(p => p.pid === a.pid).title, 't042', '他の参加者にも届く');
+});

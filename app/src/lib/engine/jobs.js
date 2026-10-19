@@ -26,7 +26,7 @@ const SPECIALS = {
   },
   warrior(ctx, a, add) {
     add('捨て身の一撃', '自身と他1人に5ダメージ', [P('もう1人の対象', other(a))],
-      async ([t]) => { await ctx.applyEvents([{ src: a, to: a, amt: ctx.dm(a, 5) }, { src: a, to: t, amt: ctx.dm(a, 5) }]); });
+      async ([t]) => { ctx.rec(a, 'sacrifice'); await ctx.applyEvents([{ src: a, to: a, amt: ctx.dm(a, 5) }, { src: a, to: t, amt: ctx.dm(a, 5) }]); });
   },
   mage(ctx, a, add) {
     add('封じの魔法', '1人に1ダメージ＋次の問題休み', [P('対象', alive)],
@@ -34,7 +34,7 @@ const SPECIALS = {
   },
   bm(ctx, a, add) {
     add('必殺の一撃', '1人に8ダメージ（バトル中1度だけ）', [P('対象', alive)],
-      async ([t]) => { a.used = true; ctx.event({ kind: 'special', who: a.name, text: '必殺の一撃！' }); await ctx.wait(900); await ctx.dmgTo(a, [t], ctx.dm(a, 8)); }, { disabled: a.used });
+      async ([t]) => { a.used = true; ctx.rec(a, 'special'); ctx.event({ kind: 'special', who: a.name, text: '必殺の一撃！' }); await ctx.wait(900); await ctx.dmgTo(a, [t], ctx.dm(a, 8)); }, { disabled: a.used });
   },
   hero(ctx, a, add) {
     add('勇者の剣', '自身を3回復し、他1人に4ダメージ', [P('対象', other(a))],
@@ -60,13 +60,13 @@ const SPECIALS = {
   poisoner(ctx, a, add) {
     add('毒', '1人に毒。次の2問が終わるたびに1ダメージ', [P('対象', alive)], async ([t]) => {
       if (!(t.poison > 0)) t.poisonSkip = true; // すでに毒なら、今の問題の終わりもそのまま数える
-      t.poison = 2; ctx.fxUnit(t.id, 'poison');
+      t.poison = 2; t.poisonBy = a.id; ctx.fxUnit(t.id, 'poison');
       ctx.log(`☠ ${t.name} は毒を受けた`, 'sys');
     });
   },
   oracle(ctx, a, add) {
     add('予言のディレイ', '敵1人の次の問題のボタンにディレイをつける', [P('対象', foe(a))], async ([t]) => {
-      t.delayQ = ctx.G.q + 1; ctx.fxUnit(t.id, 'delay');
+      t.delayQ = ctx.G.q + 1; ctx.fxUnit(t.id, 'delay'); ctx.rec(a, 'delaySet');
       ctx.log(`🔮 ${t.name} の次のボタンにディレイがつく`, 'sys');
     });
   },
@@ -83,6 +83,7 @@ const SPECIALS = {
       ctx.event({ kind: 'coin', heads, who: a.name });      // コインが回る演出（結果が分かるまで少し待つ）
       await ctx.wait(1700);
       if (!heads) { await ctx.applyEvents([{ src: a, to: a, amt: 2 }]); return; }
+      ctx.rec(a, 'gamHead');
       const t = await ctx.pickUnit('表！ 5ダメージを与える相手', foe(a), []);
       if (t) await ctx.dmgTo(a, [t], ctx.dm(a, 5)); else ctx.log('対象がいない');
     });
@@ -93,7 +94,7 @@ const SPECIALS = {
       const total = ITEM_KEYS.reduce((s, k) => s + ITEMS[k].w, 0);
       let r = ctx.rand() * total;
       const k = ITEM_KEYS.find(x => (r -= ITEMS[x].w) < 0) ?? ITEM_KEYS[0];
-      (a.items ??= []).push(k); ctx.fxUnit(a.id, 'item');
+      (a.items ??= []).push(k); ctx.fxUnit(a.id, 'item'); ctx.rec(a, 'supply');
       ctx.log(`🎒 ${a.name} は ${ITEMS[k].ic} ${ITEMS[k].n} を補給した`, 'sys');
     }, { disabled: full });
   },
@@ -150,14 +151,14 @@ const BOSS_SKILLS = {
   4(ctx, a, add) {
     add('毒牙', '敵1人に毒（次の2問が終わるたびに1ダメージ）', [P('対象', foe(a))], async ([t]) => {
       if (!(t.poison > 0)) t.poisonSkip = true;
-      t.poison = 2; ctx.fxUnit(t.id, 'poison');
+      t.poison = 2; t.poisonBy = a.id; ctx.fxUnit(t.id, 'poison');
       ctx.log(`☠ ${t.name} は毒を受けた`, 'sys');
     });
     const poisoned = ctx.G.units.filter(u => u.alive && u.side !== a.side && u.poison > 0).length;
     const amt = poisoned >= 3 ? 2 : 1;
     add(`毒霧（敵全体に${amt}）`, '敵全体に1ダメージ（毒を受けている敵が3人以上なら2ダメージ）', [], async () => { await ctx.dmgTo(a, ctx.foesOf(a), ctx.dm(a, amt)); });
     add('双頭の毒', '敵2人に毒（次の2問が終わるたびに1ダメージ）', [P('1人目', foe(a)), P('2人目', notIn(foe(a)))], async ([x, y]) => {
-      for (const t of [x, y]) { if (!(t.poison > 0)) t.poisonSkip = true; t.poison = 2; ctx.fxUnit(t.id, 'poison'); ctx.log(`☠ ${t.name} は毒を受けた`, 'sys'); }
+      for (const t of [x, y]) { if (!(t.poison > 0)) t.poisonSkip = true; t.poison = 2; t.poisonBy = a.id; ctx.fxUnit(t.id, 'poison'); ctx.log(`☠ ${t.name} は毒を受けた`, 'sys'); }
     });
   },
   5(ctx, a, add) {
@@ -208,7 +209,7 @@ export function buildActions(ctx, a, asJob = null) {
       const dealt = await ctx.dmgTo(a, [t], ctx.dm(a, a.atk));
       if (dealt <= 0 || t === a || a.cpu || a.isBoss || !t.items?.length || (a.items?.length || 0) >= 20) return;
       const k = t.items.splice(Math.floor(ctx.rand() * t.items.length), 1)[0];
-      (a.items ??= []).push(k); ctx.fxUnit(a.id, 'item');
+      (a.items ??= []).push(k); ctx.fxUnit(a.id, 'item'); ctx.rec(a, 'steal');
       ctx.log(`🧤 ${a.name} は ${t.name} から ${ITEMS[k].ic} ${ITEMS[k].n} を盗んだ！`, 'sys');
     });
   } else {

@@ -4,14 +4,16 @@
   import { panel } from '../../lib/stores/ui.svelte.js';
   import Stepper from '../../components/Stepper.svelte';
   import JobSelect from '../../components/JobSelect.svelte';
+  import { titles } from '../../lib/stores/titles.svelte.js';
+  import { TITLES, TITLE_CATS, titleName } from '../../lib/titles.js';
   import { importText, exportBank } from '../../lib/questions.js';
   import { toast } from '../../lib/stores/ui.svelte.js';
 
   // 参加者の設定ダイアログ。タブで「ユーザー（名前・職業・チーム）」「クイズ（ディレイ）」に分ける。ゲームの設定（戦う相手・難易度）は進行役だけが決める。
   // バトル中は、バトルに関係するクイズ設定だけを出す
   let { p } = $props();   // PlayStore
-  const TABS = [['user', 'ユーザー設定'], ['quiz', 'クイズ設定'], ['bank', '問題集']];
-  const tabs = $derived(p.gs ? TABS.filter(([k]) => k === 'quiz') : TABS);     // バトル中は、クイズ設定だけ
+  const TABS = [['user', 'ユーザー設定'], ['quiz', 'クイズ設定'], ['titles', '称号'], ['bank', '問題集']];
+  const tabs = $derived(p.gs ? TABS.filter(([k]) => k === 'quiz' || k === 'titles') : TABS);     // バトル中は、クイズ設定だけ
   const tab = $derived(tabs.some(([k]) => k === panel.settings) ? panel.settings : tabs[0][0]);
   let n = $state(''), f = $state(''), rn = $state(''), rp = $state('');
   const close = () => { panel.settings = null; };
@@ -39,6 +41,7 @@
     if (f.size > 380_000) { toast('ファイルが大きすぎます（380KBまで）'); return; }
     bankText = await f.text(); checkBank();
   }
+  const dateOf = ts => (ts ? new Date(ts).toLocaleDateString('ja-JP') : '');
   function saveUser() { if (n.trim() && (n.trim() !== p.name || f.trim() !== p.flavor)) p.saveProfile(n, f); }
   function saveRoom() { if (!p.hasHost && rn.trim() && (rn.trim() !== p.roomName || rp !== '')) p.saveRoom(rn, rp); }
   function save() { saveUser(); saveRoom(); close(); }
@@ -68,6 +71,28 @@
             <label class="field"><span>部屋名</span><input class="input" bind:value={rn} maxlength="30"></label>
             <label class="field"><span>パスワード（空なら変更なし）</span><input class="input" bind:value={rp} maxlength="20"></label>
           {/if}
+        {:else if tab === 'titles'}
+          <section>
+            <h4>称号　<span class="cnt">{titles.count} / {titles.total}</span></h4>
+            <p class="hint">バトルの結果に応じて、称号を取れます。取った称号は、1つ選んで、名前の横に出せます。まだの称号は、条件だけが見えます。</p>
+            <div class="eq">
+              <span>つけている称号：<b>{titles.equipped ? titleName(titles.equipped) : 'なし'}</b></span>
+              {#if titles.equipped}<button class="btn sm ghost" onclick={() => p.setTitle('')}>外す</button>{/if}
+            </div>
+            {#each TITLE_CATS as cat}
+              {@const list = TITLES.filter(t => t.cat === cat)}
+              <h5>{cat}　<small>{list.filter(t => titles.earned[t.id] != null).length}/{list.length}</small></h5>
+              {#each list as t (t.id)}
+                {@const got = titles.earned[t.id] != null}
+                <div class="tl" class:got>
+                  <div class="tn"><b>{got ? t.n : '？？？'}</b><small>{t.d}{got ? `（${dateOf(titles.earned[t.id])}）` : ''}</small></div>
+                  {#if got}
+                    {#if titles.equipped === t.id}<span class="on">つけ中</span>{:else}<button class="btn sm ghost" onclick={() => p.setTitle(t.id)}>つける</button>{/if}
+                  {:else}<span class="lock">🔒</span>{/if}
+                </div>
+              {/each}
+            {/each}
+          </section>
         {:else if tab === 'bank'}
           <section>
             <h4>問題集を進行役に送る</h4>
@@ -121,6 +146,13 @@
   section{margin-bottom:12px}
   h4{font-size:.9rem;color:var(--gold);margin:0 0 6px}
   .hint{color:var(--mut);font-size:.8rem;margin:6px 0 0}
+  .cnt{font-size:.85rem;color:var(--mut);font-weight:500}
+  .eq{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px;font-size:.9rem}.eq b{color:var(--gold)}
+  h5{margin:14px 0 6px;color:var(--gold);font-size:.88rem}.h5 small,h5 small{color:var(--mut);font-weight:400}
+  .tl{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:5px;opacity:.7}
+  .tl.got{opacity:1;border-color:var(--gold-d);background:#2a2214}
+  .tn{min-width:0}.tn b{display:block;font-size:.92rem}.tn small{color:var(--mut);font-size:.76rem;line-height:1.4}
+  .on{color:var(--gold);font-size:.8rem;font-weight:700;flex:none}.lock{flex:none}
   .acts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
   .filebtn{cursor:pointer}.filebtn input{display:none}
   .ta{width:100%;box-sizing:border-box;font-family:inherit;resize:vertical}

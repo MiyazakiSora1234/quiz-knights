@@ -5,6 +5,7 @@ import { ask, toast, confirmAsk } from './ui.svelte.js';
 import { sfx } from './sound.svelte.js';
 import { store, session, KEY } from '../storage.js';
 import { syncRoster, startBlock } from '../roster.js';
+import { titles } from './titles.svelte.js';
 import { publicState, eligibleDelays } from '../publish.js';
 import { rankTags } from '../ranks.js';
 import { QuizStore } from './quiz.svelte.js';
@@ -46,7 +47,7 @@ export class HostStore {
     this.battle = createBattle({
       ask: (title, options, o) => this.#ask(title, options, o), toast,
       pause: ms => new Promise(r => setTimeout(r, ms)),
-      changed: snap => { this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.canRedo = this.battle.canRedo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
+      changed: snap => { if (snap?.over && snap.result) titles.addHosted(snap.result.at); this.G = snap; this.busy = this.battle.busy; this.canUndo = this.battle.canUndo; this.canRedo = this.battle.canRedo; this.#publish(); queueMicrotask(() => this.#joinLate()); },
       persist: G => { store.set(KEY.save(id), JSON.stringify(G)); this.#saveToServer(G); },
     });
     try { this.saved = JSON.parse(store.get(KEY.save(id))); } catch { this.saved = null; }
@@ -134,7 +135,7 @@ export class HostStore {
     if (removed && this.battle.G.sel == null && !this.battle.G.over) this.reopen();
     const added = [];
     for (const r of this.roster) {
-      if (r.pid && r.online && G.pids[r.pid] == null && this.battle.join({ name: r.name, job: r.job, team: r.team, pid: r.pid })) added.push(r.pid);
+      if (r.pid && r.online && G.pids[r.pid] == null && this.battle.join({ name: r.name, job: r.job, team: r.team, pid: r.pid, title: r.title || '' })) added.push(r.pid);
     }
     // 途中参戦した人だけを今の受付に加える（ほかの人の受付はそのまま。押した記録も消えない）
     if (added.length && this.battle.G.sel == null) {
@@ -162,7 +163,20 @@ export class HostStore {
     this.#cpuPending.clear(); this.#cancelCpuTimers();
     if (cpu) { this.#cpuResolve(cpu); return; }              // CPUが最初に押していた
     const G = this.battle.G;
-    if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid]);
+    if (G && !this.battle.busy && !G.over && G.sel == null && G.pids?.[m.pid] != null) this.battle.select(G.pids[m.pid], this.#buzzInfo(m));
+  }
+
+  /** 早押しの結果から、称号の記録用の情報を作る（1着か・2着との差・CPUと競ったか・ディレイ・確定ポイントの前か） */
+  #buzzInfo(m) {
+    const rk = Array.isArray(m.ranking) ? m.ranking : [];
+    const q = this.quiz.has ? this.quiz.cur : null;
+    return {
+      first: true,
+      lead: rk.length > 1 ? Math.round(rk[1].ms || 0) : 0,
+      vsCpu: rk.some(r => typeof r.pid === 'string' && r.pid.startsWith('cpu:')),
+      delay: this.lobby.find(l => l.pid === m.pid)?.delay || 0,
+      early: !!(q && q.sure && this.quiz.frozen != null && this.quiz.frozen < q.sure),
+    };
   }
 
   /* ---------- 問読み・CPUの早押し ---------- */
@@ -284,7 +298,7 @@ export class HostStore {
   start() {
     if (this.startBlock) { toast(this.startBlock); return; }
     this.battle.start({
-      players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid })),
+      players: this.playersNamed.map(p => ({ name: p.name, job: p.job, team: p.team, pid: p.pid, title: p.title || '' })),
       mode: this.mode, foes: this.mode === 'cpu' ? [...this.foes] : [], boss: this.boss, hpScale: recommendedHpScale(this.mode, this.playersNamed.length, this.mode === 'cpu' ? this.foes : []), bossPenalty: false, cpuAuto: true, level: this.level, items: this.items,
     });
     this.saved = null; this.rank = ''; this.#openedFor = null; this.chat = [];

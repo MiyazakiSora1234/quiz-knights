@@ -8,6 +8,8 @@
   import BuzzButton from './BuzzButton.svelte';
   import { sfx, vib } from '../../lib/stores/sound.svelte.js';
   import { ITEMS } from '../../lib/engine.js';
+  import { titles } from '../../lib/stores/titles.svelte.js';
+  import { titleName } from '../../lib/titles.js';
 
   let { p } = $props();   // PlayStore
   const gs = $derived(p.gs);
@@ -133,12 +135,18 @@
       <h2 class:lose={p.lost}>{p.overText}</h2>
       <div class="sub">{gs.q - 1}問で決着</div>
       <ScoreTable units={gs.units} stats={gs.stats} mine={p.mine} />
+      {#if titles.fresh.length}
+        <div class="newt"><b>🏅 新しい称号</b>{#each titles.fresh as id}<span>{titleName(id)}</span>{/each}</div>
+      {/if}
       <div class="sub">進行役の操作を待っています</div>
     </div>
   </div>
 {/if}
 
 <style>
+  .newt{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin:10px 0 2px}
+  .newt b{width:100%;text-align:center;color:var(--gold)}
+  .newt span{background:#3a2f1a;border:1px solid var(--gold);color:#fff;border-radius:999px;padding:3px 12px;font-weight:700;font-size:.9rem}
   .hostgone{position:sticky;top:0;z-index:25;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border:1px solid var(--gold);border-radius:10px;background:#3a2f1af0;font-size:.86rem;line-height:1.5}
   .flash{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:0}
   .flash.d{background:radial-gradient(circle,#0000 40%,#ff2030aa);animation:fo .5s}

@@ -50,6 +50,32 @@ export function createContext({ ui, getG, emit }) {
   }
   const rand = () => (ui.random ? ui.random() : Math.random());
 
+  /* ---------- 称号のための記録（G.stats[ユニットid]）。先読み中は記録しない ---------- */
+  const rec = (u, k, n = 1) => { if (sim || !u) return; const G = getG(); const s = ((G.stats ??= {})[u.id] ??= { correct: 0, wrong: 0 }); s[k] = (s[k] || 0) + n; };
+  const recMax = (u, k, v) => { if (sim || !u) return; const G = getG(); const s = ((G.stats ??= {})[u.id] ??= { correct: 0, wrong: 0 }); s[k] = Math.max(s[k] || 0, v); };
+  let cur = null, act = null;      // いま行動している人と、その行動のあいだの集計
+  /** 行動の開始: 終わったときに、増えたバリア・治った毒・蘇生・全体回復などを数えるため、いまの状態を覚えておく */
+  function beginAct(a) {
+    cur = a;
+    act = { dealt: 0, foes: new Set(), snap: new Map(getG().units.map(u => [u.id, { hp: u.hp, barrier: u.barrier || 0, poison: u.poison || 0, alive: u.alive }])) };
+  }
+  function endAct() {
+    const a = cur, s = act; cur = null; act = null;
+    if (!a || !s || sim) return;
+    const G = getG();
+    const mine = G.units.filter(u => u.side === a.side);
+    recMax(a, 'maxAct', s.dealt);
+    if (s.foes.size >= 2) rec(a, 'multiHit');
+    const gained = mine.filter(u => (u.barrier || 0) > (s.snap.get(u.id)?.barrier ?? 0)).length;
+    if (gained) rec(a, 'barrierGiven', gained);
+    const cured = mine.filter(u => u.alive && (s.snap.get(u.id)?.poison ?? 0) > 0 && !(u.poison > 0)).length;
+    if (cured) rec(a, 'cured', cured);
+    const revived = mine.filter(u => u.alive && s.snap.get(u.id) && !s.snap.get(u.id).alive).length;
+    if (revived) rec(a, 'revive', revived);
+    const alive0 = mine.filter(u => s.snap.get(u.id)?.alive);
+    if (alive0.length >= 2 && alive0.every(u => u.alive && u.hp > s.snap.get(u.id).hp)) rec(a, 'healAll');
+  }
+
   const log = (m, c = '') => {
     const G = getG();
     G.log.unshift({ m, c });
@@ -74,6 +100,7 @@ export function createContext({ ui, getG, emit }) {
     const before = u.hp;
     u.hp = Math.min(u.maxHp, u.hp + n);
     log(`${nm(u)} は ${u.hp - before} 回復 (HP ${u.hp}/${u.maxHp})`, 'heal');
+    if (cur && u.hp > before) { rec(cur, 'healed', u.hp - before); if (before === 1 && u !== cur && u.side === cur.side) rec(cur, 'saveLife'); }
     return u.hp - before;
   }
   /** 次の問題休み。すでに今回休みの人は連続では休みにならない */
@@ -81,6 +108,7 @@ export function createContext({ ui, getG, emit }) {
     if (!t.alive) return;
     if (t.restNow) { log(`${t.name} は今回すでに休みなので連続では休みにならない`); return; }
     t.restNext = true; fxUnit(t.id, 'rest');
+    if (cur && t.side !== cur.side) rec(cur, 'restFoe');
     log(`${t.name} は次の問題休み`, 'sys');
   }
 
@@ -126,7 +154,8 @@ export function createContext({ ui, getG, emit }) {
     const G = getG();
     const genres = G.genres && G.genres.length ? G.genres : GENRES;
     const g = await ask('💰 次の問題のジャンルを選択', [...genres.map(x => ({ label: x, value: x })), { label: '選ばない', value: null, cls: 'ghost' }]);
-    if (g) { event({ kind: 'genre', genre: g }); G.genre = g; G.genreFor = G.q + 1; log(`次の問題のジャンル：${g}`, 'sys'); }
+    if (g) { event({ kind: 'genre', genre: g }); G.genre = g; G.genreFor = G.q + 1; log(`次の問題のジャンル：${g}`, 'sys'); rec(G.units.find(x => x.id === actor), 'genrePick'); }
+    return g || null;
   }
 
   /* ---------- ダメージ処理 ---------- */
@@ -144,7 +173,7 @@ export function createContext({ ui, getG, emit }) {
           const c = await ask(`🛡 ${e.to.name} への ${e.amt} ダメージ（${e.src.name}）`, opts, { sub: 'タンクが庇いますか？', actor: tanks.length === 1 ? tanks[0].id : null });
           if (c !== null) {
             const t = G.units.find(x => x.id === c);
-            t.guards--; fxUnit(t.id, 'shield');
+            t.guards--; fxUnit(t.id, 'shield'); rec(t, 'guard');
             log(`🛡 ${t.name} が ${e.to.name} を庇った (守り残り ${t.guards})`, 'sys');
             ev = { src: e.src, to: t, amt: e.amt };
           }
@@ -161,9 +190,19 @@ export function createContext({ ui, getG, emit }) {
     const slayer = {};
     for (const e of events) {
       if (!startAlive.has(e.to.id) || e.amt <= 0) continue;
-      if (e.to.barrier > 0) { e.to.barrier--; fxUnit(e.to.id, 'barrier'); log(`🔰 ${e.to.name} のバリアがダメージを防いだ`, 'sys'); continue; }
+      if (e.to.barrier > 0) { e.to.barrier--; fxUnit(e.to.id, 'barrier'); log(`🔰 ${e.to.name} のバリアがダメージを防いだ`, 'sys'); rec(e.to, 'blocked'); continue; }
       const wasAlive = e.to.hp > 0;
-      dealt += Math.min(e.amt, Math.max(e.to.hp, 0));
+      const real = Math.min(e.amt, Math.max(e.to.hp, 0));
+      dealt += real;
+      rec(e.to, 'taken', real);
+      if (e.blast && real > 0) rec(e.to, 'blasted');
+      if (e.src) {
+        rec(e.src, 'dealt', real);
+        const foe = e.src.side !== e.to.side;
+        if (foe) rec(e.src, 'dealtFoe', real); else if (e.src !== e.to) rec(e.src, 'friendly');
+        if (act && e.src === cur) { act.dealt += real; if (foe) act.foes.add(e.to.id); }
+        if (foe && wasAlive && e.to.hp - e.amt <= 0) rec(e.src, 'kills');
+      }
       e.to.hp -= e.amt;
       log(`${nm(e.to)} に ${e.amt} ダメージ${e.src ? `（${e.src.name}）` : ''} → HP ${Math.max(0, e.to.hp)}/${e.to.maxHp}`, 'dmg');
       if (wasAlive && e.to.hp <= 0) slayer[e.to.id] = e.src;
@@ -187,7 +226,7 @@ export function createContext({ ui, getG, emit }) {
     const next = [];
     k.alive = false; k.hp = 0; k.poison = 0; k.barrier = 0; k.mine = null; k.noWrong = false;
     log(`${nm(k)} は倒れた…`, 'sys');
-    if (k.isBoss) event({ kind: 'bossdown', who: k.name, bossId: k.bossId });
+    if (k.isBoss) { event({ kind: 'bossdown', who: k.name, bossId: k.bossId }); if (!sim) { const L = (G.bossDown ??= []); if (!L.includes(k.bossId)) L.push(k.bossId); } }
     if (k.job === 'ghost' && !k.ghostUsed) {
       k.ghost = true; k.ghostUsed = true;
       log(`👻 ${k.name} は幽霊になった（あと1回だけ答えられる）`, 'sys'); fxUnit(k.id, 'ghost');
@@ -205,6 +244,7 @@ export function createContext({ ui, getG, emit }) {
       log(`${k.name} は魔王の仲間として体力1で復活した！`, 'sys');
       for (const f of G.units) if (f.alive && f.side === 'p' && f.id !== k.id) next.push({ src: slayer, to: f, amt: 1 });
     }
+    if (!k.alive && slayer && slayer.side !== k.side && !G.units.some(u => u.alive && u.side === k.side)) rec(slayer, 'finisher');
     return next;
   }
 
@@ -234,6 +274,6 @@ export function createContext({ ui, getG, emit }) {
 
   return {
     get G() { return getG(); },
-    BACK, event, fxUnit, wait, ask, setActor, setAuto, setSim, rand, log, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
+    BACK, rec, recMax, beginAct, endAct, event, fxUnit, wait, ask, setActor, setAuto, setSim, rand, log, foesOf, dm, heal, setRest, unitOption, pickUnit, pickGenre, applyEvents, dmgTo,
   };
 }

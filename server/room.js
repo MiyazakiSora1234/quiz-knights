@@ -14,6 +14,8 @@ const rnd = n => { const a = new Uint8Array(n); crypto.getRandomValues(a); retur
 /** 職業・魔王として使ってよいキー（これ以外は、画面を壊すので受け付けない） */
 const ALLOWED_JOBS = new Set([...Object.keys(JOB), ...Object.keys(BOSS).map(id => 'boss' + id)]);
 const okJob = v => typeof v === 'string' && ALLOWED_JOBS.has(v);
+/** 称号のid（t001〜）だけを通す。ほかの文字列は空にする（名前の横に出すだけの飾り） */
+const cleanTitle = t => (typeof t === 'string' && /^t[0-9]{3}$/.test(t) ? t : '');
 const cleanPw = v => clean(v, 20);
 const send = (ws, m) => { try { ws.send(JSON.stringify(m)); } catch { /* 切断済み */ } };
 const fail = (ws, msg, code) => send(ws, { t: 'error', msg, ...(code ? { code } : {}) });
@@ -100,13 +102,13 @@ export class Room extends DurableObject {
     }
     if (pruned) this.ctx.waitUntil(this.save());
     const players = Object.values(this.R.players).map(p => ({
-      pid: p.pid, name: p.name, flavor: p.flavor, job: p.job, team: p.team, delay: p.delay || 0,
+      pid: p.pid, name: p.name, flavor: p.flavor, title: p.title || '', job: p.job, team: p.team, delay: p.delay || 0,
       online: this.isOnline(p.pid, except), rtt: this.rtts.get(p.pid) ?? null,
     }));
     const boss = this.R.boss ?? 1, foes = this.R.foes ?? ['boss1'], level = this.R.level ?? 'normal';
     const h = this.hostWs(except); if (h) send(h, { t: 'lobby', players, boss, foes, level });
     const hasHost = !!this.R.hostKey;
-    this.toPlayers({ t: 'members', roomName: this.R.name, boss, foes, level, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, online, job, team, delay }) => ({ pid, name, flavor, online, job, team, delay })) }, except);
+    this.toPlayers({ t: 'members', roomName: this.R.name, boss, foes, level, hasHost, hostOnline: hasHost && !!this.hostWs(except), players: players.map(({ pid, name, flavor, title, online, job, team, delay }) => ({ pid, name, flavor, title, online, job, team, delay })) }, except);
     this.syncLobby(except);
   }
   syncLobby(except) {
@@ -243,6 +245,7 @@ export class Room extends DurableObject {
       if (!safeEq(this.R.password, cleanPw(m.password))) { this.fails.fail(lockKey); return fail(ws, 'パスワードが違います', 'pw'); }
       this.fails.ok(lockKey);
     }
+    if (p && typeof m.title === 'string') p.title = cleanTitle(m.title);
     let isNew = false;
     if (!p) {
       const all = Object.values(this.R.players);
@@ -250,7 +253,7 @@ export class Room extends DurableObject {
       if (tag && all.filter(x => x.ip === tag).length >= MAX_PLAYERS_PER_IP) return fail(ws, 'この接続元からは、これ以上入室できません', 'full');
       isNew = true;
       const pid = rnd(8);
-      p = { pid, name: clean(m.name, 12) || '名無し', flavor: clean(m.flavor, 20), job: 'warrior', team: 'p', ...(tag ? { ip: tag } : {}) };
+      p = { pid, name: clean(m.name, 12) || '名無し', flavor: clean(m.flavor, 20), title: cleanTitle(m.title), job: 'warrior', team: 'p', ...(tag ? { ip: tag } : {}) };
       this.R.players[pid] = p;
       await this.save();
     }
@@ -397,6 +400,7 @@ export class Room extends DurableObject {
       case 'profile':
         if (clean(m.name, 12)) p.name = clean(m.name, 12);
         if (typeof m.flavor === 'string') p.flavor = clean(m.flavor, 20);
+        if (typeof m.title === 'string') p.title = cleanTitle(m.title);
         if (okJob(m.job)) p.job = m.job;
         if (m.team === 'p' || m.team === 'e' || m.team === 'c') p.team = m.team;
         if (m.delay != null) p.delay = this.cleanDelay(m.delay);

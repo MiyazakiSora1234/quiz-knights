@@ -2,6 +2,7 @@
   import { icon } from '../lib/icons.js';
   import { jobName, jobDesc } from '../lib/engine.js';
   import { toast } from '../lib/stores/ui.svelte.js';
+  import { titleName } from '../lib/titles.js';
 
   let { u, sel = false, can = false, ribbon = '', onpick = null, tags = [], compact = false, jobLabel = null, bubble = '', acting = false, answering = false, dim = false, me = false, fxs = [] } = $props();
   const label = $derived(jobLabel ?? jobName(u));
@@ -68,6 +69,7 @@
   {#if ribbon}<div class="ribbon">{ribbon}</div>{/if}
   <div class="u-in" class:shake={anim === 'hit'} class:glow={anim === 'heal'}>
     <div class="ic-wrap">{@html icon(u.isBoss ? `boss${u.bossId || 1}` : u.job)}</div>
+    {#if u.title && titleName(u.title)}<div class="tt">{titleName(u.title)}</div>{/if}
     <div class="nm">{u.name}</div>
     <div class="jb"><span class="jbn" role="button" tabindex="0" title="クリックで職業の説明" onclick={(e) => { e.stopPropagation(); toast(`${label}：${jobDesc(u)}`, 5000); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toast(`${label}：${jobDesc(u)}`, 5000); } }}>{label}</span>{u.isBoss || u.atk == null ? '' : ` ／ ATK ${u.atk}`}</div>
     <div class="bar {level}" style="margin-top:8px"><i style="width:{pct}%"></i></div>
@@ -156,4 +158,5 @@
     .unit{text-align:center}
   .compact .u-in{padding:24px 8px 20px}
   .compact .nm{font-size:.92rem}
+  .tt{font-size:.66rem;color:var(--gold);letter-spacing:.04em;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>

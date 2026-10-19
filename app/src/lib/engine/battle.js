@@ -50,8 +50,32 @@ export function createBattle(ui) {
   }
 
   /* ---------- 決着・問題の終わり ---------- */
+  const ITEM_ATTACK = ['pebble', 'bomb', 'scroll', 'fang', 'doll', 'shuriken', 'firework'];     // 敵を攻撃するアイテム（称号の記録用）
+
+  /** 決着がついたときに、称号のための最終的な記録（勝敗・全員の状態）を残す。1回だけ */
+  function finalize() {
+    if (simulating || G.result) return;
+    const over = G.over;
+    const win = over === 'win' ? 'p' : over === 'lose' ? 'e' : /^team[pec]$/.test(over) ? over.slice(4) : null;
+    G.result = { at: G.startedAt || 0, q: G.q, mode: G.cpu ? 'cpu' : G.mode, win, bosses: [...(G.bossDown || [])], minutes: G.startedAt ? Math.round((Date.now() - G.startedAt) / 6000) / 10 : 0 };
+    for (const u of G.units) {
+      const mine = G.units.filter(x => x.side === u.side);
+      const won = win != null && u.side === win;
+      ctx.rec(u, 'itemsEnd', u.items?.length || 0);
+      ctx.rec(u, 'won', won ? 1 : 0);
+      ctx.rec(u, 'lost', win != null && !won ? 1 : 0);
+      if (won && mine.every(x => x.alive)) ctx.rec(u, 'flawless');
+      if (won && u.alive && mine.filter(x => x.alive).every(x => x.hp <= 2)) ctx.rec(u, 'tight');
+      if (won && u.alive && mine.filter(x => x.alive).every(x => x.hp * 2 <= x.maxHp)) ctx.rec(u, 'weak');
+    }
+  }
+
   function checkEnd() {
     if (G.over) return;
+    checkEnd0();
+    if (G.over) finalize();
+  }
+  function checkEnd0() {
     if (G.mode === 'pvp') {
       // 生き残っているチームが1つ以下なら決着（A=p / B=e / C=c）
       const alive = [...new Set(G.units.filter(u => u.alive).map(u => u.side))];
@@ -71,7 +95,16 @@ export function createBattle(ui) {
       u.poison--;
       events.push({ src: null, to: u, amt: 1 }); ctx.fxUnit(u.id, 'poison');
     }
-    if (events.length) { log('☠ 毒のダメージ', 'sys'); await applyEvents(events); }
+    if (events.length) {
+      log('☠ 毒のダメージ', 'sys');
+      const hp0 = new Map(events.map(e => [e.to.id, e.to.hp]));
+      await applyEvents(events);
+      for (const e of events) {
+        const lost = (hp0.get(e.to.id) ?? 0) - Math.max(0, e.to.hp);
+        if (lost > 0) ctx.rec(e.to, 'poisonTaken', lost);
+        if (!e.to.alive && e.to.poisonBy != null) ctx.rec(G.units.find(x => x.id === e.to.poisonBy), 'poisonKill');
+      }
+    }
   }
 
   /* ---------- CPUの頭脳（先読み） ---------- */
@@ -153,7 +186,7 @@ export function createBattle(ui) {
     checkEnd();
     if (!G.over && G.cfg.cpuAuto && (!G.cfg.cpuBuzz || cpuWinner)) await cpuTurn(cpuWinner);
     if (!G.over) await tickPoison();            // 決着がついたあとは、毒で状況を変えない
-    for (const u of G.units) { u.restNow = u.restNext; u.restNext = false; }
+    for (const u of G.units) { u.restNow = u.restNext; u.restNext = false; if (u.restNow) ctx.rec(u, 'rested'); }
     G.prevCorrect = correct ? correct.id : null;
     G.wrongOn = [];
     if (!correct) G.streak = 0;
@@ -173,19 +206,22 @@ export function createBattle(ui) {
     a.mine = null;
     log(`💥 ${a.name} は地雷を踏んだ！`, 'sys');
     ctx.event({ kind: 'bomb', who: a.name, mine: true });
+    const hp0 = a.hp;
     await applyEvents([{ src: by || null, to: a, amt: dmg }]);
+    if (a.hp < hp0 || !a.alive) { ctx.rec(a, 'mineTaken'); ctx.rec(by, 'mineHit'); }
     return !a.alive;
   }
 
   /** 正解したことで得るもの（連答・タンクの守り・勇者への転職・魔王3の回復） */
   function gainFromCorrect(a) {
     G.streak = (G.prevCorrect === a.id) ? (G.streak || 1) + 1 : 1;
+    ctx.recMax(a, 'maxStreak', G.streak);
     if (a.job === 'tank') { a.guards++; log(`🛡 ${a.name} の守り回数 +1 (${a.guards})`, 'sys'); }
     if (a.job === 'playboy' && G.streak >= 2) {
       const h = JOB.hero, sc = G.cfg.hpScale || 1;
       a.job = 'hero'; a.atk = h.atk; a.maxHp = Math.max(1, Math.round(h.hp * sc)); a.hp = a.maxHp;      // 体力は、ほかの人と同じ倍率で増える
       log(`🎲→👑 ${a.name} は連答で勇者に転職！体力リセット (HP ${a.hp})`, 'sys');
-      ctx.event({ kind: 'job', who: a.name, from: '遊び人', to: '勇者' });
+      ctx.event({ kind: 'job', who: a.name, from: '遊び人', to: '勇者' }); ctx.rec(a, 'hero');
     }
     if (a.isBoss && a.bossId === 3 && a.hp === 1) heal(a, 5);
   }
@@ -205,7 +241,9 @@ export function createBattle(ui) {
   async function perform(a, act, targets) {
     announce(a, act.label, act.desc, targets.map(t => t.name));
     await wait(650);
-    await act.run(targets);
+    ctx.beginAct(a);
+    try { await act.run(targets); } finally { ctx.endAct(); }
+    if (/^模倣：/.test(act.label)) ctx.rec(a, 'copy');
     await wait(750);
     return { label: act.label, desc: act.desc, names: targets.map(t => t.name) };
   }
@@ -221,7 +259,7 @@ export function createBattle(ui) {
         const it = items[+c.slice(5)];
         if (!it) continue;
         const r = await useItem(a, it);
-        if (!r.cancelled) used++;
+        if (!r.cancelled) { used++; if (used === ITEM_USE_MAX) ctx.rec(a, 'item2'); }
         if (r.done) return r.result;                           // アイテムで決着した・自分が倒れた: 続きの行動はできない
         continue;                                              // アイテムは行動を消費しない。メニューに戻る
       }
@@ -249,6 +287,7 @@ export function createBattle(ui) {
     const at = a.items.indexOf(it.key);
     if (at >= 0) a.items.splice(at, 1);
     log(`🎒 ${a.name} は ${it.label} を使った`, 'sys');
+    ctx.rec(a, 'itemsUsed'); if (ITEM_ATTACK.includes(it.key)) ctx.rec(a, 'itemAtk');
     ctx.fxUnit(a.id, 'item');
     await perform(a, { ...it, label: `${it.label}を使う`, desc: it.desc }, t.picked);
     const over = G.over || (wasAlive && !a.alive);
@@ -291,6 +330,13 @@ export function createBattle(ui) {
   const doCorrect = a => asActor(a, () => doCorrectBody(a));
   async function doCorrectBody(a) {
     stat(a, 'correct');
+    const bz = a.buzz || {}; a.buzz = null;
+    if (bz.lead >= 300) ctx.rec(a, 'leadWin');
+    if (bz.vsCpu) ctx.rec(a, 'beatCpu');
+    if (bz.delay > 0 && bz.first) ctx.rec(a, 'delayWin');
+    if (a.lastAns === 'ng') ctx.rec(a, 'bounce');
+    if (a.ghost) ctx.rec(a, 'ghostCorrect');
+    a.lastAns = 'ok';
     log(`⭕ ${nm(a)} 正解！`, 'sys');
     ctx.event({ kind: 'answer', ok: true, who: a.name });
     await wait(700);
@@ -315,17 +361,24 @@ export function createBattle(ui) {
 
   /** 誤答の罰（役職に関係なく2ダメージ。幽霊・魔王の設定・軍師の加護・道化師は例外） */
   async function wrongPenalty(a) {
+    const hp0 = a.hp;
     if (a.ghost) { a.ghost = false; a.ghostUsed = true; log(`👻 ${a.name} は成仏した`, 'sys'); return; }
     if (a.isBoss && !a.human && !G.cfg.bossPenalty) { log('魔王は誤答ペナルティなし'); return; }
-    if (a.noWrong) { a.noWrong = false; log(`📜 ${a.name} は作戦で誤答ダメージを受けない`, 'sys'); return; }
+    if (a.noWrong) { a.noWrong = false; ctx.rec(a, 'wrongBlocked'); if (hp0 === 1) ctx.rec(a, 'edgeWrong'); log(`📜 ${a.name} は作戦で誤答ダメージを受けない`, 'sys'); return; }
     if (a.job === 'jester' && G.units.some(u => u.alive && u !== a && u.side === a.side)) { await jesterPush(a); return; }
     await applyEvents([{ src: null, to: a, amt: 2 }]);
+    if (hp0 > a.hp) ctx.rec(a, 'wrongDmg', hp0 - a.hp);
+    if (hp0 === 1 && a.alive) ctx.rec(a, 'edgeWrong');
   }
 
   /** retry=true: 問題は終わらせず、誤答した人を除いて同じ問題をもう一度受け付ける */
   const doWrong = (a, retry = false) => asActor(a, () => doWrongBody(a, retry));
   async function doWrongBody(a, retry) {
     stat(a, 'wrong');
+    const bz = a.buzz || {}; a.buzz = null;
+    if (bz.early) ctx.rec(a, 'early');
+    if (a.lastAns === 'ng') ctx.rec(a, 'twoWrong');
+    a.lastAns = 'ng'; a.wrongQ = G.q;
     log(`❌ ${nm(a)} 誤答`, 'sys');
     ctx.event({ kind: 'answer', ok: false, who: a.name });
     await wait(700);
@@ -394,7 +447,7 @@ export function createBattle(ui) {
       const hasBossPlayer = players.some(p => bossIdOf(p.job));      // 魔王を選んだ参加者がいるときも、チーム戦のルールで進める
       const squad = mode === 'cpu' && (foes.length > 0 || hasBossPlayer);
       if (squad) mode = 'pvp';
-      G = { cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
+      G = { startedAt: Date.now(), cpu: squad, mode, uid: 1, units: [], log: [], q: 1, prevCorrect: null, streak: 0, genre: null, genreFor: 0, sel: null, over: null, pids: {}, stats: {},
             genres: (genres && genres.length) ? [...genres] : [...GENRES], cfg: { bossPenalty, cpuAuto, level, hpScale, bossHpScale: bossHpScale ?? hpScale, items } };
       const pvp = mode === 'pvp';
       const humanBosses = [];
@@ -405,7 +458,8 @@ export function createBattle(ui) {
         if (pvp) u.side = squad ? 'p' : (TEAM_ORDER[p.team] != null ? p.team : 'p');
         G.units.push(u);
         dealItems(u, startItemCount(u.job, items), ctx.rand);
-        if (p.pid) G.pids[p.pid] = u.id;
+        if (p.pid) { G.pids[p.pid] = u.id; if (typeof p.title === 'string') u.title = p.title; }
+        ctx.rec(u, 'itemsStart', u.items?.length || 0);
       }
       // 参加者が操作する魔王の体力は、ほかの参加者の攻撃合計から決まる（難易度の影響は受けない）
       if (humanBosses.length) {
@@ -442,7 +496,7 @@ export function createBattle(ui) {
       return true;
     },
     /** 戦闘中に新しい参加者を加える（途中参戦）。魔王のHPは変えない。加えられたら true */
-    join({ name, job = 'warrior', team = 'p', pid }) {
+    join({ name, job = 'warrior', team = 'p', pid, title }) {
       if (!G || G.over || busy || (pid && G.pids[pid] != null)) return false;
       const bid = bossIdOf(job);
       let u;
@@ -464,7 +518,9 @@ export function createBattle(ui) {
       const sc = (u.isBoss ? G.cfg.bossHpScale : G.cfg.hpScale) || 1;
       if (sc !== 1) { u.maxHp = Math.max(1, Math.round(u.maxHp * sc)); u.hp = u.maxHp; }
       if (pid) G.pids[pid] = u.id;
+      if (typeof title === 'string') u.title = title;
       dealItems(u, startItemCount(u.job, G.cfg.items), ctx.rand);
+      ctx.rec(u, 'late'); ctx.rec(u, 'itemsStart', u.items?.length || 0);
       redoStack = [];
       log(`${u.name} が途中参戦！（${jobName(u)}）`, 'sys');
       ui.persist && ui.persist(G);
@@ -494,12 +550,19 @@ export function createBattle(ui) {
     reset() { G = null; undoStack = []; redoStack = []; busy = false; emit(); },
 
     /** 回答者を選ぶ（死亡・休み中は選べない。幽霊は選べる）。null で選択解除 */
-    select(id) {
+    select(id, info = null) {
       if (!G || G.over || busy) return false;
       if (id == null) { G.sel = null; emit(); return true; }
       const u = G.units.find(x => x.id === id);
       if (!u || (!u.alive && !u.ghost) || u.restNow) return false;
-      G.sel = id; emit();
+      G.sel = id;
+      if (info && typeof info === 'object') u.buzz = { ...info }; else if (u.buzz) u.buzz = null;      // 早押しの情報（1着か・2着との差・CPUと競ったか・ディレイ・確定ポイントの前か）。称号の記録用
+      if (info && info.first) {
+        ctx.rec(u, 'first');
+        if (G.q === 1) ctx.rec(u, 'firstQ1');
+        if (u.wrongQ === G.q - 1) ctx.rec(u, 'comeback');
+      }
+      emit();
       return true;
     },
     correct() { const a = G && G.units.find(x => x.id === G.sel); return a ? transact(() => doCorrect(a)) : false; },

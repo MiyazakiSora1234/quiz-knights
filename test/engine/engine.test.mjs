@@ -396,8 +396,8 @@ test('集計: 正解数と誤答数が記録される（取り消すと元に戻
   await h.wrong('A');
   await h.correct('B', '何もしない');
   const st = h.b.G.stats;
-  assert.deepEqual(st[h.u('A').id], { correct: 1, wrong: 1 });
-  assert.deepEqual(st[h.u('B').id], { correct: 1, wrong: 0 });
+  assert.equal(st[h.u('A').id].correct, 1); assert.equal(st[h.u('A').id].wrong, 1);
+  assert.equal(st[h.u('B').id].correct, 1); assert.equal(st[h.u('B').id].wrong, 0);
   h.b.undo();
-  assert.equal(h.b.G.stats[h.u('B').id], undefined);
+  assert.equal(h.b.G.stats[h.u('B').id].correct, 0, '取り消すと、正解数も元に戻る');
 });
