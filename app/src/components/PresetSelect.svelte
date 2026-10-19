@@ -1,4 +1,5 @@
 <script>
+  import { portal } from '../lib/portal.js';
   import { fade } from 'svelte/transition';
   import { icon } from '../lib/icons.js';
 
@@ -30,8 +31,8 @@
 </button>
 
 {#if open}
-  <div class="back" role="presentation" onclick={() => (open = false)}></div>
-  <div class="list" bind:this={listEl} role="listbox" transition:fade={{ duration: 90 }}
+  <div class="back" use:portal role="presentation" onclick={() => (open = false)}></div>
+  <div class="list" use:portal bind:this={listEl} role="listbox" transition:fade={{ duration: 90 }}
     style="left:{pos.left}px;width:{pos.width}px;{pos.up ? `bottom:${innerHeight - pos.top + 4}px` : `top:${pos.top + 4}px`};max-height:{Math.min(420, (pos.up ? pos.top : innerHeight - pos.top) - 16)}px">
     {#each groups as g}
       <div class="gh">{g.n}</div>

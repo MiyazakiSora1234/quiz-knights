@@ -1,4 +1,5 @@
 <script>
+  import { portal } from '../lib/portal.js';
   import { fade } from 'svelte/transition';
 
   // 汎用のドロップダウン。options = [{ v, n, d? }]。value は選んだ v
@@ -29,8 +30,8 @@
 </button>
 
 {#if open}
-  <div class="back" role="presentation" onclick={() => (open = false)}></div>
-  <div class="list" bind:this={listEl} role="listbox" transition:fade={{ duration: 90 }}
+  <div class="back" use:portal role="presentation" onclick={() => (open = false)}></div>
+  <div class="list" use:portal bind:this={listEl} role="listbox" transition:fade={{ duration: 90 }}
     style="left:{pos.left}px;width:{pos.width}px;{pos.up ? `bottom:${innerHeight - pos.top + 4}px` : `top:${pos.top + 4}px`};max-height:{Math.min(320, (pos.up ? pos.top : innerHeight - pos.top) - 16)}px">
     {#each options as o}
       <button type="button" role="option" aria-selected={o.v === value} class="opt" class:cur={o.v === value} onclick={() => pick(o)}>
