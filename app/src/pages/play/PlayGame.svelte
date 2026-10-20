@@ -112,6 +112,8 @@
   </div>
 
 
+  {#if p.me}<div class="buzzarea"><BuzzButton {p} /></div>{/if}
+
   <div class="ansbox">
   <form class="ans" onsubmit={(e) => { e.preventDefault(); p.sendAnswer(text); text = ''; }}>
     <input class="input" bind:value={text} maxlength="60" placeholder="チャット回答" aria-label="チャット回答"><button class="btn sm" type="submit" disabled={!text.trim()}>回答</button>
@@ -129,7 +131,6 @@
     {/each}
   </div>
 
-  {#if p.me}<div class="buzzarea"><BuzzButton {p} /></div>{/if}
 </div>
 
 {#if chatOpen}
@@ -203,7 +204,7 @@
   .lh{text-align:center;color:#7a1f26;font-weight:800;letter-spacing:.2em;font-family:var(--serif)}
   .ll{height:9.5em;overflow:auto}
   .logbox p{margin:6px 0 0;font-size:.82rem;border-bottom:1px dotted #8a6a3577;padding-bottom:3px}
-  .buzzarea{position:sticky;bottom:0;padding:14px 0 calc(8px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#0000,var(--bg) 30%)}
+  .buzzarea{padding:8px 0 4px}      /* 早押しボタンは、いちばん上（ヘッダーのすぐ下）。味方カードに重ならない */
 
   .over{position:fixed;inset:0;overflow:auto;padding:16px;background:#000d;z-index:70;display:flex;align-items:center;justify-content:center;text-align:center}
   .ov-in{display:flex;flex-direction:column;gap:12px;align-items:center;margin:auto}
