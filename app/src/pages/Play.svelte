@@ -64,7 +64,7 @@
   .wrap :global(input){-webkit-user-select:text;user-select:text}
   .conn{position:fixed;left:0;right:0;top:0;z-index:90;background:var(--red-d);text-align:center;padding:5px;font-size:.85rem}
   .tools{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:50}
-  .tools button{width:38px;height:38px;border-radius:50%;background:#000a;border:1px solid var(--line2);font-size:1rem;line-height:1;padding:0;cursor:pointer}
+  .tools button{width:44px;height:44px;border-radius:50%;background:#000a;border:1px solid var(--line2);font-size:1rem;line-height:1;padding:0;cursor:pointer}
   .tools{display:flex;flex-direction:column;align-items:flex-end}
   .center{display:grid;place-items:center;gap:12px;margin-top:30vh}
   .spin{width:34px;height:34px;border:3px solid var(--line2);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite}

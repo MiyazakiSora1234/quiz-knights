@@ -16,8 +16,8 @@
   // 右上のボタンは、バトル中の画面・参加者の画面と同じ並び（⏱ 📚 📖 🔊 ☰）
   const tools = $derived([
     { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.quiz = true) },
-    { key: 'bank', icon: '📚', label: '問題集', badge: host.quiz.has ? host.quiz.questions.length : '', onclick: () => (panel.bank = true) },
-    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'bank', narrowMenu: true, icon: '📚', label: '問題集', badge: host.quiz.has ? host.quiz.questions.length : '', onclick: () => (panel.bank = true) },
+    { key: 'rules', narrowMenu: true, icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
     { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
   ]);
   const menuItems = $derived([

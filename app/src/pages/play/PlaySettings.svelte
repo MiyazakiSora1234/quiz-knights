@@ -132,10 +132,10 @@
 
 <style>
   .back{position:fixed;inset:0;background:#000b;z-index:90;display:flex;align-items:center;justify-content:center;padding:12px}
-  .dialog{width:100%;max-width:600px;max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--s1);border:1px solid var(--gold);border-radius:16px}
+  .dialog{width:100%;max-width:600px;height:min(620px,92dvh);display:flex;flex-direction:column;overflow:hidden;background:var(--s1);border:1px solid var(--gold);border-radius:16px}
   .head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
   .tabs{display:flex;gap:6px;min-width:0}
-  .tabs button{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 18px;font-weight:700;cursor:pointer;color:var(--mut)}
+  .tabs button{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 18px;min-height:40px;font-weight:700;cursor:pointer;color:var(--mut)}
   .tabs button.on{background:var(--gold);color:#2a1c06;border-color:var(--gold)}
   .body{overflow:auto;padding:12px 16px 14px;flex:1;min-height:0}
   .foot{display:flex;gap:10px;padding:10px 16px 14px;border-top:1px solid var(--line)}.foot .btn{flex:1}

@@ -22,10 +22,10 @@
     { key: 'chat', icon: '💬', label: 'チャット', badge: answerCount || '', active: chatOpen, onclick: () => (chatOpen = !chatOpen) },
     { key: 'undo', icon: '↩', label: '1つ戻す', title: '1つ戻す（Ctrl+Z）', disabled: !host.canUndo || host.busy, onclick: () => host.undo() },
     { key: 'redo', icon: '↪', label: '1つ進める', title: '1つ進める（Ctrl+Y）', disabled: !host.canRedo || host.busy, onclick: () => host.redo() },
-    { key: 'log', icon: '📜', label: 'バトルログ', onclick: () => (panel.log = true) },
+    { key: 'log', narrowMenu: true, icon: '📜', label: 'バトルログ', onclick: () => (panel.log = true) },
     { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.quiz = true) },
-    { key: 'bank', icon: '📚', label: '問題集', onclick: () => (panel.bank = true) },
-    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'bank', narrowMenu: true, icon: '📚', label: '問題集', onclick: () => (panel.bank = true) },
+    { key: 'rules', narrowMenu: true, icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
     { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
   ]);
   const menuItems = $derived([

@@ -53,7 +53,7 @@
   .cw{position:relative;display:flex}.cw :global(.unit){width:100%}
   .foes .cw{width:min(100%,176px)}.foes .cw:only-child{width:min(100%,300px)}
   .units .cw{width:100%}
-  .edit{position:absolute;top:6px;right:6px;z-index:3;width:28px;height:28px;border-radius:50%;border:1px solid var(--line2);background:#000a;color:var(--tx);cursor:pointer;font-size:.85rem;padding:0;opacity:.7}
+  .edit{position:absolute;top:6px;right:6px;z-index:3;width:32px;height:32px;border-radius:50%;border:1px solid var(--line2);background:#000a;color:var(--tx);cursor:pointer;font-size:.85rem;padding:0;opacity:.7}
   .edit:hover:not(:disabled){opacity:1;border-color:var(--gold);color:var(--gold)}
   .team-label{display:flex;align-items:center;gap:8px;font-weight:700;margin:4px 0 12px}
   .team-label::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}

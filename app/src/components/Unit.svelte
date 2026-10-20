@@ -110,8 +110,8 @@
 </svelte:element>
 
 <style>
-  .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
-  .tag.tip{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+  .jbn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;display:inline-block;padding:4px 4px;margin:-4px -4px}      /* 押せる範囲を、文字より広く */
+  .tag.tip{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;min-height:24px;display:inline-flex;align-items:center}
   /* 攻撃を受けた: 赤くフラッシュ・斬撃・内側が揺れる／回復: 緑の光と、立ちのぼる✚ */
   .fx{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
   .fx .flash{position:absolute;inset:0;animation:flash .55s ease-out forwards}

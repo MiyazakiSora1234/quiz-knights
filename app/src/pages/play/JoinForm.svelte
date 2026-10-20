@@ -27,5 +27,6 @@
   .roomlabel{text-align:center;color:var(--mut);margin:4px 0 6px}
   .err{color:#ff9aa2;font-size:.86rem;min-height:1.3em;margin-top:8px}
   .row{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:16px}
+  .row a{display:inline-flex;align-items:center;min-height:44px}
   @media(min-width:900px){.card{margin-top:10vh}}
 </style>

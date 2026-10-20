@@ -18,9 +18,9 @@
   // 右上のボタンは、待機画面・進行役の画面と同じ並び（💬 📜 ⏱ 📖 🔊 ☰）。バトル中に開けない設定（⚙・📚）は出さない
   const tools = $derived([
     { key: 'chat', icon: '💬', label: 'チャット', badge: unread || '', active: chatOpen, onclick: toggleChat },
-    { key: 'log', icon: '📜', label: 'バトルログ', onclick: () => (panel.log = true) },
+    { key: 'log', narrowMenu: true, icon: '📜', label: 'バトルログ', onclick: () => (panel.log = true) },
     { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.settings = 'quiz') },
-    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'rules', narrowMenu: true, icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
     { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
   ]);
   const menuItems = $derived([

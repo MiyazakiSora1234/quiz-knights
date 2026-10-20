@@ -18,9 +18,9 @@
   // 右上のボタンは、バトル中の画面・進行役の画面と同じ並び（⏱ 📚 ⚙ 📖 🔊 ☰）
   const tools = $derived([
     { key: 'quiz', icon: '⏱', label: 'クイズ設定', onclick: () => (panel.settings = 'quiz') },
-    { key: 'bank', icon: '📚', label: '問題集', title: '問題集を進行役に送る', onclick: () => (panel.settings = 'bank') },
+    { key: 'bank', narrowMenu: true, icon: '📚', label: '問題集', title: '問題集を進行役に送る', onclick: () => (panel.settings = 'bank') },
     { key: 'settings', icon: '⚙', label: '設定', title: '設定（ユーザー設定・称号）', onclick: () => (panel.settings = 'user') },
-    { key: 'rules', icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
+    { key: 'rules', narrowMenu: true, icon: '📖', label: 'ルール', title: '職業・ルール一覧', onclick: () => (panel.rules = true) },
     { key: 'sound', icon: sound.on ? '🔊' : '🔇', label: '効果音', title: sound.on ? '効果音：オン' : '効果音：オフ', onclick: toggleSound },
   ]);
   const menuItems = $derived([

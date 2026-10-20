@@ -84,7 +84,7 @@
   .no{font-family:var(--display);font-weight:800;color:var(--gold)}.of{color:var(--mut);font-size:.8em;font-weight:500}
   .grow{flex:1}
   .text{font-size:1.5rem;line-height:1.7;margin:6px 0 4px;font-weight:700;letter-spacing:.03em}
-  .c{color:#6f665a}
+  .c{color:#a0957f}
   .c.read{color:var(--tx)}
   .c.sure{border-right:2px dotted #ffffff55}
   .hand{margin:0 4px;animation:pop .25s}
@@ -102,7 +102,7 @@
   .bar i{display:block;height:100%;background:var(--gold)}
   .cpu{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:.84rem;color:var(--mut)}
   .tgl{display:flex;align-items:center;gap:6px;cursor:pointer}
-  .lnk{all:unset;cursor:pointer;color:var(--gold);font-size:.8rem;text-decoration:underline}
+  .lnk{all:unset;cursor:pointer;color:var(--gold);font-size:.8rem;text-decoration:underline;padding:10px 4px;margin:-10px -4px}
   .lnk:focus-visible{outline:2px solid var(--gold)}
   .plans{margin-top:6px;font-size:.8rem;color:var(--mut);display:flex;flex-direction:column;gap:2px}
   .plans .used{opacity:.55}

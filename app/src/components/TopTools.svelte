@@ -6,19 +6,30 @@
   // menu : [{ icon, label, onclick, danger? } | { hr: true }]
   // labels: 画面が広いとき、アイコンの横に名前も出す（進行役の画面）
   let { tools = [], menu = [], labels = false } = $props();
+  // 狭い画面では、narrowMenu のついたボタンを、「☰」の中へ移す（ボタンが2段に折り返して、不ぞろいにならないように）
+  let narrow = $state(false);
+  $effect(() => {
+    const mq = matchMedia('(max-width:600px)');
+    const f = () => { narrow = mq.matches; };
+    f(); mq.addEventListener('change', f);
+    return () => mq.removeEventListener('change', f);
+  });
   // 絵文字・記号は、フォントによって上下の位置が違う（実測: 多くは約1.5px高く、📖は約1px低い）ので、見た目の中心がそろうように、1つずつ補正する
   const NUDGE = { '📖': -1, '📚': 1, '📜': 1 };
   const nudge = ic => (NUDGE[ic] ?? 1.5);
   let open = $state(false);
   let root = $state();
   export function close() { open = false; }
-  const items = $derived(menu.filter(m => !m.hidden));
+  const shown = $derived(tools.filter(t => !t.hidden && !(narrow && t.narrowMenu)));
+  const moved = $derived(narrow ? tools.filter(t => !t.hidden && t.narrowMenu).map(t => ({ icon: t.icon, label: t.title ?? t.label, onclick: t.onclick })) : []);
+  const rest = $derived(menu.filter(m => !m.hidden));
+  const items = $derived([...moved, ...(moved.length && rest.length ? [{ hr: true }] : []), ...rest]);
 </script>
 
 <svelte:window onclick={(e) => { if (open && root && !root.contains(e.target)) open = false; }} />
 
 <div class="tt" class:labels role="toolbar" aria-label="操作" bind:this={root}>
-  {#each tools.filter(t => !t.hidden) as t (t.key)}
+  {#each shown as t (t.key)}
     <button type="button" class="tb" class:on={t.active} disabled={t.disabled} title={t.title ?? t.label} aria-label={t.label} onclick={t.onclick}>
       <span class="ic" style:transform="translateY({nudge(t.icon)}px)" aria-hidden="true">{t.icon}</span><span class="lb">{t.label}</span>{#if t.badge}<span class="bd">{t.badge}</span>{/if}
     </button>
@@ -40,7 +51,7 @@
 
 <style>
   .tt{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-  .tb{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:40px;height:40px;padding:0 5px;border-radius:10px;background:var(--s2);border:1px solid var(--line);color:var(--tx);font-size:1.1rem;line-height:1;cursor:pointer}
+  .tb{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:40px;height:40px;padding:0 4px;border-radius:10px;background:var(--s2);border:1px solid var(--line);color:var(--tx);font-size:1.1rem;line-height:1;cursor:pointer}
   .tb:hover:not(:disabled){border-color:var(--gold)}
   .tb:disabled{opacity:.4;cursor:default}
   .tb.on{border-color:var(--gold);background:#3a2f1a}
@@ -48,7 +59,8 @@
   /* 絵文字は、フォントによって上下・左右にずれるので、決まった大きさの箱の真ん中に置く */
   .ic{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;line-height:1;font-size:1.1rem;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;text-align:center}
   .lb{display:none;font-size:.82rem;font-weight:600}
-  @media(min-width:901px){.labels .lb{display:inline}.labels .tb{padding:0 12px}}
+  @media(min-width:1500px){.labels .lb{display:inline}.labels .tb{padding:0 12px}}      /* 名前も出すのは、横にゆとりのある広い画面だけ */
+  @media(max-width:600px){.tt{gap:4px}}
   .bd{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--gold);color:#2a1c06;font-size:.7rem;font-weight:800;display:grid;place-items:center}
   .mw{position:relative}
   .mn{position:absolute;right:0;top:calc(100% + 8px);background:var(--s1);border:1px solid var(--line2);border-radius:12px;padding:6px;min-width:230px;z-index:80;box-shadow:0 14px 34px #000d}
